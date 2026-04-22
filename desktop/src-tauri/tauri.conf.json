@@ -1,0 +1,25 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "DrDuc Translator",
+  "version": "0.1.0",
+  "identifier": "com.drduc.translator",
+  "build": {
+    "beforeDevCommand": "npm run dev",
+    "beforeBuildCommand": "npm run build",
+    "frontendDist": "../dist",
+    "devUrl": "http://localhost:5173"
+  },
+  "app": {
+    "security": {
+      "capabilities": ["main-window"]
+    },
+    "windows": [
+      {
+        "label": "main",
+        "title": "DrDuc Translator",
+        "width": 1440,
+        "height": 960
+      }
+    ]
+  }
+}

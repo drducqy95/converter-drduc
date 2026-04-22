@@ -1,0 +1,12 @@
+{
+  "project_name": "Converter by DrDuc",
+  "version": "1.0.0",
+  "description": "A converter application for DrDuc translation system",
+  "tech_stack": {
+    "frontend": "HTML/CSS/JS",
+    "backend": "Node.js",
+    "database": "None"
+  },
+  "created_at": "2026-04-14T13:38:44Z",
+  "last_updated": "2026-04-14T13:38:44Z"
+}

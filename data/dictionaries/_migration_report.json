@@ -1,0 +1,87 @@
+{
+  "timestamp": "2026-04-14T10:52:31.630622",
+  "source_dir": "D:\\APP\\Quick Translator 2020\\Data",
+  "output_dir": "D:\\Converter by DrDuc\\data\\dictionaries",
+  "total_source_lines": 895468,
+  "total_migrated_entries": 898116,
+  "details": {
+    "VietPhrase": {
+      "file": "VietPhrase.txt",
+      "source_count": 728698,
+      "migrated": 728698,
+      "skipped": 0
+    },
+    "VietPhrase2": {
+      "file": "VietPhrase2.txt",
+      "source_count": 4747,
+      "migrated": 4747,
+      "skipped": 0
+    },
+    "Names": {
+      "files": [
+        {
+          "file": "Names.txt",
+          "source_count": 928,
+          "parsed": 928,
+          "skipped": 0
+        },
+        {
+          "file": "Names2.txt",
+          "source_count": 1768,
+          "parsed": 1768,
+          "skipped": 0
+        }
+      ],
+      "total_unique": 2688,
+      "migrated": 2688,
+      "deduped_from": 2696
+    },
+    "PhienAm": {
+      "file": "ChinesePhienAmWords.txt",
+      "source_count": 12570,
+      "migrated": 12570,
+      "skipped": 0
+    },
+    "ThieuChuu": {
+      "file": "ThieuChuu.txt",
+      "source_count": 10026,
+      "migrated": 10026,
+      "skipped": 0
+    },
+    "LuatNhan": {
+      "file": "LuatNhan.txt",
+      "source_count": 303,
+      "migrated": 302,
+      "skipped": 1
+    },
+    "LuatNhanCu": {
+      "file": "LuatNhancu.txt",
+      "source_count": 15789,
+      "migrated": 15789,
+      "skipped": 0
+    },
+    "TrichDan": {
+      "file": "TrichDan.txt",
+      "source_count": 23238,
+      "migrated": 23235,
+      "skipped": 3
+    },
+    "Pronouns": {
+      "file": "Pronouns.txt",
+      "source_count": 12063,
+      "migrated": 12062,
+      "skipped": 1
+    },
+    "IgnoredPhrases": {
+      "file": "IgnoredChinesePhrases.txt",
+      "source_count": 2047,
+      "migrated": 2046
+    },
+    "CEDICT": {
+      "file": "cedict_ts.u8",
+      "source_count": 85987,
+      "migrated": 85953,
+      "skipped": 34
+    }
+  }
+}

@@ -1,0 +1,46 @@
+{
+  "timestamp": "2026-04-21T12:12:05Z",
+  "dict_root": "D:\\Converter by DrDuc\\data\\dictionaries",
+  "db_path": "D:\\Converter by DrDuc\\data\\dictionaries\\_compiled\\trie_cache.db",
+  "rebuild": false,
+  "sqlite_counts": {
+    "entries": 724207,
+    "reference_entries": 193561,
+    "grammar_patterns": 16091,
+    "normalization_rules": 2065,
+    "audit_events": 6126,
+    "entry_readings": 174999,
+    "phienam_runtime": 264
+  },
+  "trie_load": {
+    "loaded": 710028,
+    "reference_fallbacks": 13572,
+    "trie_size": 723600,
+    "load_time": 6.239
+  },
+  "trie_stats": {
+    "entries": 723600,
+    "reading_fallbacks": 14043,
+    "nodes": 1134044,
+    "load_time_ms": 6239.2
+  },
+  "luatnhan": {
+    "loaded_rules": 16091,
+    "total_rules": 16091,
+    "primary_rules": 302,
+    "extended_rules": 15789,
+    "compiled_patterns": 0,
+    "entities_registered": 0
+  },
+  "lookup_benchmark": {
+    "total_lookups": 100000,
+    "elapsed_seconds": 0.083017,
+    "microseconds_per_lookup": 0.83
+  },
+  "translation_benchmark": {
+    "rounds": 1000,
+    "sample_length": 34,
+    "elapsed_seconds": 0.203674,
+    "milliseconds_per_translation": 0.204
+  }
+}

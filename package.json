@@ -1,0 +1,60 @@
+{
+  "name": "converter-by-drduc",
+  "version": "1.0.0",
+  "description": "Advanced Chinese-Vietnamese translation system based on rule-based and statistical approaches",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "test": "jest",
+    "dev": "nodemon index.js",
+    "build": "npm run build:js && npm run build:dict",
+    "build:js": "webpack --mode production",
+    "build:dict": "node scripts/build-dictionaries.js",
+    "lint": "eslint src/",
+    "format": "prettier --write src/"
+  },
+  "keywords": [
+    "translation",
+    "chinese",
+    "vietnamese",
+    "rbmt",
+    "smt",
+    "rule-based",
+    "morphological-analysis",
+    "syntax-transfer",
+    "incremental-learning"
+  ],
+  "author": "DrDuc",
+  "license": "MIT",
+  "dependencies": {
+    "trie-tree": "^1.0.4",
+    "natural": "^6.5.0",
+    "crf-tokenizer": "^1.1.0",
+    "viterbi": "^0.1.0",
+    "n-gram": "^2.0.0",
+    "segmentit": "^2.0.3",
+    "opencc-js": "^1.0.5",
+    "lodash": "^4.17.21",
+    "async": "^3.2.4"
+  },
+  "devDependencies": {
+    "@types/node": "^20.0.0",
+    "jest": "^29.0.0",
+    "eslint": "^8.0.0",
+    "prettier": "^2.8.0",
+    "nodemon": "^3.0.0",
+    "webpack": "^5.80.0",
+    "webpack-cli": "^5.0.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/user/converter-by-drduc.git"
+  },
+  "bugs": {
+    "url": "https://github.com/user/converter-by-drduc/issues"
+  },
+  "homepage": "https://github.com/user/converter-by-drduc#readme"
+}

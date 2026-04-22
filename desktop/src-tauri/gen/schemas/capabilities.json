@@ -1,0 +1,1 @@
+{"main-window":{"identifier":"main-window","description":"Allow the main desktop window to access core IPC commands for the Python sidecar bridge.","local":true,"windows":["main"],"permissions":["core:default"]}}

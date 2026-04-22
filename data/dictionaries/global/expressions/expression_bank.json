@@ -1,0 +1,20 @@
+{
+  "general": {
+    "anger": ["hừ"],
+    "joy": ["ha"],
+    "respect": ["vâng"],
+    "neutral": []
+  },
+  "xianxia": {
+    "anger": ["hừ"],
+    "joy": ["ha ha"],
+    "respect": ["vãn bối xin lĩnh giáo"],
+    "neutral": []
+  },
+  "modern": {
+    "anger": ["này"],
+    "joy": ["wow"],
+    "respect": ["xin mời"],
+    "neutral": []
+  }
+}

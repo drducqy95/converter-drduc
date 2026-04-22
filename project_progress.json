@@ -1,0 +1,116 @@
+{
+  "id": "M1",
+  "title": "DrDuc Translator Master Execution Plan",
+  "status": "ACTIVE",
+  "description": "Non-LLM Chinese-Vietnamese and English-Vietnamese translation system using dictionary migration, Trie, LuatNhan, RBMT, EAPEE, QA, TM and desktop workflow.",
+  "created_at": "2026-04-14T14:02:00Z",
+  "updated_at": "2026-04-15T15:05:06Z",
+  "plan_version": "2026-04-15-master-detailed-vi",
+  "authoritative_plan": "plans/260414-1038-drduc-translator/master_plan_detailed_vi.md",
+  "enhanced_requirements": {
+    "preprocessing": "Scan, preserve structure, convert Traditional to Simplified Chinese, and resolve Pinyin before terminology and translation stages.",
+    "syntax_rules": "Build grammar transfer and disambiguation rules for Chinese-Vietnamese without dependency on flat bilingual dictionaries only.",
+    "incremental_learning": "Improve through project state, translation memory, candidate rules, and reviewer-approved upgrades."
+  },
+  "tasks": [
+    {
+      "id": "T1.0",
+      "desc": "Phase 00 - Alignment & Stabilization",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Baseline stabilized: parser blocker fixed, full Python test suite green, tracker/docs aligned, README boundary updated, and obsolete planning sources removed."
+    },
+    {
+      "id": "T1.1",
+      "desc": "Phase 01 - Foundation Closeout",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Foundation closed: full Phase 01 test suite passes (`91 passed`), benchmark/rebuild workflow is reproducible, compiler now separates runtime entries from reference_entries, normalization_rules, audit_events, and entry_readings, Babylon/Mark/LacViet/ThieuChuu/History migrations are operational, compiled DB was rebuilt with 193,561 reference entries, 6,126 audit events, and 174,999 entry_readings, and PhienAm runtime was reduced from 1,420 to 264 residual entries while TrieEngine keeps single-character reading fallback from compiled metadata."
+    },
+    {
+      "id": "T1.2",
+      "desc": "Phase 02 - Pre-Translation Pipeline",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Python pre-translation pipeline is implemented: document importer, chapter splitter, production structure preserver, heuristic Traditional->Simplified conversion, safe Pinyin resolution, entity scanner, relationship builder, terminology suggester, and translation_config generation now create project artifacts under source/working directories and are covered by new integration tests."
+    },
+    {
+      "id": "T1.3",
+      "desc": "Phase 03 - EAPEE",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Emotion detector, scene emotion state machine, pronoun resolver, and expression bank datasets are implemented under src/eapee and are integrated into RBMT dialogue handling with traceable pronoun overrides."
+    },
+    {
+      "id": "T1.4",
+      "desc": "Phase 04 - RBMT Core",
+      "status": "DONE",
+      "progress": 100,
+      "details": "RBMT baseline is implemented in Python with sentence segmentation, placeholder-safe translation flow, LuatNhan integration, locked-entity overrides, ambiguity draft annotations, TM lookup, context updates, number conversion interplay, and clean/draft export."
+    },
+    {
+      "id": "T1.5",
+      "desc": "Phase 05 - QA Engine",
+      "status": "DONE",
+      "progress": 100,
+      "details": "QA engine is implemented with terminology, pronoun, emotion consistency, structure integrity, untranslated/ambiguity detection, length checks, and Markdown/JSON report generation."
+    },
+    {
+      "id": "T1.6",
+      "desc": "Phase 06 - State Management & Translation Memory",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Project manager, state DB schema, SQLite translation memory with exact/fuzzy lookup, candidate lifecycle helpers, runtime stats recording, and Obsidian-friendly summary export are implemented under src/state."
+    },
+    {
+      "id": "T1.7",
+      "desc": "Phase 07 - EN-VI Engine",
+      "status": "DONE",
+      "progress": 100,
+      "details": "A baseline EN-VI engine is implemented with repo-local lexicon data, phrase-first matching, adjective+noun reordering, possessive handling, plural handling, tense hints, and regression tests."
+    },
+    {
+      "id": "T1.8",
+      "desc": "Phase 08 - Desktop UI",
+      "status": "DONE",
+      "progress": 100,
+      "details": "Desktop workflow is fully operational across browser fallback and native Tauri execution: the Python sidecar exposes a versioned contract with project overview, artifact loading, dictionary search, candidate review, and QA commands; translation traces are promoted into candidate entries in project state; the React/Vite shell implements the seven planned screens with dictionary metadata inspection; src-tauri forwards frontend requests to the Python sidecar; and native icon assets are generated from `src-tauri/app-icon.svg` into `src-tauri/icons/` for bundle resources. Verification passed for `python -m pytest` (`99 passed`), `npm run build`, `npm exec tauri info`, `npm run tauri:build`, and a Windows smoke launch of `src-tauri/target/release/drduc-translator-desktop.exe`. On this machine the Rust toolchain is installed under `D:\\App\\Rust`, Visual Studio Build Tools 2022 under `D:\\App\\BuildTools\\VS2022`, and the Windows SDK under `C:\\Program Files (x86)\\Windows Kits\\10`."
+    }
+  ],
+  "milestones": [
+    {
+      "name": "Baseline Stable",
+      "date": "2026-04-30",
+      "description": "Phase 00 complete and Phase 01 test baseline green."
+    },
+    {
+      "name": "Foundation Closed",
+      "date": "2026-05-15",
+      "description": "Migration, compiler, Trie, LuatNhan and metadata strategy finalized."
+    },
+    {
+      "name": "Pre-Translation Active",
+      "date": "2026-06-01",
+      "description": "Importer, chapter split, structure preservation, normalization and config generation operational."
+    },
+    {
+      "name": "First End-to-End Chapter",
+      "date": "2026-08-30",
+      "description": "Phase 03 and Phase 04 baseline integrated to translate one real chapter end-to-end."
+    },
+    {
+      "name": "QA and State Integrated",
+      "date": "2026-09-30",
+      "description": "QA reporting and project/TM persistence available."
+    },
+    {
+      "name": "Desktop Workflow Available",
+      "date": "2026-11-15",
+      "description": "Desktop app provides an operational project-to-output workflow."
+    }
+  ],
+  "meta": {
+    "last_updated": "2026-04-22T10:38:22.495315",
+    "current_phase": "Phase 6 Completion"
+  }
+}

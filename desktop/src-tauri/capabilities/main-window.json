@@ -1,0 +1,7 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "main-window",
+  "description": "Allow the main desktop window to access core IPC commands for the Python sidecar bridge.",
+  "windows": ["main"],
+  "permissions": ["core:default"]
+}

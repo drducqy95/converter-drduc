@@ -1,0 +1,26 @@
+# DrDuc Translator - Non-LLM RBMT System
+# Core
+pyyaml>=6.0
+chardet>=5.0
+
+# NLP
+jieba>=0.42
+
+# Testing
+pytest>=8.0
+pytest-cov>=4.0
+
+# File watching
+watchdog>=4.0
+
+# Text processing
+regex>=2024.0
+python-Levenshtein>=0.25
+
+# Document import
+markdownify>=0.13
+python-docx>=1.0
+pdfplumber>=0.11
+
+# Performance
+tqdm>=4.66

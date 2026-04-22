@@ -1,0 +1,18 @@
+{
+  "timestamp": "2026-04-15T15:31:09.151342",
+  "source_dir": "D:\\APP\\Quick Translator 2020\\Data",
+  "output_dir": "D:\\Converter by DrDuc\\data\\dictionaries",
+  "selected_only": [
+    "CEDICT"
+  ],
+  "total_source_lines": 85987,
+  "total_migrated_entries": 85953,
+  "details": {
+    "CEDICT": {
+      "file": "cedict_ts.u8",
+      "source_count": 85987,
+      "migrated": 85953,
+      "skipped": 34
+    }
+  }
+}
