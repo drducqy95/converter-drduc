@@ -10,8 +10,8 @@ last_compiled: "2026-04-15"
 notes: "Minimal EN->VI baseline lexicon used by the Python EN-VI engine."
 ---
 
-| source | target | pos |
-| --- | --- | --- |
+| Source | Target | Priority | Category | POS_Tag | Pinyin | Traditional | Metadata |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | king | nhà vua | noun |
 | queen | nữ hoàng | noun |
 | sword | thanh kiếm | noun |

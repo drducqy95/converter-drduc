@@ -15,8 +15,11 @@ Features:
 import sqlite3
 import time
 from dataclasses import dataclass
+from typing import Dict, List, Set, Optional, Tuple, Any, TYPE_CHECKING
 from pathlib import Path
-from typing import Optional
+
+if TYPE_CHECKING:
+    from src.core.pos_rewrite_engine import POSRewriteEngine
 
 from src.core.dictionary_entry_filters import extract_concise_reference_fallback, looks_like_reference_gloss
 
@@ -38,6 +41,15 @@ class TrieMatch:
     priority: int     # Priority level (1-5)
     length: int       # Number of chars matched
     one_mean: bool    # Whether one_mean was applied
+    # Phase 09 Metadata
+    pos_tag: str | None = None
+    pos_sub: str | None = None
+    entity_type: str | None = None
+    is_function_word: int = 0
+    luat_nhan_trigger: int = 0
+    reorder_role: str | None = None
+    cultural_origin: str | None = None
+    register_level: str | None = None
 
 
 # ─────────────────────────────────────────────────
@@ -46,7 +58,11 @@ class TrieMatch:
 
 class TrieNode:
     """A node in the Trie."""
-    __slots__ = ['children', 'target', 'priority', 'one_mean', 'is_end']
+    __slots__ = [
+        'children', 'target', 'priority', 'one_mean', 'is_end',
+        'pos_tag', 'pos_sub', 'entity_type', 'is_function_word',
+        'luat_nhan_trigger', 'reorder_role', 'cultural_origin', 'register_level'
+    ]
     
     def __init__(self):
         self.children: dict[str, 'TrieNode'] = {}
@@ -54,6 +70,15 @@ class TrieNode:
         self.priority: int = 0
         self.one_mean: bool = False
         self.is_end: bool = False
+        # Phase 09 Metadata
+        self.pos_tag: str | None = None
+        self.pos_sub: str | None = None
+        self.entity_type: str | None = None
+        self.is_function_word: int = 0
+        self.luat_nhan_trigger: int = 0
+        self.reorder_role: str | None = None
+        self.cultural_origin: str | None = None
+        self.register_level: str | None = None
 
 
 # ─────────────────────────────────────────────────
@@ -99,7 +124,10 @@ class TrieEngine:
     
     # ─── Build ───
     
-    def insert(self, source: str, target: str, priority: int = 2, one_mean: bool = False):
+    def insert(self, source: str, target: str, priority: int = 2, one_mean: bool = False,
+               pos_tag: str = None, pos_sub: str = None, entity_type: str = None,
+               is_function_word: int = 0, luat_nhan_trigger: int = 0, reorder_role: str = None,
+               cultural_origin: str = None, register_level: str = None):
         """
         Insert a word into the Trie.
         
@@ -119,6 +147,15 @@ class TrieEngine:
             node.target = target
             node.priority = priority
             node.one_mean = one_mean
+            node.pos_tag = pos_tag
+            node.pos_sub = pos_sub
+            node.entity_type = entity_type
+            node.is_function_word = is_function_word
+            node.luat_nhan_trigger = luat_nhan_trigger
+            node.reorder_role = reorder_role
+            node.cultural_origin = cultural_origin
+            node.register_level = register_level
+            
             if not node.is_end:
                 self._size += 1
             node.is_end = True
@@ -139,13 +176,21 @@ class TrieEngine:
         c = conn.cursor()
         
         # Load entries ordered by priority (low first so high overrides)
-        c.execute("SELECT source, target, priority, one_mean, category FROM entries ORDER BY priority ASC")
+        c.execute("""
+            SELECT source, target, priority, one_mean, category,
+                   pos_tag, pos_sub, entity_type, is_function_word, 
+                   luat_nhan_trigger, reorder_role, cultural_origin, register_level
+            FROM entries 
+            ORDER BY priority ASC
+        """)
 
         loaded = 0
-        for source, target, priority, one_mean, category in c:
+        for (source, target, priority, one_mean, category, 
+             pos_tag, pos_sub, ent, is_func, lnt, rrole, cult, reg) in c:
             if looks_like_reference_gloss(category or "", target or ""):
                 continue
-            self.insert(source, target, priority, bool(one_mean))
+            self.insert(source, target, priority, bool(one_mean),
+                        pos_tag, pos_sub, ent, is_func, lnt, rrole, cult, reg)
             loaded += 1
 
         reference_fallbacks = self._load_reference_fallbacks(c)
@@ -266,11 +311,19 @@ class TrieEngine:
                     target = target.split(';')[0].strip()
                 
                 best_match = TrieMatch(
-                    source=text[pos:i+1],
+                    source=text[pos : i + 1],
                     target=target,
                     priority=node.priority,
                     length=i - pos + 1,
                     one_mean=node.one_mean,
+                    pos_tag=node.pos_tag,
+                    pos_sub=node.pos_sub,
+                    entity_type=node.entity_type,
+                    is_function_word=node.is_function_word,
+                    luat_nhan_trigger=node.luat_nhan_trigger,
+                    reorder_role=node.reorder_role,
+                    cultural_origin=node.cultural_origin,
+                    register_level=node.register_level,
                 )
         
         if best_match is not None:
@@ -310,6 +363,14 @@ class TrieEngine:
             priority=node.priority,
             length=len(source),
             one_mean=node.one_mean,
+            pos_tag=node.pos_tag,
+            pos_sub=node.pos_sub,
+            entity_type=node.entity_type,
+            is_function_word=node.is_function_word,
+            luat_nhan_trigger=node.luat_nhan_trigger,
+            reorder_role=node.reorder_role,
+            cultural_origin=node.cultural_origin,
+            register_level=node.register_level,
         )
 
     def _lookup_exact_fallback(self, source: str) -> TrieMatch | None:
@@ -429,6 +490,69 @@ class TrieEngine:
             (0xF900 <= cp <= 0xFAFF) or      # CJK Compatibility
             (0x2F800 <= cp <= 0x2FA1F)       # CJK Compatibility Supplement
         )
+    
+    # ─── Segmentation & Rich Translation ───
+    
+    def segment_to_tokens(self, text: str) -> List[TrieMatch]:
+        """
+        Segment a text into a sequence of longest-prefix TrieMatch tokens.
+        Handles both Trie matches and NumberConverter algorithmic matches.
+        """
+        if not text:
+            return []
+        
+        tokens = []
+        i = 0
+        length = len(text)
+        
+        while i < length:
+            # 1. Trie match
+            trie_match = self.lookup(text, i)
+            trie_len = trie_match.length if trie_match else 0
+            
+            # 2. Number match
+            num_result = None
+            num_len = 0
+            if self._number_converter:
+                num_result = self._number_converter.try_convert(text, i)
+                num_len = num_result.consumed if num_result else 0
+            
+            # 3. Decision
+            if num_len > trie_len:
+                tokens.append(TrieMatch(
+                    source=text[i:i+num_len],
+                    target=num_result.text,
+                    priority=2, # Numbers usually P2
+                    length=num_len,
+                    one_mean=False,
+                    pos_tag="NUMBER"
+                ))
+                i += num_len
+            elif trie_match:
+                tokens.append(trie_match)
+                i += trie_match.length
+            else:
+                # Fallback char
+                char = text[i]
+                reading = self.lookup_reading(char)
+                tokens.append(TrieMatch(
+                    source=char,
+                    target=reading if reading else char,
+                    priority=0,
+                    length=1,
+                    one_mean=False
+                ))
+                i += 1
+        
+        return tokens
+
+    def translate_enriched(self, text: str, rewriter: Optional['POSRewriteEngine'] = None) -> str:
+        """Translate text using metadata-enriched reordering."""
+        tokens = self.segment_to_tokens(text)
+        if rewriter:
+            tokens = rewriter.rewrite(tokens)
+        
+        return "".join(t.target for t in tokens)
     
     # ─── Stats ───
     

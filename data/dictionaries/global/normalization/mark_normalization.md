@@ -7,8 +7,8 @@ last_compiled: "2026-04-15"
 notes: "Punctuation and symbol normalization rules extracted from Quick Translator Mark.txt."
 ---
 
-| source | target | rule_type |
-| --- | --- | --- |
+| Source | Target | Priority | Category | POS_Tag | Pinyin | Traditional | Metadata |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | ， | , | punctuation_map |
 | 。 | . | punctuation_map |
 | ： | : | punctuation_map |
@@ -24,7 +24,7 @@ notes: "Punctuation and symbol normalization rules extracted from Quick Translat
 | 、 | , | punctuation_map |
 | … | ... | punctuation_map |
 | — | - | punctuation_map |
-| 《 | « | punctuation_map |
-| 》 | » | punctuation_map |
-| 【 | 【 | punctuation_map |
-| 】 | 】 | punctuation_map |
+| 《 | « | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "component"} |
+| 》 | » | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "component"} |
+| 【 | 【 | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "component"} |
+| 】 | 】 | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "component"} |

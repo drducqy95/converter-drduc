@@ -9,6 +9,7 @@ import {
   type DictionaryEntry,
   type LearningReport,
   type NaturalFeedbackAnalysis,
+  type PipelineStatus,
   type ProjectOverview,
   type ProjectRecord,
   type QAReport,
@@ -49,6 +50,10 @@ const SUPPORTED_COMMANDS: CommandName[] = [
   "load_qa_report",
   "load_learning_report",
   "search_dictionary_entries",
+  "list_dictionary_entries",
+  "update_dictionary_entry",
+  "get_pipeline_status",
+  "run_pipeline_stage",
   "list_candidate_entries",
   "review_candidate_entry",
   "submit_natural_feedback",
@@ -249,6 +254,93 @@ export function createDemoTransport(): Transport {
             return makeResponse(command, requestId, {
               query,
               entries,
+            } as T, events);
+          }
+          case "list_dictionary_entries": {
+            const query = asString(payload.query, "");
+            const tableName = asString(payload.table_name, "");
+            const sourceDict = asString(payload.source_dict, "");
+            const posTag = asString(payload.pos_tag, "");
+            const entityType = asString(payload.entity_type, "");
+            const page = Number(payload.page ?? 1) || 1;
+            const pageSize = Number(payload.page_size ?? 50) || 50;
+            let entries = buildDemoDictionaryResults(query);
+            if (tableName) {
+              entries = entries.filter((entry) => entry.table_name === tableName);
+            }
+            if (sourceDict) {
+              entries = entries.filter((entry) => entry.source_dict === sourceDict);
+            }
+            if (posTag) {
+              entries = entries.filter((entry) => entry.pos_tag === posTag);
+            }
+            if (entityType) {
+              entries = entries.filter((entry) => entry.entity_type === entityType);
+            }
+            const total = entries.length;
+            const pageEntries = entries.slice((page - 1) * pageSize, page * pageSize);
+            events.push(makeEvent("dictionary_list_loaded", "Loaded paginated dictionary entries", 100));
+            return makeResponse(command, requestId, {
+              entries: clone(pageEntries),
+              total,
+              page,
+              page_size: pageSize,
+              filters: {
+                categories: Array.from(new Set(buildDemoDictionaryResults("").map((entry) => entry.source_dict))),
+                pos_tags: Array.from(new Set(buildDemoDictionaryResults("").map((entry) => entry.pos_tag ?? "").filter(Boolean))),
+                entity_types: Array.from(new Set(buildDemoDictionaryResults("").map((entry) => entry.entity_type ?? "").filter(Boolean))),
+                tables: Array.from(new Set(buildDemoDictionaryResults("").map((entry) => entry.table_name))),
+              },
+              stats: buildDemoPipelineStatus(projects.get("phase10-demo") ?? seeded).dictionary_stats,
+            } as T, events);
+          }
+          case "update_dictionary_entry": {
+            const recordId = asString(payload.record_id, "");
+            const entry = buildDemoDictionaryResults("").find((item) => item.record_id === recordId);
+            if (!entry) {
+              throw new Error(`Dictionary entry ${recordId} not found`);
+            }
+            if (typeof payload.target_vi === "string") {
+              entry.target_vi = payload.target_vi;
+            }
+            if (typeof payload.pos_tag === "string") {
+              entry.pos_tag = payload.pos_tag || null;
+            }
+            if (typeof payload.pos_sub === "string") {
+              entry.pos_sub = payload.pos_sub || null;
+            }
+            if (typeof payload.entity_type === "string") {
+              entry.entity_type = payload.entity_type || null;
+            }
+            if (typeof payload.full_explanation === "string") {
+              entry.full_explanation = payload.full_explanation;
+            }
+            if (typeof payload.traditional === "string") {
+              entry.traditional = payload.traditional;
+            }
+            if (typeof payload.notes === "string") {
+              entry.notes = payload.notes;
+            }
+            if (typeof payload.pinyin === "string") {
+              entry.pinyin = payload.pinyin.split(",").map((item) => item.trim()).filter(Boolean);
+            }
+            events.push(makeEvent("dictionary_updated", "Updated demo dictionary entry", 100));
+            return makeResponse(command, requestId, {
+              entry: clone(entry),
+              pipeline: buildDemoPipelineStatus(projects.get("phase10-demo") ?? seeded),
+            } as T, events);
+          }
+          case "get_pipeline_status": {
+            const project = ensureProject(projects, payload);
+            events.push(makeEvent("pipeline_loaded", "Loaded demo pipeline status", 100));
+            return makeResponse(command, requestId, buildDemoPipelineStatus(project) as T, events);
+          }
+          case "run_pipeline_stage": {
+            const project = ensureProject(projects, payload);
+            events.push(makeEvent("pipeline_stage", `Executed demo stage ${String(payload.stage ?? "unknown")}`, 100));
+            return makeResponse(command, requestId, {
+              stage: payload.stage,
+              pipeline: buildDemoPipelineStatus(project),
             } as T, events);
           }
           case "list_candidate_entries": {
@@ -490,9 +582,41 @@ function buildOverview(project: DemoProject): ProjectOverview {
   };
 }
 
+function buildDemoPipelineStatus(project: DemoProject): PipelineStatus {
+  return {
+    stages: [
+      { id: "import", label: "Nhap", status: project.chapters.length ? "completed" : "pending", progress: project.chapters.length ? 100 : 0, message: "Demo import stage", metrics: { chapters: project.chapters.length } },
+      { id: "compile", label: "Bien dich", status: "completed", progress: 100, message: "Demo dictionary DB ready", metrics: { total: 2 } },
+      { id: "assign_pos", label: "Gan POS", status: "completed", progress: 97, message: "Demo POS coverage", metrics: { pos_coverage_pct: 97, pinyin_coverage_pct: 99 } },
+      { id: "translate", label: "Dich", status: project.translation ? "completed" : "pending", progress: project.translation ? 100 : 0, message: "Demo translation stage", metrics: { chapter: project.project.active_chapter } },
+      { id: "qa", label: "QA", status: project.qaReport ? "completed" : "pending", progress: project.qaReport ? 100 : 0, message: "Demo QA stage", metrics: { issues: project.qaReport?.summary.issues ?? 0 } },
+      { id: "export", label: "Xuat", status: project.translation ? "completed" : "pending", progress: project.translation ? 100 : 0, message: "Demo export artifacts", metrics: { output: `${project.project.project_dir}/output/translated.txt` } },
+    ],
+    dictionary_stats: {
+      runtime_total: 2,
+      reference_total: 0,
+      total: 2,
+      pos_total: 2,
+      pinyin_total: 2,
+      entity_total: 1,
+      pos_coverage_pct: 97,
+      pinyin_coverage_pct: 99,
+      compiled_at: new Date().toISOString(),
+      entry_readings_total: 2,
+      metadata: { mode: "demo" },
+    },
+    project: clone(project.project),
+    artifacts: buildOverview(project).artifacts,
+    last_state: clone(project.state),
+  };
+}
+
 function buildDemoDictionaryResults(query: string): DictionaryEntry[] {
   const catalog: DictionaryEntry[] = [
     {
+      record_id: "entries:1",
+      row_id: 1,
+      table_name: "entries",
       source: "一",
       target_vi: "nhất",
       alternative_meanings: ["một", "toàn bộ"],
@@ -509,8 +633,23 @@ function buildDemoDictionaryResults(query: string): DictionaryEntry[] {
       one_mean: false,
       locked: false,
       notes: "",
+      source_file: "_bulk_thieuchuu.md",
+      source_path: "demo://dict/_bulk_thieuchuu.md",
+      pos_tag: "NUMBER",
+      pos_sub: "cardinal",
+      entity_type: null,
+      traditional: "一",
+      is_function_word: false,
+      luat_nhan_trigger: false,
+      reorder_role: null,
+      metadata: {
+        full_explanation: "nhất [yi1] 1. Một. 2. Cùng. 3. Bao quát hết thảy. 4. Chuyên chú vào một mặt.",
+      },
     },
     {
+      record_id: "entries:2",
+      row_id: 2,
+      table_name: "entries",
       source: "林动",
       target_vi: "Lâm Động",
       alternative_meanings: [],
@@ -527,6 +666,21 @@ function buildDemoDictionaryResults(query: string): DictionaryEntry[] {
       one_mean: true,
       locked: true,
       notes: "Seeded demo entity",
+      source_file: "_names_person_east.md",
+      source_path: "demo://dict/_names_person_east.md",
+      pos_tag: "NOUN",
+      pos_sub: "name",
+      entity_type: "person",
+      traditional: "林動",
+      is_function_word: false,
+      luat_nhan_trigger: true,
+      reorder_role: "head",
+      metadata: {
+        pos_sub: "name",
+        entity_type: "person",
+        luat_nhan_trigger: 1,
+        reorder_role: "head",
+      },
     },
   ];
   const normalized = query.trim().toLowerCase();

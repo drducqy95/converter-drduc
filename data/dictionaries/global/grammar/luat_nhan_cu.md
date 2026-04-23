@@ -8,7 +8,7 @@ notes: "Extended LuatNhan templates (15K+). Lower priority than primary LuatNhan
 ---
 
 | pattern | replacement |
-| --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | {0}一个人头上 | trên đầu một mình {0} |
 | {0}一个人手上 | trong tay một mình {0} |
 | {0}一个人手里 | trong tay một mình {0} |

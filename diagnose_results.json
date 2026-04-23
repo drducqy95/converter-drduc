@@ -1,0 +1,402 @@
+[
+  {
+    "source": "久",
+    "in_cedict": true
+  },
+  {
+    "source": "乎",
+    "in_cedict": true
+  },
+  {
+    "source": "乖",
+    "in_cedict": true
+  },
+  {
+    "source": "乘",
+    "in_cedict": true
+  },
+  {
+    "source": "亘",
+    "in_cedict": true
+  },
+  {
+    "source": "些",
+    "in_cedict": true
+  },
+  {
+    "source": "仞",
+    "in_cedict": true
+  },
+  {
+    "source": "们",
+    "in_cedict": true
+  },
+  {
+    "source": "价",
+    "in_cedict": true
+  },
+  {
+    "source": "企",
+    "in_cedict": true
+  },
+  {
+    "source": "伝",
+    "in_cedict": false
+  },
+  {
+    "source": "伢",
+    "in_cedict": true
+  },
+  {
+    "source": "伷",
+    "in_cedict": false
+  },
+  {
+    "source": "但",
+    "in_cedict": true
+  },
+  {
+    "source": "佑",
+    "in_cedict": true
+  },
+  {
+    "source": "促",
+    "in_cedict": true
+  },
+  {
+    "source": "俐",
+    "in_cedict": true
+  },
+  {
+    "source": "俑",
+    "in_cedict": true
+  },
+  {
+    "source": "俩",
+    "in_cedict": true
+  },
+  {
+    "source": "俭",
+    "in_cedict": true
+  },
+  {
+    "source": "俱",
+    "in_cedict": true
+  },
+  {
+    "source": "倆",
+    "in_cedict": true
+  },
+  {
+    "source": "倘",
+    "in_cedict": true
+  },
+  {
+    "source": "兕",
+    "in_cedict": true
+  },
+  {
+    "source": "兮",
+    "in_cedict": true
+  },
+  {
+    "source": "再",
+    "in_cedict": true
+  },
+  {
+    "source": "冏",
+    "in_cedict": true
+  },
+  {
+    "source": "初",
+    "in_cedict": true
+  },
+  {
+    "source": "剐",
+    "in_cedict": true
+  },
+  {
+    "source": "剧",
+    "in_cedict": true
+  },
+  {
+    "source": "剰",
+    "in_cedict": false
+  },
+  {
+    "source": "匐",
+    "in_cedict": true
+  },
+  {
+    "source": "午",
+    "in_cedict": true
+  },
+  {
+    "source": "厌",
+    "in_cedict": true
+  },
+  {
+    "source": "厭",
+    "in_cedict": true
+  },
+  {
+    "source": "右",
+    "in_cedict": true
+  },
+  {
+    "source": "吱",
+    "in_cedict": true
+  },
+  {
+    "source": "吲",
+    "in_cedict": true
+  },
+  {
+    "source": "呀",
+    "in_cedict": true
+  },
+  {
+    "source": "呎",
+    "in_cedict": true
+  },
+  {
+    "source": "呔",
+    "in_cedict": true
+  },
+  {
+    "source": "呗",
+    "in_cedict": true
+  },
+  {
+    "source": "呢",
+    "in_cedict": true
+  },
+  {
+    "source": "呤",
+    "in_cedict": true
+  },
+  {
+    "source": "呦",
+    "in_cedict": true
+  },
+  {
+    "source": "咄",
+    "in_cedict": true
+  },
+  {
+    "source": "咋",
+    "in_cedict": true
+  },
+  {
+    "source": "咐",
+    "in_cedict": true
+  },
+  {
+    "source": "咔",
+    "in_cedict": true
+  },
+  {
+    "source": "咕",
+    "in_cedict": true
+  },
+  {
+    "source": "咚",
+    "in_cedict": true
+  },
+  {
+    "source": "咩",
+    "in_cedict": true
+  },
+  {
+    "source": "咪",
+    "in_cedict": true
+  },
+  {
+    "source": "咵",
+    "in_cedict": false
+  },
+  {
+    "source": "哀",
+    "in_cedict": true
+  },
+  {
+    "source": "哆",
+    "in_cedict": true
+  },
+  {
+    "source": "哈",
+    "in_cedict": true
+  },
+  {
+    "source": "哑",
+    "in_cedict": true
+  },
+  {
+    "source": "哚",
+    "in_cedict": true
+  },
+  {
+    "source": "哞",
+    "in_cedict": true
+  },
+  {
+    "source": "哟",
+    "in_cedict": true
+  },
+  {
+    "source": "唆",
+    "in_cedict": true
+  },
+  {
+    "source": "唔",
+    "in_cedict": true
+  },
+  {
+    "source": "售",
+    "in_cedict": true
+  },
+  {
+    "source": "唷",
+    "in_cedict": true
+  },
+  {
+    "source": "啦",
+    "in_cedict": true
+  },
+  {
+    "source": "啸",
+    "in_cedict": true
+  },
+  {
+    "source": "啻",
+    "in_cedict": true
+  },
+  {
+    "source": "喀",
+    "in_cedict": true
+  },
+  {
+    "source": "喔",
+    "in_cedict": true
+  },
+  {
+    "source": "喲",
+    "in_cedict": true
+  },
+  {
+    "source": "喽",
+    "in_cedict": true
+  },
+  {
+    "source": "嗒",
+    "in_cedict": true
+  },
+  {
+    "source": "嘀",
+    "in_cedict": true
+  },
+  {
+    "source": "嘎",
+    "in_cedict": true
+  },
+  {
+    "source": "嘛",
+    "in_cedict": true
+  },
+  {
+    "source": "噢",
+    "in_cedict": true
+  },
+  {
+    "source": "嚯",
+    "in_cedict": true
+  },
+  {
+    "source": "圏",
+    "in_cedict": false
+  },
+  {
+    "source": "均",
+    "in_cedict": true
+  },
+  {
+    "source": "坯",
+    "in_cedict": true
+  },
+  {
+    "source": "垃",
+    "in_cedict": true
+  },
+  {
+    "source": "垭",
+    "in_cedict": true
+  },
+  {
+    "source": "基",
+    "in_cedict": true
+  },
+  {
+    "source": "堑",
+    "in_cedict": true
+  },
+  {
+    "source": "堪",
+    "in_cedict": true
+  },
+  {
+    "source": "壆",
+    "in_cedict": true
+  },
+  {
+    "source": "多",
+    "in_cedict": true
+  },
+  {
+    "source": "夭",
+    "in_cedict": true
+  },
+  {
+    "source": "娣",
+    "in_cedict": true
+  },
+  {
+    "source": "婚",
+    "in_cedict": true
+  },
+  {
+    "source": "婧",
+    "in_cedict": true
+  },
+  {
+    "source": "婶",
+    "in_cedict": true
+  },
+  {
+    "source": "媵",
+    "in_cedict": true
+  },
+  {
+    "source": "嬉",
+    "in_cedict": true
+  },
+  {
+    "source": "孬",
+    "in_cedict": true
+  },
+  {
+    "source": "孱",
+    "in_cedict": true
+  },
+  {
+    "source": "寝",
+    "in_cedict": true
+  },
+  {
+    "source": "寸",
+    "in_cedict": true
+  },
+  {
+    "source": "尴",
+    "in_cedict": true
+  }
+]

@@ -43,6 +43,18 @@ class DictEntry:
     target_language: str = "vi"
     entry_role: str = "translation"
     metadata_json: str = ""
+    # Phase 09 Metadata
+    pos_tag: str | None = None
+    pos_sub: str | None = None
+    entity_type: str | None = None
+    pinyin: str | None = None
+    traditional: str | None = None
+    is_function_word: int = 0
+    luat_nhan_trigger: int = 0
+    reorder_role: str | None = None
+    cultural_origin: str | None = None
+    genre_affinity: str | None = None
+    register_level: str | None = None
 
     @property
     def effective_target(self) -> str:
@@ -179,7 +191,17 @@ def _parse_md_table(body: str) -> list[dict[str, str]]:
             cells = _split_md_row(match.group(1))
             row = {}
             for j, header in enumerate(headers):
-                row[header] = cells[j] if j < len(cells) else ""
+                head_key = header.lower().replace(' ', '_')
+                row[head_key] = cells[j] if j < len(cells) else ""
+            if 'metadata' in row and row['metadata']:
+                try:
+                    import json
+                    meta = json.loads(row['metadata'])
+                    for k, v in meta.items():
+                        if k not in row or not row[k]:
+                            row[k] = str(v) if isinstance(v, (int, bool)) else v
+                except Exception:
+                    pass
             rows.append(row)
     
     return rows
@@ -209,9 +231,27 @@ def parse_bulk_md(filepath: str, metadata: dict | None = None, body: str | None 
         one_mean = row.get('one_mean', '').lower() in ('true', '1', 'yes')
         notes = row.get('notes', '')
         locked = row.get('locked', '').lower() in ('true', '1', 'yes')
+        pos_tag = row.get('pos_tag', '').strip() or None
+        pos_sub = row.get('pos_sub', '').strip() or None
+        entity_type = row.get('entity_type', '').strip() or None
+        pinyin = row.get('pinyin', '').strip() or None
+        traditional = row.get('traditional', '').strip() or None
+        is_function_word = 1 if row.get('is_function_word', '').lower() in ('true', '1', 'yes') else 0
+        luat_nhan_trigger = 1 if row.get('luat_nhan_trigger', '').lower() in ('true', '1', 'yes') else 0
+        reorder_role = row.get('reorder_role', '').strip() or None
+        cultural_origin = row.get('cultural_origin', '').strip() or None
+        genre_affinity = row.get('genre_affinity', '').strip() or None
+        register_level = row.get('register_level', '').strip() or None
+
         extra_meta = {}
         for key, value in row.items():
-            if key in {'source', 'target', 'one_mean', 'locked', 'notes'}:
+            if key in {
+                'source', 'target', 'one_mean', 'locked', 'notes',
+                'pos_tag', 'pos_sub', 'entity_type', 'is_function_word',
+                'pinyin', 'traditional',
+                'luat_nhan_trigger', 'reorder_role', 'cultural_origin',
+                'genre_affinity', 'register_level'
+            }:
                 continue
             if value != "":
                 extra_meta[key] = value
@@ -221,7 +261,6 @@ def parse_bulk_md(filepath: str, metadata: dict | None = None, body: str | None 
             target=target,
             priority=priority,
             category=category,
-            one_mean=one_mean,
             locked=locked,
             notes=notes,
             source_file=os.path.basename(filepath),
@@ -229,6 +268,17 @@ def parse_bulk_md(filepath: str, metadata: dict | None = None, body: str | None 
             target_language=target_language,
             entry_role=entry_role,
             metadata_json=json.dumps(extra_meta, ensure_ascii=False, separators=(',', ':')) if extra_meta else "",
+            pos_tag=pos_tag,
+            pos_sub=pos_sub,
+            entity_type=entity_type,
+            pinyin=pinyin,
+            traditional=traditional,
+            is_function_word=is_function_word,
+            luat_nhan_trigger=luat_nhan_trigger,
+            reorder_role=reorder_role,
+            cultural_origin=cultural_origin,
+            genre_affinity=genre_affinity,
+            register_level=register_level,
         )
 
 
@@ -617,7 +667,19 @@ class DictionaryCompiler:
                 source_language TEXT DEFAULT 'zh',
                 target_language TEXT DEFAULT 'vi',
                 entry_role TEXT DEFAULT 'translation',
-                metadata_json TEXT DEFAULT ''
+                metadata_json TEXT DEFAULT '',
+                -- Phase 09 Metadata
+                pos_tag TEXT DEFAULT NULL,
+                pos_sub TEXT DEFAULT NULL,
+                entity_type TEXT DEFAULT NULL,
+                pinyin TEXT DEFAULT NULL,
+                traditional TEXT DEFAULT NULL,
+                is_function_word INTEGER DEFAULT 0,
+                luat_nhan_trigger INTEGER DEFAULT 0,
+                reorder_role TEXT DEFAULT NULL,
+                cultural_origin TEXT DEFAULT NULL,
+                genre_affinity TEXT DEFAULT NULL,
+                register_level TEXT DEFAULT NULL
             )
         """)
 
@@ -635,7 +697,19 @@ class DictionaryCompiler:
                 source_language TEXT DEFAULT '',
                 target_language TEXT DEFAULT '',
                 entry_role TEXT DEFAULT 'reference',
-                metadata_json TEXT DEFAULT ''
+                metadata_json TEXT DEFAULT '',
+                -- Phase 09 Metadata
+                pos_tag TEXT DEFAULT NULL,
+                pos_sub TEXT DEFAULT NULL,
+                entity_type TEXT DEFAULT NULL,
+                pinyin TEXT DEFAULT NULL,
+                traditional TEXT DEFAULT NULL,
+                is_function_word INTEGER DEFAULT 0,
+                luat_nhan_trigger INTEGER DEFAULT 0,
+                reorder_role TEXT DEFAULT NULL,
+                cultural_origin TEXT DEFAULT NULL,
+                genre_affinity TEXT DEFAULT NULL,
+                register_level TEXT DEFAULT NULL
             )
         """)
         
@@ -694,24 +768,28 @@ class DictionaryCompiler:
         
         # Insert entries
         c.executemany(
-            "INSERT INTO entries (source, target, priority, category, one_mean, locked, notes, source_file, source_language, target_language, entry_role, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO entries (source, target, priority, category, one_mean, locked, notes, source_file, source_language, target_language, entry_role, metadata_json, pos_tag, pos_sub, entity_type, pinyin, traditional, is_function_word, luat_nhan_trigger, reorder_role, cultural_origin, genre_affinity, register_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     e.source, e.target, e.priority, e.category,
                     int(e.one_mean), int(e.locked), e.notes, e.source_file,
                     e.source_language, e.target_language, e.entry_role, e.metadata_json,
+                    e.pos_tag, e.pos_sub, e.entity_type, e.pinyin, e.traditional,
+                    e.is_function_word, e.luat_nhan_trigger, e.reorder_role, e.cultural_origin, e.genre_affinity, e.register_level,
                 )
                 for e in entries.values()
             ]
         )
 
         c.executemany(
-            "INSERT INTO reference_entries (source, target, priority, category, one_mean, locked, notes, source_file, source_language, target_language, entry_role, metadata_json) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
+            "INSERT INTO reference_entries (source, target, priority, category, one_mean, locked, notes, source_file, source_language, target_language, entry_role, metadata_json, pos_tag, pos_sub, entity_type, pinyin, traditional, is_function_word, luat_nhan_trigger, reorder_role, cultural_origin, genre_affinity, register_level) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
             [
                 (
                     e.source, e.target, e.priority, e.category,
                     int(e.one_mean), int(e.locked), e.notes, e.source_file,
                     e.source_language, e.target_language, e.entry_role, e.metadata_json,
+                    e.pos_tag, e.pos_sub, e.entity_type, e.pinyin, e.traditional,
+                    e.is_function_word, e.luat_nhan_trigger, e.reorder_role, e.cultural_origin, e.genre_affinity, e.register_level,
                 )
                 for e in reference_entries
             ]

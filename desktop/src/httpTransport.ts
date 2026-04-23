@@ -12,7 +12,9 @@ const SUPPORTED_COMMANDS: CommandName[] = [
     "get_project_overview", "set_active_chapter", "set_translation_style",
     "import_file", "translate", "load_translation_artifacts",
     "run_qa", "load_qa_report", "load_learning_report",
-    "search_dictionary_entries", "list_candidate_entries",
+    "search_dictionary_entries", "list_dictionary_entries",
+    "update_dictionary_entry", "get_pipeline_status", "run_pipeline_stage",
+    "list_candidate_entries",
     "review_candidate_entry", "submit_natural_feedback",
     "list_candidate_rules", "review_candidate_rule",
 ];

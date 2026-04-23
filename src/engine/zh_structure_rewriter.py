@@ -224,8 +224,20 @@ def apply_phase6(text: str) -> str:
     text = _ZH_C21_PREP_PROP.sub(r"\2 từ \1", text)
     return text
 
+# ==========================================
+# Phase 7: Simulative Syntax (Cat 23)
+# ==========================================
+_ZH_C23_SIMULATIVE = re.compile(r"([^\s，。？！的]{1,10})(似的|一样|一般)")
+
+def apply_phase7(text: str) -> str:
+    text = _ZH_C23_SIMULATIVE.sub(r"như \1", text)
+    return text
+
 def rewrite_chinese_structure(text: str) -> str:
     """Entry point for structural rewriting pipeline."""
+    # Priority 0: Simulative Syntax
+    text = apply_phase7(text)
+    
     # Priority 1: Specific Appellations & Complex Modifiers (Precision)
     text = apply_phase6(text)  # Titles & Chapters
     text = _ZH_C1A_RCM.sub(r"\2 \1", text) # Specific modifiers (Cat 1A)

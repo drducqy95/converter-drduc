@@ -8,23 +8,23 @@ notes: "Audit history imported from ChinesePhienAmWordsHistory.txt."
 ---
 
 | entry | action | user_name | updated_at | source_dict |
-| --- | --- | --- | --- | --- |
-| 㚻 | Added | Jun1844 | 2021-05-05 15:36:07.001+10:00 | phien_am |
-| 希 | Updated | Jun1844 | 2021-06-28 22:22:23.476+10:00 | phien_am |
-| 怖 | Updated | Jun1844 | 2021-09-05 02:40:00.759+10:00 | phien_am |
-| 找 | Updated | Jun1844 | 2021-09-22 04:35:58.208+10:00 | phien_am |
-| 晴 | Updated | Jun1844 | 2021-09-24 03:28:13.248+10:00 | phien_am |
-| 袙 | Added | Jun1844 | 2021-10-02 01:17:09.657+10:00 | phien_am |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 㚻 | kê | 1 | phien_am | NOUN | ji1 |  | {"pos_sub": "component"} |
+| 希 | hi | 2 | vietphrase_1char | VERB |  |  |  |
+| 怖 | sợ | 2 | vietphrase_1char | NOUN | bu4 |  |  |
+| 找 | tìm | 2 | vietphrase_1char | VERB |  |  |  |
+| 晴 | trời trong xanh/tinh | 2 | vietphrase_1char | NOUN |  |  |  |
+| 袙 | mạt | 1 | phien_am | NOUN |  |  | {"pos_sub": "component"} |
 | 髪 | Added | Jun1844 | 2021-10-02 01:19:41.177+10:00 | phien_am |
-| 鲍 | Updated | Jun1844 | 2021-10-02 23:01:42.787+10:00 | phien_am |
-| 分 | Updated | Jun1844 | 2021-10-17 21:37:28.388+11:00 | phien_am |
-| 相 | Updated | Jun1844 | 2021-10-19 04:29:59.159+11:00 | phien_am |
+| 鲍 | bảo | 2 | vietphrase_1char | NOUN | bao4 | 鮑 |  |
+| 分 | phần/xu/phân/điểm/phút | 2 | vietphrase_1char | ADJECTIVE |  |  |  |
+| 相 | cùng | 2 | vietphrase_1char | ADJECTIVE |  |  |  |
 | 兔 | Updated | Jun1844 | 2021-10-20 17:04:25.464+11:00 | phien_am |
 | 兔 | Updated | Jun1844 | 2021-10-20 17:04:29.928+11:00 | phien_am |
-| 剖 | Updated | Jun1844 | 2021-11-16 22:38:21.759+11:00 | phien_am |
-| 校 | Updated | Jun1844 | 2021-11-19 13:22:21.883+11:00 | phien_am |
-| 剂 | Updated | Jun1844 | 2021-11-19 21:21:39.525+11:00 | phien_am |
-| 憨 | Updated | Jun1844 | 2021-11-24 21:17:53.058+11:00 | phien_am |
-| 扩 | Updated | Jun1844 | 2021-11-26 23:02:04.745+11:00 | phien_am |
-| 尽 | Updated | Jun1844 | 2021-12-01 02:18:36.978+11:00 | phien_am |
-| 单 | Updated | Jun1844 | 2021-12-02 02:21:09.796+11:00 | phien_am |
+| 剖 | mổ/phẫu | 2 | vietphrase_1char | VERB |  |  |  |
+| 校 | trường học | 2 | vietphrase_1char | VERB | xiao4 |  |  |
+| 剂 | tề | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "classifier"} |
+| 憨 | khờ/đơn giản/ngố/ngáo/chất phác/ngây thơ | 2 | vietphrase_1char | ADJECTIVE |  |  |  |
+| 扩 | khuếch trương | 2 | vietphrase_1char | VERB |  |  |  |
+| 尽 | tận/tẫn/tận | 2 | vietphrase_1char | VERB |  |  |  |
+| 单 | đan/đơn | 2 | vietphrase_1char | NOUN |  |  | {"pos_sub": "classifier"} |

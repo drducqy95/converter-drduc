@@ -5,11 +5,14 @@
 from __future__ import annotations
 
 import argparse
+import contextlib
+import io
 import json
 from dataclasses import asdict
 from pathlib import Path
 from time import perf_counter
 
+from src.core.md_dictionary_compiler import DictionaryCompiler
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.engine.rbmt_translator import RBMTTranslator, SegmentTranslation, TranslationResult
 from src.engine.style_profiles import STYLE_PROFILES, default_style_preferences, resolve_style_selection
@@ -18,6 +21,8 @@ from src.learning.project_learning_engine import ProjectLearningEngine
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
 from src.qa.report_generator import QAReportGenerator
 from src.state.project_manager import ProjectManager
+from src.tools.pos_seeder import POSSeeder
+from src.tools.source_file_rewriter import resolve_dictionary_source_path, update_dictionary_source_entry
 from src.ui.command_protocol import CommandEvent, CommandRequest, CommandResponse, PROTOCOL_VERSION
 
 
@@ -35,6 +40,10 @@ SUPPORTED_COMMANDS = {
     "load_qa_report",
     "load_learning_report",
     "search_dictionary_entries",
+    "list_dictionary_entries",
+    "update_dictionary_entry",
+    "get_pipeline_status",
+    "run_pipeline_stage",
     "list_candidate_entries",
     "review_candidate_entry",
     "submit_natural_feedback",
@@ -167,10 +176,11 @@ def handle_request(request: CommandRequest) -> CommandResponse:
         if command == "import_file":
             manager, project_id, project_dir = _resolve_project(payload, create_if_missing=True)
             pipeline = PreTranslationPipeline()
+            filepath = str(_normalize_path(str(payload["filepath"])))
             try:
                 events.append(_event("import_started", "Running pre-translation pipeline", 20))
                 started_at = perf_counter()
-                result = pipeline.prepare(payload["filepath"], project_dir)
+                result = pipeline.prepare(filepath, project_dir)
                 prepare_seconds = perf_counter() - started_at
             finally:
                 pipeline.close()
@@ -181,7 +191,7 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 project_id,
                 {
                     "last_import": {
-                        "filepath": payload["filepath"],
+                        "filepath": filepath,
                         "chapters": len(result.chapters),
                         "entities": len(result.entities),
                         "prepare_seconds": round(prepare_seconds, 4),
@@ -425,10 +435,117 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 events=events,
             )
 
+        if command == "get_pipeline_status":
+            pipeline_status = _build_pipeline_status(payload)
+            events.append(_event("pipeline_loaded", "Loaded pipeline status", 100))
+            return CommandResponse.success(
+                request,
+                data=pipeline_status,
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "run_pipeline_stage":
+            stage = str(payload.get("stage") or "").strip()
+            if not stage:
+                raise ValueError("stage is required")
+
+            if stage in {"import", "translate", "qa"}:
+                nested_command = {
+                    "import": "import_file",
+                    "translate": "translate",
+                    "qa": "run_qa",
+                }[stage]
+                nested_payload = dict(payload)
+                nested_payload.pop("stage", None)
+                nested_response = handle_request(
+                    CommandRequest(
+                        command=nested_command,
+                        payload=nested_payload,
+                        request_id=request.request_id,
+                        protocol_version=request.protocol_version,
+                    )
+                )
+                pipeline_status = _build_pipeline_status(payload)
+                return CommandResponse.success(
+                    request,
+                    data={
+                        "stage": stage,
+                        "stage_result": nested_response.data if nested_response.ok else {},
+                        "pipeline": pipeline_status,
+                    },
+                    warnings=warnings + list(nested_response.warnings),
+                    events=nested_response.events,
+                ) if nested_response.ok else CommandResponse.failure(
+                    request,
+                    error=nested_response.error,
+                    warnings=warnings + list(nested_response.warnings),
+                    events=nested_response.events,
+                )
+
+            if stage == "compile":
+                dict_root = _resolve_dict_root(payload)
+                db_path = _resolve_db_path(payload, dict_root=dict_root)
+                compiled_dir = db_path.parent
+                capture = io.StringIO()
+                with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
+                    compiler = DictionaryCompiler(str(dict_root), str(compiled_dir))
+                    compile_stats = compiler.compile(project_name=payload.get("project_name"))
+                output = capture.getvalue().strip()
+                if output:
+                    warnings.append(output)
+                events.append(_event("compile_completed", "Compiled dictionary database", 100))
+                return CommandResponse.success(
+                    request,
+                    data={
+                        "stage": stage,
+                        "stats": compile_stats,
+                        "db_path": str(db_path),
+                        "dict_root": str(dict_root),
+                        "pipeline": _build_pipeline_status(payload),
+                    },
+                    warnings=warnings,
+                    events=events,
+                )
+
+            if stage == "assign_pos":
+                db_path = _resolve_db_path(payload)
+                capture = io.StringIO()
+                with contextlib.redirect_stdout(capture), contextlib.redirect_stderr(capture):
+                    POSSeeder(str(db_path)).seed()
+                output = capture.getvalue().strip()
+                if output:
+                    warnings.append(output)
+                events.append(_event("pos_completed", "Seeded POS and metadata", 100))
+                return CommandResponse.success(
+                    request,
+                    data={
+                        "stage": stage,
+                        "db_path": str(db_path),
+                        "pipeline": _build_pipeline_status(payload),
+                    },
+                    warnings=warnings,
+                    events=events,
+                )
+
+            if stage == "export":
+                events.append(_event("export_verified", "Verified export artifacts", 100))
+                return CommandResponse.success(
+                    request,
+                    data={
+                        "stage": stage,
+                        "pipeline": _build_pipeline_status(payload),
+                    },
+                    warnings=warnings,
+                    events=events,
+                )
+
+            raise ValueError(f"Unsupported pipeline stage: {stage}")
+
         if command == "search_dictionary_entries":
             query = str(payload.get("query", "")).strip()
             limit = int(payload.get("limit", 20))
-            accessor = RuntimeDictionaryAccessor(payload.get("db_path"))
+            accessor = RuntimeDictionaryAccessor(_resolve_db_path(payload, allow_missing=False))
             try:
                 records = accessor.search_entries(query, limit=limit)
                 entries = [_serialize_dictionary_record(accessor, record) for record in records]
@@ -440,6 +557,129 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 data={
                     "query": query,
                     "entries": entries,
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "list_dictionary_entries":
+            accessor = RuntimeDictionaryAccessor(_resolve_db_path(payload, allow_missing=False))
+            try:
+                page = max(1, int(payload.get("page", 1)))
+                page_size = max(1, min(200, int(payload.get("page_size", 50))))
+                offset = (page - 1) * page_size
+                records, total = accessor.list_entries(
+                    query=str(payload.get("query", "")).strip(),
+                    source_dict=str(payload.get("source_dict", "")).strip() or None,
+                    pos_tag=str(payload.get("pos_tag", "")).strip() or None,
+                    entity_type=str(payload.get("entity_type", "")).strip() or None,
+                    table_name=str(payload.get("table_name", "")).strip() or None,
+                    limit=page_size,
+                    offset=offset,
+                )
+                entries = [_serialize_dictionary_record(accessor, record) for record in records]
+                filters = accessor.get_filter_values()
+                stats = accessor.get_dictionary_stats()
+            finally:
+                accessor.close()
+            events.append(_event("dictionary_list_loaded", "Loaded paginated dictionary entries", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "entries": entries,
+                    "total": total,
+                    "page": page,
+                    "page_size": page_size,
+                    "filters": filters,
+                    "stats": stats,
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "update_dictionary_entry":
+            accessor = RuntimeDictionaryAccessor(_resolve_db_path(payload, allow_missing=False))
+            try:
+                table_name = str(payload.get("table_name") or "").strip()
+                record_id = int(payload.get("record_id") or 0)
+                if not table_name or record_id <= 0:
+                    raise ValueError("table_name and record_id are required")
+
+                current = accessor.get_record(table_name, record_id)
+                if current is None:
+                    raise ValueError(f"Dictionary record not found: {table_name}:{record_id}")
+
+                metadata = _merge_dictionary_metadata(current.metadata, payload.get("metadata"))
+                if "full_explanation" in payload:
+                    metadata["full_explanation"] = str(payload.get("full_explanation") or "").strip()
+                if "hit_count" in payload:
+                    metadata["hit_count"] = int(payload.get("hit_count") or 0)
+                if "han_viet_readings" in payload:
+                    metadata["han_viet_readings"] = str(payload.get("han_viet_readings") or "").strip()
+
+                sqlite_updates = {
+                    "source": _coalesce_update(payload, "source"),
+                    "target": _coalesce_update(payload, "target_vi"),
+                    "priority": payload.get("priority"),
+                    "notes": _coalesce_update(payload, "notes"),
+                    "locked": int(bool(payload.get("locked"))) if "locked" in payload else None,
+                    "metadata_json": json.dumps(
+                        {key: value for key, value in metadata.items() if value not in (None, "", [])},
+                        ensure_ascii=False,
+                        separators=(",", ":"),
+                    ),
+                    "pos_tag": _coalesce_update(payload, "pos_tag"),
+                    "pos_sub": _coalesce_update(payload, "pos_sub"),
+                    "entity_type": _coalesce_update(payload, "entity_type"),
+                    "pinyin": _coalesce_update(payload, "pinyin"),
+                    "traditional": _coalesce_update(payload, "traditional"),
+                    "luat_nhan_trigger": int(bool(payload.get("luat_nhan_trigger"))) if "luat_nhan_trigger" in payload else None,
+                    "reorder_role": _coalesce_update(payload, "reorder_role"),
+                    "cultural_origin": _coalesce_update(payload, "cultural_origin"),
+                    "genre_affinity": _coalesce_update(payload, "genre_affinity"),
+                    "register_level": _coalesce_update(payload, "register_level"),
+                }
+                provided_keys = set(payload.keys())
+                sqlite_updates = {
+                    key: value
+                    for key, value in sqlite_updates.items()
+                    if value is not None or (
+                        {
+                            "source": "source",
+                            "target": "target_vi",
+                            "notes": "notes",
+                            "pos_tag": "pos_tag",
+                            "pos_sub": "pos_sub",
+                            "entity_type": "entity_type",
+                            "pinyin": "pinyin",
+                            "traditional": "traditional",
+                            "reorder_role": "reorder_role",
+                            "cultural_origin": "cultural_origin",
+                            "genre_affinity": "genre_affinity",
+                            "register_level": "register_level",
+                        }.get(key) in provided_keys
+                    )
+                }
+
+                updated = accessor.update_entry(table_name, record_id, sqlite_updates)
+                updated_entry = _serialize_dictionary_record(accessor, updated)
+                source_path = update_dictionary_source_entry(
+                    dict_root=_resolve_dict_root(payload, accessor=accessor),
+                    source_file=current.source_file,
+                    source_text=current.source,
+                    entry=updated_entry,
+                )
+            finally:
+                accessor.close()
+            if source_path is None:
+                warnings.append("Updated SQLite entry but could not resolve the backing Markdown file path.")
+            events.append(_event("dictionary_updated", "Updated dictionary entry", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "entry": updated_entry,
+                    "source_path": str(source_path) if source_path else "",
+                    "pipeline": _build_pipeline_status(payload),
                 },
                 warnings=warnings,
                 events=events,
@@ -580,9 +820,37 @@ def handle_request(request: CommandRequest) -> CommandResponse:
         )
 
 
+def _normalize_path(value: str | Path) -> Path:
+    return Path(value).expanduser().resolve()
+
+
+def _resolve_db_path(payload: dict, *, dict_root: Path | None = None, allow_missing: bool = True) -> Path:
+    if payload.get("db_path"):
+        db_path = _normalize_path(str(payload["db_path"]))
+    else:
+        root = dict_root or _resolve_dict_root(payload)
+        db_path = root / "_compiled" / "trie_cache.db"
+    if not allow_missing and not db_path.exists():
+        raise FileNotFoundError(f"Compiled dictionary DB not found: {db_path}")
+    return db_path
+
+
+def _resolve_dict_root(payload: dict, accessor: RuntimeDictionaryAccessor | None = None) -> Path:
+    if payload.get("dict_root"):
+        return _normalize_path(str(payload["dict_root"]))
+    if accessor is not None:
+        return accessor.dict_root
+    db_path = payload.get("db_path")
+    if db_path:
+        resolved = _normalize_path(str(db_path))
+        if resolved.parent.name == "_compiled":
+            return resolved.parent.parent
+    return (Path(__file__).resolve().parents[2] / "data" / "dictionaries").resolve()
+
+
 def _resolve_project(payload: dict, *, create_if_missing: bool = False) -> tuple[ProjectManager, str, Path]:
     if "project_dir" in payload:
-        project_dir = Path(payload["project_dir"])
+        project_dir = _normalize_path(str(payload["project_dir"]))
         manager = ProjectManager(project_dir.parent)
         project_id = payload.get("project_id", project_dir.name)
     else:
@@ -789,7 +1057,19 @@ def _serialize_dictionary_record(accessor: RuntimeDictionaryAccessor, record) ->
     han_viet = [item.han_viet_readings for item in readings if item.han_viet_readings]
     metadata = record.metadata or {}
     status = "locked" if record.locked else (record.entry_role or "runtime")
+    source_path = ""
+    if record.source_file:
+        source_path = str(
+            _resolve_dictionary_source_path_for_record(
+                accessor=accessor,
+                record=record,
+            )
+            or ""
+        )
     return {
+        "record_id": f"{record.table_name}:{record.record_id}" if record.record_id else "",
+        "row_id": record.record_id,
+        "table_name": record.table_name,
         "source": record.source,
         "target_vi": record.target,
         "alternative_meanings": record.alternatives[1:],
@@ -806,10 +1086,187 @@ def _serialize_dictionary_record(accessor: RuntimeDictionaryAccessor, record) ->
         "one_mean": record.one_mean,
         "locked": record.locked,
         "notes": record.notes,
+        "source_file": record.source_file,
+        "source_path": source_path,
+        "pos_tag": record.pos_tag,
+        "pos_sub": record.pos_sub,
+        "entity_type": record.entity_type,
+        "traditional": record.traditional or "",
+        "is_function_word": bool(record.is_function_word),
+        "luat_nhan_trigger": bool(record.luat_nhan_trigger),
+        "reorder_role": record.reorder_role,
+        "cultural_origin": record.cultural_origin,
+        "genre_affinity": record.genre_affinity,
+        "register_level": record.register_level,
+        "metadata": metadata,
     }
 
 
-def _translation_paths(project_dir: Path, chapter_id: str | None) -> dict[str, Path]:
+def _resolve_dictionary_source_path_for_record(
+    *,
+    accessor: RuntimeDictionaryAccessor,
+    record,
+) -> Path | None:
+    if not record.source_file:
+        return None
+    return resolve_dictionary_source_path(
+        record.source_file,
+        dict_root=_resolve_dict_root({}, accessor=accessor),
+        category=record.category,
+    )
+
+
+def _merge_dictionary_metadata(existing: dict, incoming: object) -> dict:
+    merged = dict(existing or {})
+    if isinstance(incoming, dict):
+        for key, value in incoming.items():
+            if value in (None, "", []):
+                merged.pop(key, None)
+            else:
+                merged[key] = value
+    return merged
+
+
+def _coalesce_update(payload: dict, key: str) -> str | None:
+    if key not in payload:
+        return None
+    value = payload.get(key)
+    if value is None:
+        return ""
+    return str(value).strip()
+
+
+def _build_pipeline_status(payload: dict) -> dict:
+    dict_root = _resolve_dict_root(payload)
+    db_path = _resolve_db_path(payload, dict_root=dict_root, allow_missing=True)
+    dictionary_stats: dict[str, object] = {
+        "runtime_total": 0,
+        "reference_total": 0,
+        "total": 0,
+        "pos_total": 0,
+        "pinyin_total": 0,
+        "entity_total": 0,
+        "pos_coverage_pct": 0.0,
+        "pinyin_coverage_pct": 0.0,
+        "compiled_at": None,
+        "entry_readings_total": 0,
+        "metadata": {},
+    }
+    if db_path.exists():
+        accessor = RuntimeDictionaryAccessor(db_path)
+        try:
+            dictionary_stats = accessor.get_dictionary_stats()
+        finally:
+            accessor.close()
+
+    project_payload_present = "project_dir" in payload or "project_id" in payload
+    overview = None
+    project_dir: Path | None = None
+    active_chapter: str | None = None
+    if project_payload_present:
+        try:
+            manager, project_id, project_dir = _resolve_project(payload)
+            overview = manager.get_project_overview(project_id)
+            active_chapter = overview["project"].get("active_chapter")
+        except Exception:
+            overview = None
+            project_dir = None
+
+    import_completed = bool(overview and overview["counts"]["chapters"] > 0)
+    translate_paths = _translation_paths(project_dir, active_chapter) if project_dir else {}
+    qa_paths = _qa_report_paths(project_dir, active_chapter) if project_dir else {}
+    clean_exists = bool(translate_paths and translate_paths["clean"].exists())
+    draft_exists = bool(translate_paths and translate_paths["draft"].exists())
+    trace_exists = bool(translate_paths and translate_paths["trace"].exists())
+    qa_exists = bool(qa_paths and qa_paths["json"].exists())
+    compile_completed = db_path.exists()
+    pos_progress = int(round(float(dictionary_stats.get("pos_coverage_pct", 0.0) or 0.0)))
+    pinyin_progress = int(round(float(dictionary_stats.get("pinyin_coverage_pct", 0.0) or 0.0)))
+
+    stages = [
+        {
+            "id": "import",
+            "label": "Nhap",
+            "status": "completed" if import_completed else "pending",
+            "progress": 100 if import_completed else 0,
+            "message": f"{overview['counts']['chapters']} chapter da duoc nap." if import_completed else "Chua co nguon duoc import.",
+            "metrics": {
+                "chapters": overview["counts"]["chapters"] if overview else 0,
+            },
+        },
+        {
+            "id": "compile",
+            "label": "Bien dich",
+            "status": "completed" if compile_completed else "pending",
+            "progress": 100 if compile_completed else 0,
+            "message": f"SQLite san sang: {db_path}" if compile_completed else "Chua co trie_cache.db duoc bien dich.",
+            "metrics": {
+                "db_path": str(db_path),
+                "entries_total": dictionary_stats.get("total", 0),
+                "compiled_at": dictionary_stats.get("compiled_at"),
+            },
+        },
+        {
+            "id": "assign_pos",
+            "label": "Gan POS",
+            "status": "completed" if pos_progress >= 95 else ("running" if compile_completed and pos_progress > 0 else "pending"),
+            "progress": pos_progress,
+            "message": f"POS {dictionary_stats.get('pos_coverage_pct', 0)}% | Pinyin {dictionary_stats.get('pinyin_coverage_pct', 0)}%",
+            "metrics": {
+                "pos_coverage_pct": dictionary_stats.get("pos_coverage_pct", 0.0),
+                "pinyin_coverage_pct": dictionary_stats.get("pinyin_coverage_pct", 0.0),
+                "entity_total": dictionary_stats.get("entity_total", 0),
+                "pinyin_progress": pinyin_progress,
+            },
+        },
+        {
+            "id": "translate",
+            "label": "Dich",
+            "status": "completed" if clean_exists else "pending",
+            "progress": 100 if clean_exists else 0,
+            "message": f"Da xuat ban dich cho {active_chapter or 'slice hien tai'}." if clean_exists else "Chua co output dich.",
+            "metrics": {
+                "active_chapter": active_chapter,
+                "output_path": str(translate_paths["clean"]) if translate_paths else "",
+            },
+        },
+        {
+            "id": "qa",
+            "label": "QA",
+            "status": "completed" if qa_exists else "pending",
+            "progress": 100 if qa_exists else 0,
+            "message": "Bao cao QA da san sang." if qa_exists else "Chua co bao cao QA.",
+            "metrics": {
+                "qa_report_path": str(qa_paths["json"]) if qa_paths else "",
+                "issues": overview["counts"]["qa_issues"] if overview else 0,
+            },
+        },
+        {
+            "id": "export",
+            "label": "Xuat",
+            "status": "completed" if clean_exists and draft_exists and trace_exists else "pending",
+            "progress": 100 if clean_exists and draft_exists and trace_exists else 0,
+            "message": "Clean, draft va trace deu da xuat." if clean_exists and draft_exists and trace_exists else "Artifact xuat chua day du.",
+            "metrics": {
+                "clean": str(translate_paths["clean"]) if translate_paths else "",
+                "draft": str(translate_paths["draft"]) if translate_paths else "",
+                "trace": str(translate_paths["trace"]) if translate_paths else "",
+            },
+        },
+    ]
+
+    return {
+        "stages": stages,
+        "dictionary_stats": dictionary_stats,
+        "project": overview["project"] if overview else None,
+        "artifacts": overview["artifacts"] if overview else {},
+        "last_state": overview["state"] if overview else {},
+    }
+
+
+def _translation_paths(project_dir: Path | None, chapter_id: str | None) -> dict[str, Path]:
+    if project_dir is None:
+        return {}
     if chapter_id:
         specific = {
             "clean": project_dir / "output" / f"{chapter_id}.txt",
@@ -825,7 +1282,9 @@ def _translation_paths(project_dir: Path, chapter_id: str | None) -> dict[str, P
     }
 
 
-def _qa_report_paths(project_dir: Path, chapter_id: str | None) -> dict[str, Path]:
+def _qa_report_paths(project_dir: Path | None, chapter_id: str | None) -> dict[str, Path]:
+    if project_dir is None:
+        return {}
     if chapter_id:
         specific = {
             "md": project_dir / "reports" / f"qa_report_{chapter_id}.md",
@@ -839,7 +1298,9 @@ def _qa_report_paths(project_dir: Path, chapter_id: str | None) -> dict[str, Pat
     }
 
 
-def _learning_report_paths(project_dir: Path, chapter_id: str | None) -> dict[str, Path]:
+def _learning_report_paths(project_dir: Path | None, chapter_id: str | None) -> dict[str, Path]:
+    if project_dir is None:
+        return {}
     if chapter_id:
         specific = {
             "md": project_dir / "reports" / f"learning_report_{chapter_id}.md",

@@ -8,7 +8,7 @@ notes: "Primary LuatNhan patterns (303 rules). {0} = entity placeholder."
 ---
 
 | pattern | replacement |
-| --- | --- |
+| --- | --- | --- | --- | --- | --- | --- | --- |
 | {0}军团 | quân đoàn {0} |
 | {0}分局 | phân cục {0} |
 | {0}医院 | bệnh viện {0} |

@@ -1,87 +1,100 @@
-import React, {
-  startTransition,
-  useDeferredValue,
-  useEffect,
-  useState,
-} from "react";
+import React, { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
+
+import { Panel, InfoLine, MetricCard } from "./components/Panel";
+import { CoachScreen } from "./screens/CoachScreen";
+import { DashboardScreen } from "./screens/DashboardScreen";
+import { DictionaryEditorScreen } from "./screens/DictionaryEditorScreen";
+import { PipelineMonitorScreen } from "./screens/PipelineMonitorScreen";
+import { SettingsScreen } from "./screens/SettingsScreen";
+import { TranslationWorkspaceScreen } from "./screens/TranslationWorkspaceScreen";
+import { createPreferredTransport } from "./transport";
 import type {
   CandidateEntry,
   CandidateRule,
   CommandEvent,
   CommandName,
   DictionaryEntry,
+  DictionaryListResponse,
   LearningReport,
   NaturalFeedbackAnalysis,
+  PipelineStatus,
   ProjectOverview,
   ProjectRecord,
   QAReport,
   Transport,
   TranslationArtifacts,
 } from "./protocol";
-import { PROTOCOL_VERSION } from "./protocol";
-import { createPreferredTransport } from "./transport";
-
-const SCREENS = [
-  "Project Manager",
-  "Dictionary Manager",
-  "Translation Workspace",
-  "Translation Coach",
-  "Entity & Relationship Viewer",
-  "Pre-Translation Review",
-  "QA Report Viewer",
-  "Settings",
-] as const;
-
-type ScreenKey = (typeof SCREENS)[number];
+import { downloadJson, getParentPath, isAbsolutePath, normalizeUserPath } from "./pathUtils";
+import { SCREENS, type ScreenKey } from "./uiConstants";
 
 export function App() {
-  const [screen, setScreen] = useState<ScreenKey>("Project Manager");
+  const [screen, setScreen] = useState<ScreenKey>("Dashboard");
   const [transport, setTransport] = useState<Transport | null>(null);
   const [projects, setProjects] = useState<ProjectRecord[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [overview, setOverview] = useState<ProjectOverview | null>(null);
   const [translation, setTranslation] = useState<TranslationArtifacts | null>(null);
   const [qaReport, setQaReport] = useState<QAReport | null>(null);
+  const [pipelineStatus, setPipelineStatus] = useState<PipelineStatus | null>(null);
   const [candidates, setCandidates] = useState<CandidateEntry[]>([]);
   const [candidateRules, setCandidateRules] = useState<CandidateRule[]>([]);
   const [learningReport, setLearningReport] = useState<LearningReport | null>(null);
   const [feedbackAnalysis, setFeedbackAnalysis] = useState<NaturalFeedbackAnalysis | null>(null);
-  const [statusMessage, setStatusMessage] = useState("Load a project to inspect the workflow.");
+  const [statusMessage, setStatusMessage] = useState("Mở project để bắt đầu pipeline.");
   const [events, setEvents] = useState<CommandEvent[]>([]);
   const [warnings, setWarnings] = useState<string[]>([]);
   const [busy, setBusy] = useState(false);
-  const [createProjectId, setCreateProjectId] = useState("project-001");
-  const [workspaceBaseDir, setWorkspaceBaseDir] = useState("workspace_projects");
+
+  const [createProjectId, setCreateProjectId] = useState(() => readStoredValue("drduc.projectId", "project-001"));
+  const [workspaceBaseDir, setWorkspaceBaseDir] = useState(() => readStoredValue("drduc.workspaceBaseDir", "workspace_projects"));
   const [importPath, setImportPath] = useState("");
   const [translationInput, setTranslationInput] = useState("");
+
   const [dictionaryQuery, setDictionaryQuery] = useState("");
-  const [dictionaryResults, setDictionaryResults] = useState<DictionaryEntry[]>([]);
+  const [dictionaryEntries, setDictionaryEntries] = useState<DictionaryEntry[]>([]);
+  const [dictionaryQuickResults, setDictionaryQuickResults] = useState<DictionaryEntry[]>([]);
+  const [dictionaryTotal, setDictionaryTotal] = useState(0);
+  const [dictionaryPage, setDictionaryPage] = useState(1);
+  const [dictionaryFilters, setDictionaryFilters] = useState<DictionaryListResponse["filters"] | null>(null);
+  const [tableFilter, setTableFilter] = useState("");
+  const [sourceDictFilter, setSourceDictFilter] = useState("");
+  const [posTagFilter, setPosTagFilter] = useState("");
+  const [entityTypeFilter, setEntityTypeFilter] = useState("");
+  const [selectedEntryId, setSelectedEntryId] = useState("");
+  const [selectedEntryIds, setSelectedEntryIds] = useState<string[]>([]);
+  const [draftEntry, setDraftEntry] = useState<DictionaryEntry | null>(null);
+  const [bulkPosTag, setBulkPosTag] = useState("");
+  const [bulkEntityType, setBulkEntityType] = useState("");
+
   const [candidateFilter, setCandidateFilter] = useState("all");
   const [candidateQuery, setCandidateQuery] = useState("");
   const [ruleFilter, setRuleFilter] = useState("all");
+
   const [feedbackText, setFeedbackText] = useState("");
   const [feedbackSourceText, setFeedbackSourceText] = useState("");
   const [feedbackCurrentTranslation, setFeedbackCurrentTranslation] = useState("");
   const [feedbackPreferredTranslation, setFeedbackPreferredTranslation] = useState("");
   const [feedbackScope, setFeedbackScope] = useState("chapter");
   const [feedbackRuleHint, setFeedbackRuleHint] = useState("auto");
-  const [llmEndpoint, setLlmEndpoint] = useState(() => readStoredValue("drduc.llm.endpoint", ""));
-  const [llmModel, setLlmModel] = useState(() => readStoredValue("drduc.llm.model", ""));
-  const [llmAuthHeader, setLlmAuthHeader] = useState(() => readStoredValue("drduc.llm.authHeader", "Authorization"));
-  const [llmAuthPrefix, setLlmAuthPrefix] = useState(() => readStoredValue("drduc.llm.authPrefix", "Bearer "));
-  const [llmToken, setLlmToken] = useState(() => readStoredValue("drduc.llm.token", ""));
-  const deferredCandidateQuery = useDeferredValue(candidateQuery);
-  const deferredRuleFilter = useDeferredValue(ruleFilter);
+
   const backendAvailable = transport ? transport.mode !== "browser" : false;
-  const workspaceRoot = workspaceBaseDir.trim() || "workspace_projects";
+  const workspaceRoot = normalizeUserPath(workspaceBaseDir) || "workspace_projects";
   const currentProjectId = overview?.project.project_id ?? selectedProjectId;
-  const selectedProject =
-    projects.find((project) => project.project_id === selectedProjectId) ?? null;
+  const selectedProject = projects.find((project) => project.project_id === selectedProjectId) ?? null;
   const activeChapter =
     overview?.chapters.find((chapter) => chapter.chapter_id === overview.project.active_chapter) ??
     overview?.chapters[0] ??
     null;
+  const deferredDictionaryQuery = useDeferredValue(dictionaryQuery);
+
+  useEffect(() => {
+    writeStoredValue("drduc.workspaceBaseDir", workspaceBaseDir);
+  }, [workspaceBaseDir]);
+
+  useEffect(() => {
+    writeStoredValue("drduc.projectId", createProjectId);
+  }, [createProjectId]);
 
   useEffect(() => {
     let cancelled = false;
@@ -92,18 +105,14 @@ export function App() {
       }
       setTransport(nextTransport);
       if (nextTransport.mode === "tauri") {
-        setStatusMessage("Native Tauri bridge detected. Requests will be forwarded to the Python sidecar.");
-        return;
+        setStatusMessage("Native Tauri bridge detected. Path resolution is absolute and sidecar-backed.");
+      } else if (nextTransport.mode === "http") {
+        setStatusMessage("HTTP bridge connected. Browser dev mode is running against the live Python pipeline.");
+      } else if (nextTransport.mode === "demo") {
+        setStatusMessage("Demo transport enabled for UI-only development.");
+      } else {
+        setStatusMessage("Browser preview detected. Real pipeline commands need HTTP bridge or native Tauri.");
       }
-      if (nextTransport.mode === "http") {
-        setStatusMessage("HTTP bridge detected. Browser is connected to the live Python pipeline.");
-        return;
-      }
-      if (nextTransport.mode === "demo") {
-        setStatusMessage("Demo transport is active because VITE_ENABLE_DEMO=1 was provided explicitly.");
-        return;
-      }
-      setStatusMessage("Browser preview detected. Open the native Tauri app to work with real project data.");
     })();
     return () => {
       cancelled = true;
@@ -115,19 +124,20 @@ export function App() {
       return;
     }
     void refreshProjects();
+    void refreshPipelineStatus();
+    void searchQuickDictionary("一");
   }, [transport]);
 
   useEffect(() => {
-    if (!transport || transport.mode === "browser" || !selectedProjectId) {
+    if (!selectedProjectId || !transport || transport.mode === "browser") {
       return;
     }
     void hydrateProject(selectedProjectId);
   }, [selectedProjectId, transport]);
 
   useEffect(() => {
-    const nextText = activeChapter?.text ?? "";
-    if (!translationInput && nextText) {
-      setTranslationInput(nextText);
+    if (!translationInput && activeChapter?.text) {
+      setTranslationInput(activeChapter.text);
     }
   }, [activeChapter?.chapter_id, activeChapter?.text, translationInput]);
 
@@ -144,42 +154,23 @@ export function App() {
   }, [translation?.clean_text, feedbackCurrentTranslation]);
 
   useEffect(() => {
-    writeStoredValue("drduc.llm.endpoint", llmEndpoint);
-  }, [llmEndpoint]);
-
-  useEffect(() => {
-    writeStoredValue("drduc.llm.model", llmModel);
-  }, [llmModel]);
-
-  useEffect(() => {
-    writeStoredValue("drduc.llm.authHeader", llmAuthHeader);
-  }, [llmAuthHeader]);
-
-  useEffect(() => {
-    writeStoredValue("drduc.llm.authPrefix", llmAuthPrefix);
-  }, [llmAuthPrefix]);
-
-  useEffect(() => {
-    writeStoredValue("drduc.llm.token", llmToken);
-  }, [llmToken]);
-
-  const lockedEntities = asRecordArray(overview?.config.locked_entities);
-  const candidateStatus = overview?.counts.candidate_status ?? {};
-  const filteredCandidates = candidates.filter((entry) => {
-    const matchesStatus = candidateFilter === "all" || entry.status === candidateFilter;
-    const query = deferredCandidateQuery.trim().toLowerCase();
-    if (!query) {
-      return matchesStatus;
+    if (projects.length && (!isAbsolutePath(workspaceBaseDir) || workspaceBaseDir === "workspace_projects")) {
+      setWorkspaceBaseDir(getParentPath(projects[0].project_dir));
     }
-    const haystack = `${entry.source_text} ${entry.target_text} ${entry.reason}`.toLowerCase();
-    return matchesStatus && haystack.includes(query);
-  });
-  const filteredRules = candidateRules.filter((rule) => deferredRuleFilter === "all" || rule.status === deferredRuleFilter);
+  }, [projects, workspaceBaseDir]);
 
-  async function execute<T>(
-    command: CommandName,
-    payload: Record<string, unknown> = {},
-  ): Promise<T | null> {
+  useEffect(() => {
+    if (!dictionaryEntries.length) {
+      setSelectedEntryId("");
+      setDraftEntry(null);
+      return;
+    }
+    const current = dictionaryEntries.find((entry) => entry.record_id === selectedEntryId) ?? dictionaryEntries[0];
+    setSelectedEntryId(current.record_id);
+    setDraftEntry(clone(current));
+  }, [dictionaryEntries]);
+
+  async function execute<T>(command: CommandName, payload: Record<string, unknown> = {}): Promise<T | null> {
     if (!transport) {
       return null;
     }
@@ -231,8 +222,7 @@ export function App() {
     try {
       const selectedPath = await invoke<string | null>("pick_import_path", { kind });
       if (selectedPath) {
-        setImportPath(selectedPath);
-        setStatusMessage(`Selected ${kind === "file" ? "source file" : "source folder"}: ${selectedPath}`);
+        setImportPath(normalizeUserPath(selectedPath));
       }
     } catch (error) {
       setStatusMessage(error instanceof Error ? error.message : String(error));
@@ -241,7 +231,7 @@ export function App() {
 
   async function refreshProjects(baseDir = workspaceRoot) {
     const data = await execute<{ projects: ProjectRecord[] }>("list_projects", {
-      base_dir: baseDir,
+      base_dir: normalizeUserPath(baseDir),
     });
     if (!data) {
       return;
@@ -255,68 +245,134 @@ export function App() {
     });
   }
 
-  async function refreshCandidateRules(projectId: string) {
-    const data = await execute<{ rules: CandidateRule[] }>("list_candidate_rules", {
-      ...buildProjectPayload(projectId),
-    });
-    setCandidateRules(data?.rules ?? []);
+  async function refreshPipelineStatus(projectId?: string) {
+    const payload = projectId ? buildProjectPayload(projectId) : { base_dir: workspaceRoot };
+    const data = await execute<PipelineStatus>("get_pipeline_status", payload);
+    if (data) {
+      setPipelineStatus(data);
+    }
   }
 
-  async function refreshLearningReport(projectId: string, chapterId: string | null | undefined) {
-    const data = await execute<{ report: LearningReport }>("load_learning_report", {
-      ...buildProjectPayload(projectId),
-      chapter_id: chapterId,
+  async function refreshDictionaryPage(page = dictionaryPage, queryOverride?: string) {
+    const query = queryOverride ?? deferredDictionaryQuery;
+    const data = await execute<DictionaryListResponse>("list_dictionary_entries", {
+      query,
+      page,
+      page_size: 50,
+      table_name: tableFilter,
+      source_dict: sourceDictFilter,
+      pos_tag: posTagFilter,
+      entity_type: entityTypeFilter,
     });
-    setLearningReport(data?.report ?? null);
+    if (!data) {
+      return;
+    }
+    setDictionaryEntries(data.entries);
+    setDictionaryTotal(data.total);
+    setDictionaryPage(data.page);
+    setDictionaryFilters(data.filters);
+    if (pipelineStatus) {
+      setPipelineStatus({
+        ...pipelineStatus,
+        dictionary_stats: data.stats,
+      });
+    }
+  }
+
+  async function searchQuickDictionary(query: string) {
+    const normalized = query.trim() || "一";
+    const data = await execute<{ entries: DictionaryEntry[] }>("search_dictionary_entries", {
+      query: normalized,
+      limit: 8,
+    });
+    if (data) {
+      setDictionaryQuickResults(data.entries);
+    }
   }
 
   async function hydrateProject(projectId: string) {
-    const nextOverview = await execute<ProjectOverview>("get_project_overview", {
-      ...buildProjectPayload(projectId),
-    });
+    const nextOverview = await execute<ProjectOverview>("get_project_overview", buildProjectPayload(projectId));
     if (!nextOverview) {
       return;
     }
     setOverview(nextOverview);
 
+    const chapterId = nextOverview.project.active_chapter ?? nextOverview.chapters[0]?.chapter_id;
     const nextArtifacts = await execute<TranslationArtifacts>("load_translation_artifacts", {
       ...buildProjectPayload(projectId),
-      chapter_id: nextOverview.project.active_chapter,
+      chapter_id: chapterId,
     });
     setTranslation(nextArtifacts);
 
     const nextReport = await execute<{ report: QAReport }>("load_qa_report", {
       ...buildProjectPayload(projectId),
-      chapter_id: nextOverview.project.active_chapter,
+      chapter_id: chapterId,
     });
     setQaReport(nextReport?.report ?? null);
 
-    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", {
-      ...buildProjectPayload(projectId),
-    });
+    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", buildProjectPayload(projectId));
     setCandidates(nextCandidates?.entries ?? []);
 
-    const nextRules = await execute<{ rules: CandidateRule[] }>("list_candidate_rules", {
-      ...buildProjectPayload(projectId),
-    });
+    const nextRules = await execute<{ rules: CandidateRule[] }>("list_candidate_rules", buildProjectPayload(projectId));
     setCandidateRules(nextRules?.rules ?? []);
 
     const nextLearning = await execute<{ report: LearningReport }>("load_learning_report", {
       ...buildProjectPayload(projectId),
-      chapter_id: nextOverview.project.active_chapter,
+      chapter_id: chapterId,
     });
     setLearningReport(nextLearning?.report ?? null);
 
-    const seededEntityQuery = typeof nextOverview.entities[0]?.source === "string"
-      ? nextOverview.entities[0].source
-      : "";
-    const fallbackQuery = dictionaryQuery.trim() || seededEntityQuery || "一";
-    setDictionaryQuery(fallbackQuery);
-    const nextDictionary = await execute<{ entries: DictionaryEntry[] }>("search_dictionary_entries", {
-      query: fallbackQuery,
-      limit: 12,
+    const seededQuery = nextOverview.entities[0]?.source ? String(nextOverview.entities[0].source) : "一";
+    setDictionaryQuery(seededQuery);
+    await refreshDictionaryPage(1, seededQuery);
+    await searchQuickDictionary(seededQuery);
+    await refreshPipelineStatus(projectId);
+  }
+
+  async function handleCreateProject(event: React.FormEvent<HTMLFormElement>) {
+    event.preventDefault();
+    const projectId = createProjectId.trim() || "project-001";
+    const data = await execute<{ project_id: string }>("create_project", {
+      project_id: projectId,
+      base_dir: workspaceRoot,
     });
-    setDictionaryResults(nextDictionary?.entries ?? []);
+    if (!data) {
+      return;
+    }
+    await refreshProjects();
+    startTransition(() => {
+      setSelectedProjectId(data.project_id);
+      setScreen("Dashboard");
+    });
+  }
+
+  async function handleImport() {
+    if (!currentProjectId) {
+      setStatusMessage("Create or select a project before importing.");
+      return;
+    }
+    const filepath = normalizeUserPath(importPath);
+    if (!filepath) {
+      setStatusMessage("Nhap duong dan file/folder nguon truoc khi import.");
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview }>("import_file", {
+      ...buildProjectPayload(currentProjectId),
+      filepath,
+    });
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    setTranslation(null);
+    setQaReport(null);
+    setFeedbackAnalysis(null);
+    setFeedbackSourceText(data.overview.chapters[0]?.text ?? "");
+    setTranslationInput(data.overview.chapters[0]?.text ?? "");
+    await hydrateProject(currentProjectId);
+    startTransition(() => {
+      setScreen("Translation Workspace");
+    });
   }
 
   async function handleSelectChapter(chapterId: string, chapterText: string) {
@@ -342,67 +398,19 @@ export function App() {
       chapter_id: chapterId,
     });
     setQaReport(nextReport?.report ?? null);
-    await refreshLearningReport(currentProjectId, chapterId);
-  }
-
-  async function handleCreateProject(event: React.FormEvent<HTMLFormElement>) {
-    event.preventDefault();
-    const projectId = createProjectId.trim() || "project-001";
-    const baseDir = workspaceRoot;
-    const data = await execute<{ project_id: string }>("create_project", {
-      project_id: projectId,
-      base_dir: baseDir,
-    });
-    if (!data) {
-      return;
-    }
-    await refreshProjects(baseDir);
-    startTransition(() => {
-      setSelectedProjectId(data.project_id);
-      setScreen("Project Manager");
-    });
-  }
-
-  async function handleImport() {
-    if (!currentProjectId) {
-      return;
-    }
-    const filepath = importPath.trim();
-    if (!filepath) {
-      setStatusMessage("Select a real source file or source directory before importing.");
-      return;
-    }
-    const data = await execute<{
-      chapters: Array<{ chapter_id: string; text: string }>;
-      overview: ProjectOverview;
-    }>("import_file", {
+    const nextLearning = await execute<{ report: LearningReport }>("load_learning_report", {
       ...buildProjectPayload(currentProjectId),
-      filepath,
+      chapter_id: chapterId,
     });
-    if (!data) {
-      return;
-    }
-    const importedOverview = data.overview;
-    const importedChapters = data.chapters.length > 0 ? data.chapters : importedOverview.chapters;
-    setOverview(importedOverview);
-    setTranslation(null);
-    setQaReport(null);
-    setCandidates([]);
-    setCandidateRules([]);
-    setLearningReport(null);
-    setFeedbackAnalysis(null);
-    setTranslationInput(importedChapters[0]?.text ?? "");
-    setFeedbackSourceText(importedChapters[0]?.text ?? "");
+    setLearningReport(nextLearning?.report ?? null);
+    await refreshPipelineStatus(currentProjectId);
   }
 
   async function handleTranslate() {
     if (!currentProjectId) {
       return;
     }
-    const data = await execute<{
-      translation_artifacts: TranslationArtifacts;
-      overview: ProjectOverview;
-    }>("translate", {
+    const data = await execute<{ translation_artifacts: TranslationArtifacts; overview: ProjectOverview }>("translate", {
       ...buildProjectPayload(currentProjectId),
       chapter_id: overview?.project.active_chapter ?? activeChapter?.chapter_id,
       text: translationInput.trim(),
@@ -415,13 +423,9 @@ export function App() {
     setOverview(data.overview);
     setFeedbackSourceText(translationInput.trim());
     setFeedbackCurrentTranslation(data.translation_artifacts.clean_text);
-    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", {
-      ...buildProjectPayload(currentProjectId),
-    });
+    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", buildProjectPayload(currentProjectId));
     setCandidates(nextCandidates?.entries ?? []);
-    startTransition(() => {
-      setScreen("Translation Workspace");
-    });
+    await refreshPipelineStatus(currentProjectId);
   }
 
   async function handleRunQa() {
@@ -438,9 +442,7 @@ export function App() {
     setQaReport(data.report);
     setOverview(data.overview);
     setLearningReport(data.learning_report ?? null);
-    startTransition(() => {
-      setScreen("QA Report Viewer");
-    });
+    await refreshPipelineStatus(currentProjectId);
   }
 
   async function handleReviewCandidate(entry: CandidateEntry, status: string) {
@@ -451,28 +453,39 @@ export function App() {
       ...buildProjectPayload(currentProjectId),
       candidate_id: entry.id,
       status,
-      reason: status === "verified" ? "Approved from desktop shell." : "Needs manual rewrite.",
+      reason: status === "verified" ? "Approved from coach workspace." : "Rejected from coach workspace.",
     });
     if (!data) {
       return;
     }
     setOverview(data.overview);
-    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", {
-      ...buildProjectPayload(currentProjectId),
-    });
+    const nextCandidates = await execute<{ entries: CandidateEntry[] }>("list_candidate_entries", buildProjectPayload(currentProjectId));
     setCandidates(nextCandidates?.entries ?? []);
-    const nextArtifacts = await execute<TranslationArtifacts>("load_translation_artifacts", {
+  }
+
+  async function handleReviewRule(rule: CandidateRule, status: string) {
+    if (!currentProjectId) {
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview }>("review_candidate_rule", {
       ...buildProjectPayload(currentProjectId),
-      chapter_id: data.overview.project.active_chapter ?? entry.chapter_id,
+      rule_id: rule.id,
+      status,
+      reason: status === "verified" ? "Applied from coach workspace." : "Rejected from coach workspace.",
+      chapter_id: overview?.project.active_chapter ?? activeChapter?.chapter_id,
     });
-    setTranslation(nextArtifacts);
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    const nextRules = await execute<{ rules: CandidateRule[] }>("list_candidate_rules", buildProjectPayload(currentProjectId));
+    setCandidateRules(nextRules?.rules ?? []);
   }
 
   async function handleSubmitFeedback() {
     if (!currentProjectId) {
       return;
     }
-    const llmConfigured = llmEndpoint.trim() && llmModel.trim() && llmToken.trim();
     const data = await execute<{
       analysis: NaturalFeedbackAnalysis;
       rules: CandidateRule[];
@@ -486,15 +499,6 @@ export function App() {
       source_text: feedbackSourceText,
       current_translation: feedbackCurrentTranslation,
       preferred_translation: feedbackPreferredTranslation,
-      llm: llmConfigured
-        ? {
-          endpoint: llmEndpoint.trim(),
-          model: llmModel.trim(),
-          token: llmToken.trim(),
-          auth_header: llmAuthHeader.trim() || "Authorization",
-          auth_prefix: llmAuthPrefix.trim() || "Bearer ",
-        }
-        : undefined,
     });
     if (!data) {
       return;
@@ -507,751 +511,310 @@ export function App() {
     });
   }
 
-  async function handleReviewRule(rule: CandidateRule, status: string) {
-    if (!currentProjectId) {
-      return;
+  async function handleRunPipelineStage(stageId: string) {
+    const payload: Record<string, unknown> = stageId === "compile" || stageId === "assign_pos"
+      ? {}
+      : buildProjectPayload(currentProjectId);
+    if (stageId === "import") {
+      payload.filepath = normalizeUserPath(importPath);
     }
-    const data = await execute<{
-      rule: CandidateRule;
-      overview: ProjectOverview;
-    }>("review_candidate_rule", {
-      ...buildProjectPayload(currentProjectId),
-      rule_id: rule.id,
-      status,
-      reason: status === "verified" ? "Approved from translation coach." : "Rejected from translation coach.",
+    const data = await execute<{ pipeline: PipelineStatus }>("run_pipeline_stage", {
+      ...payload,
+      stage: stageId,
+      text: stageId === "translate" ? translationInput.trim() : undefined,
       chapter_id: overview?.project.active_chapter ?? activeChapter?.chapter_id,
+      config: overview?.config ?? {},
     });
     if (!data) {
       return;
     }
-    setOverview(data.overview);
-    await refreshCandidateRules(currentProjectId);
+    if (data.pipeline) {
+      setPipelineStatus(data.pipeline);
+    }
+    if (currentProjectId) {
+      await hydrateProject(currentProjectId);
+    } else {
+      await refreshPipelineStatus();
+    }
   }
 
-  async function handleSearchDictionary(queryOverride?: string) {
-    const query = (queryOverride ?? dictionaryQuery).trim() || "一";
-    setDictionaryQuery(query);
-    const data = await execute<{ entries: DictionaryEntry[] }>("search_dictionary_entries", {
-      query,
-      limit: 12,
+  async function handleOpenDictionaryEntry(entry: DictionaryEntry) {
+    setSelectedEntryId(entry.record_id);
+    setDraftEntry(clone(entry));
+    startTransition(() => {
+      setScreen("Dictionary Editor");
     });
-    setDictionaryResults(data?.entries ?? []);
+  }
+
+  async function handleInspectToken(query: string) {
+    setDictionaryQuery(query);
+    await refreshDictionaryPage(1, query);
+    await searchQuickDictionary(query);
+    startTransition(() => {
+      setScreen("Dictionary Editor");
+    });
+  }
+
+  function handleSelectDictionaryEntry(entry: DictionaryEntry) {
+    setSelectedEntryId(entry.record_id);
+    setDraftEntry(clone(entry));
+  }
+
+  function handleToggleEntrySelection(recordId: string) {
+    setSelectedEntryIds((current) =>
+      current.includes(recordId) ? current.filter((item) => item !== recordId) : [...current, recordId],
+    );
+  }
+
+  function handleDraftChange(field: string, value: string | boolean) {
+    setDraftEntry((current) => {
+      if (!current) {
+        return current;
+      }
+      const next = clone(current);
+      const metadata = { ...(next.metadata ?? {}) };
+      switch (field) {
+        case "priority":
+          next.priority = Number(value) || next.priority;
+          break;
+        case "luat_nhan_trigger":
+          next.luat_nhan_trigger = Boolean(value);
+          metadata.luat_nhan_trigger = Boolean(value) ? 1 : 0;
+          break;
+        case "pinyin":
+          next.pinyin = String(value).split(",").map((item) => item.trim()).filter(Boolean);
+          break;
+        case "full_explanation":
+          next.full_explanation = String(value);
+          metadata.full_explanation = String(value);
+          break;
+        case "pos_sub":
+        case "entity_type":
+        case "reorder_role":
+        case "cultural_origin":
+        case "genre_affinity":
+        case "register_level":
+          (next as Record<string, unknown>)[field] = String(value);
+          if (String(value).trim()) {
+            metadata[field] = String(value).trim();
+          } else {
+            delete metadata[field];
+          }
+          break;
+        default:
+          (next as Record<string, unknown>)[field] = value;
+          break;
+      }
+      next.metadata = metadata;
+      return next;
+    });
+  }
+
+  async function handleSaveDictionaryEntry() {
+    if (!draftEntry) {
+      return;
+    }
+    const data = await execute<{ entry: DictionaryEntry; pipeline: PipelineStatus }>("update_dictionary_entry", {
+      table_name: draftEntry.table_name,
+      record_id: draftEntry.row_id,
+      source: draftEntry.source,
+      target_vi: draftEntry.target_vi,
+      priority: draftEntry.priority,
+      pos_tag: draftEntry.pos_tag ?? "",
+      pos_sub: draftEntry.pos_sub ?? "",
+      entity_type: draftEntry.entity_type ?? "",
+      pinyin: Array.isArray(draftEntry.pinyin) ? draftEntry.pinyin.join(", ") : "",
+      traditional: draftEntry.traditional ?? "",
+      luat_nhan_trigger: Boolean(draftEntry.luat_nhan_trigger),
+      reorder_role: draftEntry.reorder_role ?? "",
+      notes: draftEntry.notes,
+      full_explanation: draftEntry.full_explanation,
+      metadata: draftEntry.metadata ?? {},
+    });
+    if (!data) {
+      return;
+    }
+    setDraftEntry(clone(data.entry));
+    setSelectedEntryId(data.entry.record_id);
+    setPipelineStatus(data.pipeline ?? pipelineStatus);
+    await refreshDictionaryPage(dictionaryPage, dictionaryQuery);
+    await searchQuickDictionary(draftEntry.source);
+  }
+
+  async function handleApplyBulkUpdate() {
+    if (!selectedEntryIds.length) {
+      return;
+    }
+    const selected = dictionaryEntries.filter((entry) => selectedEntryIds.includes(entry.record_id));
+    for (const entry of selected) {
+      await execute("update_dictionary_entry", {
+        table_name: entry.table_name,
+        record_id: entry.row_id,
+        pos_tag: bulkPosTag || undefined,
+        entity_type: bulkEntityType || undefined,
+      });
+    }
+    setSelectedEntryIds([]);
+    await refreshDictionaryPage(dictionaryPage, dictionaryQuery);
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  function handleExportFiltered() {
+    downloadJson("dictionary-filtered-export.json", {
+      query: dictionaryQuery,
+      filters: { tableFilter, sourceDictFilter, posTagFilter, entityTypeFilter },
+      total: dictionaryTotal,
+      entries: dictionaryEntries,
+    });
+  }
+
+  function handleFeedbackFieldChange(field: string, value: string) {
+    switch (field) {
+      case "feedbackText":
+        setFeedbackText(value);
+        break;
+      case "feedbackSourceText":
+        setFeedbackSourceText(value);
+        break;
+      case "feedbackCurrentTranslation":
+        setFeedbackCurrentTranslation(value);
+        break;
+      case "feedbackPreferredTranslation":
+        setFeedbackPreferredTranslation(value);
+        break;
+      case "feedbackScope":
+        setFeedbackScope(value);
+        break;
+      case "feedbackRuleHint":
+        setFeedbackRuleHint(value);
+        break;
+      default:
+        break;
+    }
   }
 
   function renderScreen() {
-    if (!overview) {
-      if (screen === "Project Manager") {
-        return (
-          <div className="panel-stack">
-            <Panel
-              title="Project Control"
-              subtitle="Create a workspace first, then import source material and continue through the translation workflow."
-            >
-              <form className="form-grid" onSubmit={handleCreateProject}>
-                <label className="field">
-                  <span>Project Id</span>
-                  <input
-                    className="input"
-                    value={createProjectId}
-                    onChange={(event) => setCreateProjectId(event.target.value)}
-                    placeholder="project-001"
-                  />
-                </label>
-                <label className="field">
-                  <span>Workspace Project Root</span>
-                  <input
-                    className="input"
-                    value={workspaceBaseDir}
-                    onChange={(event) => setWorkspaceBaseDir(event.target.value)}
-                    placeholder="workspace_projects"
-                  />
-                </label>
-                <div className="action-row">
-                  <button className="button" type="submit" disabled={busy || !backendAvailable}>
-                    Create Project
-                  </button>
-                </div>
-              </form>
-              <div className="detail-grid">
-                <InfoLine label="Project" value="Not selected" />
-                <InfoLine label="Directory" value="Create or select a project first" />
-                <InfoLine label="Languages" value="zh -> vi" />
-                <InfoLine label="Active chapter" value="Not selected" />
-              </div>
-            </Panel>
-            <Panel
-              title="Existing Projects"
-              subtitle="Choose an existing workspace from the current base directory once it is available."
-            >
-              <div className="list-stack">
-                {projects.length > 0 ? (
-                  projects.map((project) => (
-                    <button
-                      key={project.project_id}
-                      className={`list-card ${project.project_id === selectedProjectId ? "active" : ""}`}
-                      type="button"
-                      onClick={() => {
-                        startTransition(() => {
-                          setSelectedProjectId(project.project_id);
-                        });
-                      }}
-                    >
-                      <strong>{project.project_id}</strong>
-                      <span>
-                        {project.source_language}
-                        {" -> "}
-                        {project.target_language}
-                      </span>
-                      <small>{project.project_dir}</small>
-                    </button>
-                  ))
-                ) : (
-                  <p className="empty-state">No projects found yet. Create one to unlock the workflow.</p>
-                )}
-              </div>
-            </Panel>
-          </div>
-        );
-      }
-
-      if (screen === "Settings") {
-        return (
-          <div className="panel-stack">
-            <Panel
-              title="Settings and Contract"
-              subtitle="This shell is wired against the expanded Phase 10 contract and prefers the native Tauri bridge for real work."
-            >
-              <div className="detail-grid">
-                <InfoLine label="Protocol version" value={PROTOCOL_VERSION} />
-                <InfoLine label="Transport mode" value={transport?.mode ?? "initializing"} />
-                <InfoLine label="Supported commands" value={transport?.supportedCommands.join(", ") ?? "Loading"} />
-                <InfoLine label="Native blocker" value="Create or open a project to expose artifact paths and workflow state." />
-              </div>
-            </Panel>
-          </div>
-        );
-      }
-
-      return (
-        <Panel
-          title="Desktop Shell"
-          subtitle="Open the Project Manager screen to create or select a project before using the rest of the workflow."
-        >
-          <p className="empty-state">
-            {transport?.mode === "browser"
-              ? "Browser preview is available for layout inspection only. Open the native Tauri app to work with real files."
-              : transport
-                ? `The shell is ready in ${transport.mode} transport mode, aligned with the expanded Python sidecar contract.`
-                : "Initializing transport and loading the desktop shell."}
-          </p>
-        </Panel>
-      );
-    }
-
     switch (screen) {
-      case "Project Manager":
+      case "Dashboard":
         return (
-          <div className="panel-stack">
-            <Panel
-              title="Project Control"
-              subtitle="Create a workspace, import source material, and keep the active chapter aligned with state."
-            >
-              <form className="form-grid" onSubmit={handleCreateProject}>
-                <label className="field">
-                  <span>Project Id</span>
-                  <input
-                    className="input"
-                    value={createProjectId}
-                    onChange={(event) => setCreateProjectId(event.target.value)}
-                    placeholder="project-001"
-                  />
-                </label>
-                <label className="field">
-                  <span>Workspace Project Root</span>
-                  <input
-                    className="input"
-                    value={workspaceBaseDir}
-                    onChange={(event) => setWorkspaceBaseDir(event.target.value)}
-                    placeholder="workspace_projects"
-                  />
-                </label>
-                <div className="action-row">
-                  <button className="button" type="submit" disabled={busy || !backendAvailable}>
-                    Create Project
-                  </button>
-                  <button
-                    className="button secondary"
-                    type="button"
-                    disabled={busy || !backendAvailable}
-                    onClick={() => {
-                      startTransition(() => {
-                        setScreen("Pre-Translation Review");
-                      });
-                    }}
-                  >
-                    Review Import Stage
-                  </button>
-                </div>
-              </form>
-              <div className="detail-grid">
-                <InfoLine label="Project" value={overview.project.project_id} />
-                <InfoLine label="Directory" value={overview.project.project_dir} />
-                <InfoLine label="Languages" value={`${overview.project.source_language} -> ${overview.project.target_language}`} />
-                <InfoLine label="Active chapter" value={overview.project.active_chapter ?? "Not selected"} />
-              </div>
-            </Panel>
-            <Panel
-              title="Chapters"
-              subtitle="Imported chapters are available to the translation workspace and QA stage."
-            >
-              <div className="list-stack">
-                {overview.chapters.length > 0 ? (
-                  overview.chapters.map((chapter) => (
-                    <button
-                      key={chapter.chapter_id}
-                      className={`list-card ${chapter.chapter_id === activeChapter?.chapter_id ? "active" : ""}`}
-                      type="button"
-                      onClick={() => void handleSelectChapter(chapter.chapter_id, chapter.text)}
-                    >
-                      <strong>{chapter.title}</strong>
-                      <span>{chapter.chapter_id}</span>
-                      <small>{chapter.source_path ?? "Pending source path"}</small>
-                    </button>
-                  ))
-                ) : (
-                  <p className="empty-state">Import a document to populate chapter artifacts.</p>
-                )}
-              </div>
-            </Panel>
-          </div>
+          <DashboardScreen
+            overview={overview}
+            pipeline={pipelineStatus}
+            quickQuery={dictionaryQuery}
+            quickResults={dictionaryQuickResults}
+            onQuickQueryChange={setDictionaryQuery}
+            onQuickSearch={() => void searchQuickDictionary(dictionaryQuery)}
+            onOpenDictionaryEntry={(entry) => void handleOpenDictionaryEntry(entry)}
+          />
         );
-      case "Dictionary Manager":
+      case "Dictionary Editor":
         return (
-          <div className="panel-stack">
-            <Panel
-              title="Dictionary Explorer"
-              subtitle="Inspect compiled dictionary metadata, explanations, readings, and provenance directly from the runtime database."
-            >
-              <div className="toolbar">
-                <label className="field grow">
-                  <span>Dictionary Query</span>
-                  <input
-                    className="input"
-                    value={dictionaryQuery}
-                    onChange={(event) => setDictionaryQuery(event.target.value)}
-                    placeholder="一 or 林动"
-                  />
-                </label>
-                <button className="button" type="button" disabled={busy || !backendAvailable} onClick={() => void handleSearchDictionary()}>
-                  Search Dictionary
-                </button>
-              </div>
-              <div className="list-stack">
-                {dictionaryResults.length > 0 ? (
-                  dictionaryResults.map((entry) => (
-                    <article key={`${entry.source}-${entry.target_vi}-${entry.source_dict}`} className="candidate-card">
-                      <div className="candidate-head">
-                        <div>
-                          <strong>{entry.source}</strong>
-                          <p>{entry.target_vi}</p>
-                        </div>
-                        <span className={`pill tone-${entry.status}`}>{entry.status}</span>
-                      </div>
-                      <div className="tag-row">
-                        <span className="pill subtle">{entry.source_dict}</span>
-                        <span className="pill subtle">priority {entry.priority}</span>
-                        <span className="pill subtle">hit {entry.hit_count}</span>
-                      </div>
-                      <p className="candidate-options">
-                        Pinyin: {entry.pinyin.join(", ") || "n/a"} | Han-Viet: {entry.han_viet_readings.join(", ") || "n/a"}
-                      </p>
-                      {entry.alternative_meanings.length > 0 ? (
-                        <p className="candidate-options">
-                          Alternative meanings: {entry.alternative_meanings.join(" | ")}
-                        </p>
-                      ) : null}
-                      <p className="dictionary-explanation">{entry.full_explanation || entry.notes || "No detailed explanation available."}</p>
-                    </article>
-                  ))
-                ) : (
-                  <p className="empty-state">No dictionary entries matched the current query.</p>
-                )}
-              </div>
-            </Panel>
-            <Panel
-              title="Candidate Review"
-              subtitle="Ambiguity and unresolved traces are promoted into reviewable entries."
-            >
-              <div className="toolbar">
-                <label className="field compact">
-                  <span>Status</span>
-                  <select
-                    className="input"
-                    value={candidateFilter}
-                    onChange={(event) => setCandidateFilter(event.target.value)}
-                  >
-                    <option value="all">All</option>
-                    <option value="candidate">Candidate</option>
-                    <option value="verified">Verified</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </label>
-                <label className="field compact grow">
-                  <span>Search</span>
-                  <input
-                    className="input"
-                    value={candidateQuery}
-                    onChange={(event) => setCandidateQuery(event.target.value)}
-                    placeholder="source term or target draft"
-                  />
-                </label>
-              </div>
-              <div className="list-stack">
-                {filteredCandidates.length > 0 ? (
-                  filteredCandidates.map((entry) => (
-                    <div key={entry.id} className="candidate-card">
-                      <div className="candidate-head">
-                        <div>
-                          <strong>{entry.source_text}</strong>
-                          <p>{entry.target_text}</p>
-                        </div>
-                        <span className={`pill tone-${entry.status}`}>{entry.status}</span>
-                      </div>
-                      <div className="tag-row">
-                        <span className="pill subtle">{entry.fallback_level}</span>
-                        <span className="pill subtle">{entry.segment_id}</span>
-                        <span className="pill subtle">{entry.reason}</span>
-                      </div>
-                      <p className="candidate-options">{entry.candidates.join(" | ")}</p>
-                      <div className="action-row">
-                        <button className="button" type="button" disabled={!backendAvailable} onClick={() => void handleReviewCandidate(entry, "verified")}>
-                          Verify
-                        </button>
-                        <button className="button secondary" type="button" disabled={!backendAvailable} onClick={() => void handleReviewCandidate(entry, "rejected")}>
-                          Reject
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="empty-state">No candidate entries match the current filters.</p>
-                )}
-              </div>
-            </Panel>
-          </div>
+          <DictionaryEditorScreen
+            busy={busy}
+            backendAvailable={backendAvailable}
+            query={dictionaryQuery}
+            filters={dictionaryFilters}
+            tableFilter={tableFilter}
+            sourceDictFilter={sourceDictFilter}
+            posTagFilter={posTagFilter}
+            entityTypeFilter={entityTypeFilter}
+            page={dictionaryPage}
+            pageSize={50}
+            total={dictionaryTotal}
+            entries={dictionaryEntries}
+            selectedEntry={dictionaryEntries.find((entry) => entry.record_id === selectedEntryId) ?? null}
+            draft={draftEntry}
+            selectedIds={selectedEntryIds}
+            bulkPosTag={bulkPosTag}
+            bulkEntityType={bulkEntityType}
+            onQueryChange={setDictionaryQuery}
+            onTableFilterChange={setTableFilter}
+            onSourceDictFilterChange={setSourceDictFilter}
+            onPosTagFilterChange={setPosTagFilter}
+            onEntityTypeFilterChange={setEntityTypeFilter}
+            onSearch={(page) => void refreshDictionaryPage(page ?? 1, dictionaryQuery)}
+            onSelectEntry={handleSelectDictionaryEntry}
+            onToggleEntrySelection={handleToggleEntrySelection}
+            onDraftChange={handleDraftChange}
+            onSave={() => void handleSaveDictionaryEntry()}
+            onBulkPosTagChange={setBulkPosTag}
+            onBulkEntityTypeChange={setBulkEntityType}
+            onApplyBulkUpdate={() => void handleApplyBulkUpdate()}
+            onExportFiltered={handleExportFiltered}
+          />
         );
       case "Translation Workspace":
         return (
-          <div className="panel-stack">
-            <Panel
-              title="Translation Workspace"
-              subtitle="Run the active chapter through the sidecar contract and inspect clean output, draft markers, and trace evidence."
-            >
-              <div className="split-grid">
-                <label className="field">
-                  <span>Source Text</span>
-                  <textarea
-                    className="textarea"
-                    value={translationInput}
-                    onChange={(event) => setTranslationInput(event.target.value)}
-                  />
-                </label>
-                <div className="action-column">
-                  <button className="button" type="button" disabled={busy || !backendAvailable} onClick={() => void handleTranslate()}>
-                    Translate Active Slice
-                  </button>
-                  <button className="button secondary" type="button" disabled={busy || !backendAvailable} onClick={() => void handleRunQa()}>
-                    Run QA
-                  </button>
-                </div>
-              </div>
-            </Panel>
-            <div className="split-grid">
-              <Panel title="Clean Output" subtitle="Reader-facing translation without inline annotations.">
-                <pre className="output-block">{translation?.clean_text || "No translation available yet."}</pre>
-              </Panel>
-              <Panel title="Annotated Draft" subtitle="Ambiguity and unresolved markers remain visible for review.">
-                <pre className="output-block">{translation?.draft_text || "No draft annotations available yet."}</pre>
-              </Panel>
-            </div>
-            <Panel
-              title="Trace Evidence"
-              subtitle="Each segment exposes the selected candidate, fallback level, and the evidence trail needed for review."
-            >
-              <div className="list-stack">
-                {translation?.segments.length ? (
-                  translation.segments.map((segment) => (
-                    <article key={segment.sentence_id} className="trace-card">
-                      <div className="trace-head">
-                        <strong>{segment.sentence_id}</strong>
-                        <span className={`pill tone-${segment.fallback_level ?? "runtime"}`}>{segment.fallback_level ?? "runtime"}</span>
-                      </div>
-                      <p>{segment.source_text}</p>
-                      <div className="trace-row">
-                        {segment.trace.map((trace) => (
-                          <span key={`${segment.sentence_id}-${trace.source}-${trace.reason}`} className="pill subtle">
-                            {trace.source}
-                            {" -> "}
-                            {trace.selected} ({trace.fallback_level})
-                          </span>
-                        ))}
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="empty-state">Translate the active slice to inspect trace payloads.</p>
-                )}
-              </div>
-            </Panel>
-          </div>
+          <TranslationWorkspaceScreen
+            busy={busy}
+            backendAvailable={backendAvailable}
+            importPath={importPath}
+            translationInput={translationInput}
+            overview={overview}
+            translation={translation}
+            qaReport={qaReport}
+            onImportPathChange={setImportPath}
+            onPickImportPath={(kind) => void pickImportPath(kind)}
+            onImport={() => void handleImport()}
+            onTranslationInputChange={setTranslationInput}
+            onTranslate={() => void handleTranslate()}
+            onRunQa={() => void handleRunQa()}
+            onSelectChapter={(chapterId, chapterText) => void handleSelectChapter(chapterId, chapterText)}
+            onInspectToken={(query) => void handleInspectToken(query)}
+          />
         );
       case "Translation Coach":
         return (
-          <div className="panel-stack">
-            <Panel
-              title="Translation Coach"
-              subtitle="Convert natural-language editorial feedback into reviewable rules, style tuning, and reusable phrase fixes."
-            >
-              <div className="split-grid">
-                <div className="form-grid">
-                  <div className="toolbar">
-                    <label className="field compact">
-                      <span>Scope</span>
-                      <select className="input" value={feedbackScope} onChange={(event) => setFeedbackScope(event.target.value)}>
-                        <option value="chapter">Chapter</option>
-                        <option value="project">Project</option>
-                      </select>
-                    </label>
-                    <label className="field compact">
-                      <span>Hint</span>
-                      <select className="input" value={feedbackRuleHint} onChange={(event) => setFeedbackRuleHint(event.target.value)}>
-                        <option value="auto">Auto</option>
-                        <option value="style">Style</option>
-                        <option value="phrase">Phrase</option>
-                        <option value="term">Term</option>
-                        <option value="entity">Entity</option>
-                        <option value="naturalization">Naturalization</option>
-                      </select>
-                    </label>
-                  </div>
-                  <label className="field">
-                    <span>Feedback</span>
-                    <textarea
-                      className="textarea"
-                      value={feedbackText}
-                      onChange={(event) => setFeedbackText(event.target.value)}
-                      placeholder="Ví dụ: Hội thoại chương này cần tự nhiên hơn, xưng hô bớt cứng. Đổi “夏天骐” thành “Hạ Thiên Kỳ”."
-                    />
-                  </label>
-                  <label className="field">
-                    <span>Source Snippet</span>
-                    <textarea
-                      className="textarea compact-textarea"
-                      value={feedbackSourceText}
-                      onChange={(event) => setFeedbackSourceText(event.target.value)}
-                      placeholder="Đoạn Hán ngữ hoặc câu nguồn liên quan"
-                    />
-                  </label>
-                  <div className="split-grid">
-                    <label className="field">
-                      <span>Current Translation</span>
-                      <textarea
-                        className="textarea compact-textarea"
-                        value={feedbackCurrentTranslation}
-                        onChange={(event) => setFeedbackCurrentTranslation(event.target.value)}
-                        placeholder="Bản dịch hiện tại"
-                      />
-                    </label>
-                    <label className="field">
-                      <span>Preferred Translation</span>
-                      <textarea
-                        className="textarea compact-textarea"
-                        value={feedbackPreferredTranslation}
-                        onChange={(event) => setFeedbackPreferredTranslation(event.target.value)}
-                        placeholder="Bản dịch mong muốn hoặc câu sửa tay"
-                      />
-                    </label>
-                  </div>
-                  <div className="action-row">
-                    <button className="button" type="button" disabled={busy || !backendAvailable || !feedbackText.trim()} onClick={() => void handleSubmitFeedback()}>
-                      Analyze and Propose
-                    </button>
-                    <span className="pill subtle">
-                      {feedbackScope === "chapter"
-                        ? `Target chapter: ${overview.project.active_chapter ?? "none"}`
-                        : "Target scope: project"}
-                    </span>
-                  </div>
-                </div>
-                <div className="form-grid">
-                  <Panel title="LLM Assist" subtitle="Optional OpenAI-compatible endpoint. Credentials are stored locally in this desktop shell only.">
-                    <div className="form-grid">
-                      <label className="field">
-                        <span>Endpoint</span>
-                        <input className="input" value={llmEndpoint} onChange={(event) => setLlmEndpoint(event.target.value)} placeholder="https://api.example.com/v1/chat/completions" />
-                      </label>
-                      <label className="field">
-                        <span>Model</span>
-                        <input className="input" value={llmModel} onChange={(event) => setLlmModel(event.target.value)} placeholder="gpt-4.1-mini or custom model" />
-                      </label>
-                      <div className="split-grid">
-                        <label className="field">
-                          <span>Auth Header</span>
-                          <input className="input" value={llmAuthHeader} onChange={(event) => setLlmAuthHeader(event.target.value)} placeholder="Authorization" />
-                        </label>
-                        <label className="field">
-                          <span>Auth Prefix</span>
-                          <input className="input" value={llmAuthPrefix} onChange={(event) => setLlmAuthPrefix(event.target.value)} placeholder="Bearer " />
-                        </label>
-                      </div>
-                      <label className="field">
-                        <span>API Key / OAuth Token</span>
-                        <input className="input" type="password" value={llmToken} onChange={(event) => setLlmToken(event.target.value)} placeholder="Stored only in localStorage on this machine" />
-                      </label>
-                    </div>
-                  </Panel>
-                </div>
-              </div>
-            </Panel>
-            <div className="split-grid">
-              <Panel title="Analysis Suggestions" subtitle="Suggestions are created from your feedback and queued as reviewable rules.">
-                <div className="list-stack">
-                  {feedbackAnalysis?.suggestions.length ? (
-                    feedbackAnalysis.suggestions.map((suggestion, index) => (
-                      <article key={`${suggestion.rule_type}-${index}`} className="candidate-card">
-                        <div className="candidate-head">
-                          <div>
-                            <strong>{suggestion.title}</strong>
-                            <p>{suggestion.summary}</p>
-                          </div>
-                          <span className="pill subtle">{Math.round(suggestion.confidence * 100)}%</span>
-                        </div>
-                        <div className="tag-row">
-                          <span className="pill subtle">{suggestion.rule_type}</span>
-                          <span className="pill subtle">{suggestion.scope}</span>
-                          <span className="pill subtle">{suggestion.origin}</span>
-                        </div>
-                        <pre className="output-block compact-block">{JSON.stringify(suggestion.payload, null, 2)}</pre>
-                      </article>
-                    ))
-                  ) : (
-                    <p className="empty-state">No suggestion generated yet. Submit feedback to populate this queue.</p>
-                  )}
-                </div>
-              </Panel>
-              <Panel title="Learning Snapshot" subtitle="Latest learning report for the active chapter or project.">
-                {learningReport?.current_run ? (
-                  <div className="detail-grid">
-                    <InfoLine label="QA Total" value={stringValue(learningReport.current_run.qa_total)} />
-                    <InfoLine label="Word Similarity" value={stringValue((learningReport.current_run.reference_comparison as Record<string, unknown> | undefined)?.word_similarity ?? "n/a")} />
-                    <InfoLine label="Translate Seconds" value={stringValue((learningReport.current_run.runtime_metrics as Record<string, unknown> | undefined)?.translate_seconds ?? "n/a")} />
-                    <InfoLine label="Auto Applied" value={stringValue((learningReport.auto_applied ?? []).length)} />
-                    <pre className="output-block compact-block">{JSON.stringify(learningReport.recommendations ?? [], null, 2)}</pre>
-                  </div>
-                ) : (
-                  <p className="empty-state">Run QA to generate a learning report for this chapter.</p>
-                )}
-              </Panel>
-            </div>
-            <Panel
-              title="Candidate Rules"
-              subtitle="Review and apply structured rules generated from user feedback. Verified rules update the project config or learned terms."
-            >
-              <div className="toolbar">
-                <label className="field compact">
-                  <span>Status</span>
-                  <select className="input" value={ruleFilter} onChange={(event) => setRuleFilter(event.target.value)}>
-                    <option value="all">All</option>
-                    <option value="candidate">Candidate</option>
-                    <option value="verified">Verified</option>
-                    <option value="rejected">Rejected</option>
-                  </select>
-                </label>
-              </div>
-              <div className="list-stack">
-                {filteredRules.length ? (
-                  filteredRules.map((rule) => (
-                    <article key={rule.id} className="candidate-card">
-                      <div className="candidate-head">
-                        <div>
-                          <strong>{ruleTitle(rule)}</strong>
-                          <p>{ruleSummary(rule)}</p>
-                        </div>
-                        <span className={`pill tone-${rule.status}`}>{rule.status}</span>
-                      </div>
-                      <div className="tag-row">
-                        <span className="pill subtle">{rule.rule_type}</span>
-                        <span className="pill subtle">{stringValue((rule.rule_payload.chapter_id as string | undefined) ?? "project")}</span>
-                      </div>
-                      <pre className="output-block compact-block">{JSON.stringify(rule.rule_payload.payload ?? rule.rule_payload, null, 2)}</pre>
-                      <div className="action-row">
-                        <button className="button" type="button" disabled={!backendAvailable || rule.status === "verified"} onClick={() => void handleReviewRule(rule, "verified")}>
-                          Verify and Apply
-                        </button>
-                        <button className="button secondary" type="button" disabled={!backendAvailable || rule.status === "rejected"} onClick={() => void handleReviewRule(rule, "rejected")}>
-                          Reject
-                        </button>
-                      </div>
-                    </article>
-                  ))
-                ) : (
-                  <p className="empty-state">No candidate rules in the queue yet.</p>
-                )}
-              </div>
-            </Panel>
-          </div>
+          <CoachScreen
+            busy={busy}
+            backendAvailable={backendAvailable}
+            overview={overview}
+            candidates={candidates}
+            candidateRules={candidateRules}
+            learningReport={learningReport}
+            feedbackAnalysis={feedbackAnalysis}
+            feedbackText={feedbackText}
+            feedbackSourceText={feedbackSourceText}
+            feedbackCurrentTranslation={feedbackCurrentTranslation}
+            feedbackPreferredTranslation={feedbackPreferredTranslation}
+            feedbackScope={feedbackScope}
+            feedbackRuleHint={feedbackRuleHint}
+            ruleFilter={ruleFilter}
+            candidateFilter={candidateFilter}
+            candidateQuery={candidateQuery}
+            onFeedbackFieldChange={handleFeedbackFieldChange}
+            onRuleFilterChange={setRuleFilter}
+            onCandidateFilterChange={setCandidateFilter}
+            onCandidateQueryChange={setCandidateQuery}
+            onSubmitFeedback={() => void handleSubmitFeedback()}
+            onReviewRule={(rule, status) => void handleReviewRule(rule, status)}
+            onReviewCandidate={(entry, status) => void handleReviewCandidate(entry, status)}
+            onInspectToken={(query) => void handleInspectToken(query)}
+          />
         );
-      case "Entity & Relationship Viewer":
+      case "Pipeline Monitor":
         return (
-          <div className="panel-stack">
-            <div className="split-grid">
-              <Panel title="Entities" subtitle="Locked names and project-level terminology hints.">
-                <div className="list-stack">
-                  {overview.entities.length ? (
-                    overview.entities.map((entity, index) => (
-                      <div key={`entity-${index}`} className="list-card compact">
-                        <strong>{stringValue(entity.source)}</strong>
-                        <span>{stringValue(entity.target)}</span>
-                        <small>{stringValue(entity.entity_type)}</small>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="empty-state">Entity scan has not produced results yet.</p>
-                  )}
-                </div>
-              </Panel>
-              <Panel title="Relationships" subtitle="Config-visible relationship edges from pre-translation analysis.">
-                <div className="list-stack">
-                  {overview.relationships.length ? (
-                    overview.relationships.map((relation, index) => (
-                      <div key={`relation-${index}`} className="list-card compact">
-                        <strong>{stringValue(relation.source)}</strong>
-                        <span>{stringValue(relation.relation)}</span>
-                        <small>{stringValue(relation.target)}</small>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="empty-state">Relationship graph is empty for this slice.</p>
-                  )}
-                </div>
-              </Panel>
-            </div>
-          </div>
-        );
-      case "Pre-Translation Review":
-        return (
-          <div className="panel-stack">
-            <Panel
-              title="Pre-Translation Review"
-              subtitle="Import source material, inspect generated config, and verify terminology before translation begins."
-            >
-              <div className="toolbar">
-                <label className="field grow">
-                  <span>Source File Or Source Directory</span>
-                  <input
-                    className="input"
-                    value={importPath}
-                    onChange={(event) => setImportPath(event.target.value)}
-                    placeholder="D:\\docs\\chapter-001.md or D:\\Novel\\source"
-                  />
-                </label>
-                <button className="button secondary" type="button" disabled={busy || !backendAvailable} onClick={() => void pickImportPath("file")}>
-                  Choose File
-                </button>
-                <button className="button secondary" type="button" disabled={busy || !backendAvailable} onClick={() => void pickImportPath("folder")}>
-                  Choose Folder
-                </button>
-                <button className="button" type="button" disabled={busy || !backendAvailable} onClick={() => void handleImport()}>
-                  Import and Prepare
-                </button>
-              </div>
-              <div className="tag-row">
-                {lockedEntities.map((entity, index) => (
-                  <span key={`lock-${index}`} className="pill subtle">
-                    {stringValue(entity.source)}
-                    {" -> "}
-                    {stringValue(entity.target)}
-                  </span>
-                ))}
-              </div>
-            </Panel>
-            <div className="split-grid">
-              <Panel title="Terminology Suggestions" subtitle="Terms that deserve review before runtime ranking starts.">
-                <div className="list-stack">
-                  {overview.terminology_suggestions.length ? (
-                    overview.terminology_suggestions.map((item, index) => (
-                      <div key={`term-${index}`} className="list-card compact">
-                        <strong>{stringValue(item.source)}</strong>
-                        <span>{stringValue(item.candidates)}</span>
-                        <small>{stringValue(item.ambiguity)}</small>
-                      </div>
-                    ))
-                  ) : (
-                    <p className="empty-state">No terminology suggestions have been generated.</p>
-                  )}
-                </div>
-              </Panel>
-              <Panel title="Config Snapshot" subtitle="The translation workspace reads these hints directly from the reviewable config payload.">
-                <pre className="output-block">{JSON.stringify(overview.config, null, 2)}</pre>
-              </Panel>
-            </div>
-          </div>
-        );
-      case "QA Report Viewer":
-        return (
-          <div className="panel-stack">
-            <Panel
-              title="QA Report Viewer"
-              subtitle="Render the latest QA payload and expose issue-level evidence for the reviewer."
-            >
-              <div className="action-row">
-                <button className="button" type="button" disabled={busy || !backendAvailable} onClick={() => void handleRunQa()}>
-                  Refresh QA
-                </button>
-                <span className="pill subtle">
-                  Issues: {qaReport?.summary.issues ?? 0}
-                </span>
-              </div>
-            </Panel>
-            <div className="list-stack">
-              {qaReport?.issues.length ? (
-                qaReport.issues.map((issue) => (
-                  <article key={`${issue.segment_id}-${issue.checker}`} className="issue-card">
-                    <div className="trace-head">
-                      <strong>{issue.checker}</strong>
-                      <span className={`pill tone-${issue.severity}`}>{issue.severity}</span>
-                    </div>
-                    <p>{issue.message}</p>
-                    <small>{issue.segment_id}</small>
-                  </article>
-                ))
-              ) : (
-                <p className="empty-state">QA has not reported any issues for the active slice.</p>
-              )}
-            </div>
-          </div>
+          <PipelineMonitorScreen
+            busy={busy}
+            backendAvailable={backendAvailable}
+            pipeline={pipelineStatus}
+            events={events}
+            warnings={warnings}
+            onRunStage={(stageId) => void handleRunPipelineStage(stageId)}
+          />
         );
       case "Settings":
         return (
-          <div className="panel-stack">
-            <Panel
-              title="Settings and Contract"
-              subtitle="This shell is wired against the expanded Phase 10 contract and prefers the native Tauri bridge for real work."
-            >
-              <div className="detail-grid">
-                <InfoLine label="Protocol version" value={PROTOCOL_VERSION} />
-                <InfoLine label="Transport mode" value={transport?.mode ?? "initializing"} />
-                <InfoLine label="Supported commands" value={transport?.supportedCommands.join(", ") ?? "Loading"} />
-                <InfoLine label="Native blocker" value="Rust/Cargo are still required to verify packaging in this environment." />
-              </div>
-            </Panel>
-            <Panel
-              title="Artifact Paths"
-              subtitle="The desktop shell surfaces the same artifact model expected by the Python project manager."
-            >
-              <pre className="output-block">{JSON.stringify(overview.artifacts, null, 2)}</pre>
-            </Panel>
-          </div>
+          <SettingsScreen
+            transport={transport}
+            overview={overview}
+            pipeline={pipelineStatus}
+            workspaceBaseDir={workspaceBaseDir}
+            onWorkspaceBaseDirChange={setWorkspaceBaseDir}
+            onRunStage={(stageId) => void handleRunPipelineStage(stageId)}
+            busy={busy}
+            backendAvailable={backendAvailable}
+          />
         );
       default:
         return null;
@@ -1262,25 +825,35 @@ export function App() {
     <div className="app-shell">
       <aside className="sidebar">
         <div className="brand">
-          <span className="brand-kicker">Phase 10</span>
+          <span className="brand-kicker">Pipeline UI</span>
           <h1>DrDuc Translator</h1>
-          <p>
-            Desktop workflow shell for project control, translation review, QA, learning loops, and human-in-the-loop rule tuning.
-          </p>
+          <p>Glassmorphism UI được tách module hóa thành 6 screen có dictionary CRUD và pipeline monitor.</p>
         </div>
 
         <div className="transport-card">
           <span className="pill">{transport?.mode ?? "loading"} transport</span>
-          <p>
-            {transport?.mode === "tauri"
-              ? "Native runtime detected. UI commands are forwarded to the Python sidecar through Tauri invoke."
-              : transport?.mode === "demo"
-                ? "Demo mode was enabled explicitly for UI-only development."
-                : transport?.mode === "http"
-                  ? "HTTP bridge connected. The Python backend is executing your workflow requests."
-                  : "Browser preview does not execute the translation backend. Launch the native Tauri app for real project work."}
-          </p>
+          <p>{statusMessage}</p>
         </div>
+
+        <form className="panel mini-panel" onSubmit={handleCreateProject}>
+          <div className="panel-head">
+            <div>
+              <h3>Project Intake</h3>
+              <p>Tao nhanh project moi tai workspace root da normalize.</p>
+            </div>
+          </div>
+          <div className="form-grid">
+            <label className="field">
+              <span>Project Id</span>
+              <input className="input" value={createProjectId} onChange={(event) => setCreateProjectId(event.target.value)} />
+            </label>
+            <label className="field">
+              <span>Workspace Root</span>
+              <input className="input" value={workspaceBaseDir} onChange={(event) => setWorkspaceBaseDir(event.target.value)} />
+            </label>
+            <button className="button" type="submit" disabled={busy || !backendAvailable}>Create Project</button>
+          </div>
+        </form>
 
         <nav className="nav-stack">
           {SCREENS.map((item) => (
@@ -1288,11 +861,7 @@ export function App() {
               key={item}
               className={`nav-button ${item === screen ? "active" : ""}`}
               type="button"
-              onClick={() => {
-                startTransition(() => {
-                  setScreen(item);
-                });
-              }}
+              onClick={() => startTransition(() => setScreen(item))}
             >
               {item}
             </button>
@@ -1307,18 +876,10 @@ export function App() {
                 key={project.project_id}
                 className={`list-card ${project.project_id === currentProjectId ? "active" : ""}`}
                 type="button"
-                onClick={() => {
-                  startTransition(() => {
-                    setSelectedProjectId(project.project_id);
-                  });
-                }}
+                onClick={() => startTransition(() => setSelectedProjectId(project.project_id))}
               >
                 <strong>{project.project_id}</strong>
-                <span>
-                  {project.source_language}
-                  {" -> "}
-                  {project.target_language}
-                </span>
+                <span>{project.source_language} -&gt; {project.target_language}</span>
                 <small>{project.project_dir}</small>
               </button>
             ))}
@@ -1334,10 +895,8 @@ export function App() {
             <p>{statusMessage}</p>
           </div>
           <div className="hero-actions">
-            <span className={`pill ${busy ? "busy" : ""}`}>{busy ? "Running command" : "Idle"}</span>
-            <span className="pill subtle">
-              {overview?.project.active_chapter ?? "No active chapter"}
-            </span>
+            <span className={`pill ${busy ? "busy" : ""}`}>{busy ? "Running" : "Idle"}</span>
+            <span className="pill subtle">{overview?.project.active_chapter ?? "No active chapter"}</span>
           </div>
         </header>
 
@@ -1347,16 +906,6 @@ export function App() {
           <MetricCard label="Candidates" value={overview?.counts.candidates_total ?? 0} />
           <MetricCard label="QA Issues" value={overview?.counts.qa_issues ?? 0} />
         </section>
-
-        {Object.keys(candidateStatus).length > 0 ? (
-          <section className="tag-row">
-            {Object.entries(candidateStatus).map(([status, total]) => (
-              <span key={status} className={`pill tone-${status}`}>
-                {status}: {total}
-              </span>
-            ))}
-          </section>
-        ) : null}
 
         {warnings.length > 0 ? (
           <section className="warning-strip">
@@ -1369,14 +918,11 @@ export function App() {
         <section className="screen-area">{renderScreen()}</section>
 
         <section className="split-grid footer-grid">
-          <Panel
-            title="Command Timeline"
-            subtitle="The shell exposes the same event payloads the sidecar uses for progress and recovery hints."
-          >
+          <Panel title="Command Timeline" subtitle="Event payload tu sidecar giup debug va monitor stage transitions.">
             <div className="list-stack">
-              {events.length > 0 ? (
-                events.map((event) => (
-                  <div key={`${event.stage}-${event.message}`} className="timeline-row">
+              {events.length ? (
+                events.map((event, index) => (
+                  <div key={`${event.stage}-${index}`} className="timeline-row">
                     <span className="pill subtle">{event.progress}%</span>
                     <div>
                       <strong>{event.stage}</strong>
@@ -1389,10 +935,7 @@ export function App() {
               )}
             </div>
           </Panel>
-          <Panel
-            title="Runtime Snapshot"
-            subtitle="Latest output paths and segment counts for the active project."
-          >
+          <Panel title="Runtime Snapshot" subtitle="Path artifact da duoc normalize, khong con truot goc thu muc nhu cac lan truoc.">
             <div className="detail-grid">
               <InfoLine label="Output" value={translation?.paths.clean || overview?.artifacts.output_path || "Unavailable"} />
               <InfoLine label="Draft" value={translation?.paths.draft || overview?.artifacts.draft_path || "Unavailable"} />
@@ -1404,78 +947,6 @@ export function App() {
       </main>
     </div>
   );
-}
-
-function Panel(props: {
-  title: string;
-  subtitle: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <section className="panel">
-      <header className="panel-head">
-        <div>
-          <h3>{props.title}</h3>
-          <p>{props.subtitle}</p>
-        </div>
-      </header>
-      {props.children}
-    </section>
-  );
-}
-
-function MetricCard(props: { label: string; value: number }) {
-  return (
-    <article className="metric-card">
-      <span>{props.label}</span>
-      <strong>{props.value}</strong>
-    </article>
-  );
-}
-
-function InfoLine(props: { label: string; value: string }) {
-  return (
-    <div className="info-line">
-      <span>{props.label}</span>
-      <strong>{props.value}</strong>
-    </div>
-  );
-}
-
-function asRecordArray(value: unknown): Array<Record<string, unknown>> {
-  if (!Array.isArray(value)) {
-    return [];
-  }
-  return value.filter((item): item is Record<string, unknown> => Boolean(item) && typeof item === "object");
-}
-
-function stringValue(value: unknown): string {
-  if (Array.isArray(value)) {
-    return value.map((item) => stringValue(item)).join(", ");
-  }
-  if (typeof value === "string") {
-    return value;
-  }
-  if (typeof value === "number" || typeof value === "boolean") {
-    return String(value);
-  }
-  if (value && typeof value === "object") {
-    return JSON.stringify(value);
-  }
-  return "n/a";
-}
-
-function ruleTitle(rule: CandidateRule): string {
-  const title = rule.rule_payload.title;
-  return typeof title === "string" && title.trim() ? title : rule.rule_type;
-}
-
-function ruleSummary(rule: CandidateRule): string {
-  const summary = rule.rule_payload.summary;
-  if (typeof summary === "string" && summary.trim()) {
-    return summary;
-  }
-  return stringValue(rule.rule_payload.payload ?? rule.rule_payload);
 }
 
 function readStoredValue(key: string, fallback: string): string {
@@ -1490,4 +961,8 @@ function writeStoredValue(key: string, value: string) {
     return;
   }
   window.localStorage.setItem(key, value);
+}
+
+function clone<T>(value: T): T {
+  return JSON.parse(JSON.stringify(value)) as T;
 }

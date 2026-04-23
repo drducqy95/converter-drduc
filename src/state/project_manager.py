@@ -84,7 +84,7 @@ class ProjectManager:
     """Create/open/update translation projects and their state DB."""
 
     def __init__(self, base_dir: str | Path):
-        self.base_dir = Path(base_dir)
+        self.base_dir = Path(base_dir).expanduser().resolve()
         self.base_dir.mkdir(parents=True, exist_ok=True)
 
     def create_project(self, project_id: str, *, source_language: str = "zh", target_language: str = "vi") -> ProjectRecord:

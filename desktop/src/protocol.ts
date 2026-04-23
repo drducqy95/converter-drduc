@@ -16,6 +16,10 @@ export type CommandName =
   | "load_qa_report"
   | "load_learning_report"
   | "search_dictionary_entries"
+  | "list_dictionary_entries"
+  | "update_dictionary_entry"
+  | "get_pipeline_status"
+  | "run_pipeline_stage"
   | "list_candidate_entries"
   | "review_candidate_entry"
   | "submit_natural_feedback"
@@ -182,6 +186,9 @@ export type LearningReport = {
 };
 
 export type DictionaryEntry = {
+  record_id: string;
+  row_id?: number;
+  table_name: string;
   source: string;
   target_vi: string;
   alternative_meanings: string[];
@@ -198,6 +205,64 @@ export type DictionaryEntry = {
   one_mean: boolean;
   locked: boolean;
   notes: string;
+  source_file: string;
+  source_path: string;
+  pos_tag?: string | null;
+  pos_sub?: string | null;
+  entity_type?: string | null;
+  traditional?: string;
+  is_function_word?: boolean;
+  luat_nhan_trigger?: boolean;
+  reorder_role?: string | null;
+  cultural_origin?: string | null;
+  genre_affinity?: string | null;
+  register_level?: string | null;
+  metadata?: Record<string, unknown>;
+};
+
+export type DictionaryListResponse = {
+  entries: DictionaryEntry[];
+  total: number;
+  page: number;
+  page_size: number;
+  filters: {
+    categories: string[];
+    pos_tags: string[];
+    entity_types: string[];
+    tables: string[];
+  };
+  stats: DictionaryStats;
+};
+
+export type DictionaryStats = {
+  runtime_total: number;
+  reference_total: number;
+  total: number;
+  pos_total: number;
+  pinyin_total: number;
+  entity_total: number;
+  pos_coverage_pct: number;
+  pinyin_coverage_pct: number;
+  compiled_at?: string | null;
+  entry_readings_total?: number;
+  metadata?: Record<string, string>;
+};
+
+export type PipelineStageStatus = {
+  id: string;
+  label: string;
+  status: "pending" | "running" | "completed" | "error";
+  progress: number;
+  message: string;
+  metrics: Record<string, unknown>;
+};
+
+export type PipelineStatus = {
+  stages: PipelineStageStatus[];
+  dictionary_stats: DictionaryStats;
+  project: ProjectRecord | null;
+  artifacts: Record<string, string>;
+  last_state: Record<string, unknown>;
 };
 
 export type Transport = {

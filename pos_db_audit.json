@@ -1,0 +1,792 @@
+{
+  "overall": {
+    "total": 710266,
+    "tagged": 189193,
+    "untagged": 521073,
+    "coverage": "26.6%"
+  },
+  "by_category": [
+    {
+      "category": "vietphrase_5plus",
+      "total": 221367,
+      "tagged": 45912,
+      "gap": 175455,
+      "coverage": "20.7%"
+    },
+    {
+      "category": "vietphrase_3char",
+      "total": 187410,
+      "tagged": 49710,
+      "gap": 137700,
+      "coverage": "26.5%"
+    },
+    {
+      "category": "vietphrase_4char",
+      "total": 177808,
+      "tagged": 40208,
+      "gap": 137600,
+      "coverage": "22.6%"
+    },
+    {
+      "category": "vietphrase_2char",
+      "total": 114955,
+      "tagged": 45149,
+      "gap": 69806,
+      "coverage": "39.3%"
+    },
+    {
+      "category": "vietphrase_1char",
+      "total": 3424,
+      "tagged": 2913,
+      "gap": 511,
+      "coverage": "85.1%"
+    },
+    {
+      "category": "vietphrase_latin_num",
+      "total": 2282,
+      "tagged": 2282,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_person_east",
+      "total": 1164,
+      "tagged": 1164,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "phien_am",
+      "total": 502,
+      "tagged": 502,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_person_west",
+      "total": 481,
+      "tagged": 481,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_loc_west",
+      "total": 276,
+      "tagged": 276,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_loc_east",
+      "total": 213,
+      "tagged": 213,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_misc_west",
+      "total": 146,
+      "tagged": 146,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_misc_east",
+      "total": 115,
+      "tagged": 115,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_org_east",
+      "total": 60,
+      "tagged": 60,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "names_org_west",
+      "total": 26,
+      "tagged": 26,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "category": "pronouns",
+      "total": 21,
+      "tagged": 20,
+      "gap": 1,
+      "coverage": "95.2%"
+    },
+    {
+      "category": "misc_vocabulary",
+      "total": 16,
+      "tagged": 16,
+      "gap": 0,
+      "coverage": "100.0%"
+    }
+  ],
+  "by_length": [
+    {
+      "source_length": 1,
+      "total": 3942,
+      "tagged": 3431,
+      "gap": 511,
+      "coverage": "87.0%"
+    },
+    {
+      "source_length": 2,
+      "total": 116105,
+      "tagged": 46299,
+      "gap": 69806,
+      "coverage": "39.9%"
+    },
+    {
+      "source_length": 3,
+      "total": 188578,
+      "tagged": 50878,
+      "gap": 137700,
+      "coverage": "27.0%"
+    },
+    {
+      "source_length": 4,
+      "total": 178737,
+      "tagged": 41136,
+      "gap": 137601,
+      "coverage": "23.0%"
+    },
+    {
+      "source_length": 5,
+      "total": 122172,
+      "tagged": 25281,
+      "gap": 96891,
+      "coverage": "20.7%"
+    },
+    {
+      "source_length": 6,
+      "total": 54386,
+      "tagged": 14644,
+      "gap": 39742,
+      "coverage": "26.9%"
+    },
+    {
+      "source_length": 7,
+      "total": 30945,
+      "tagged": 4677,
+      "gap": 26268,
+      "coverage": "15.1%"
+    },
+    {
+      "source_length": 8,
+      "total": 9930,
+      "tagged": 1484,
+      "gap": 8446,
+      "coverage": "14.9%"
+    },
+    {
+      "source_length": 9,
+      "total": 3855,
+      "tagged": 814,
+      "gap": 3041,
+      "coverage": "21.1%"
+    },
+    {
+      "source_length": 10,
+      "total": 1272,
+      "tagged": 407,
+      "gap": 865,
+      "coverage": "32.0%"
+    },
+    {
+      "source_length": 11,
+      "total": 331,
+      "tagged": 140,
+      "gap": 191,
+      "coverage": "42.3%"
+    },
+    {
+      "source_length": 12,
+      "total": 9,
+      "tagged": 1,
+      "gap": 8,
+      "coverage": "11.1%"
+    },
+    {
+      "source_length": 13,
+      "total": 3,
+      "tagged": 1,
+      "gap": 2,
+      "coverage": "33.3%"
+    },
+    {
+      "source_length": 15,
+      "total": 1,
+      "tagged": 0,
+      "gap": 1,
+      "coverage": "0.0%"
+    }
+  ],
+  "by_source_file": [
+    {
+      "source_file": "_vietphrase_5plus.md",
+      "total": 221367,
+      "tagged": 45912,
+      "gap": 175455,
+      "coverage": "20.7%"
+    },
+    {
+      "source_file": "_vietphrase_3char.md",
+      "total": 187410,
+      "tagged": 49710,
+      "gap": 137700,
+      "coverage": "26.5%"
+    },
+    {
+      "source_file": "_vietphrase_4char.md",
+      "total": 177808,
+      "tagged": 40208,
+      "gap": 137600,
+      "coverage": "22.6%"
+    },
+    {
+      "source_file": "_vietphrase_2char.md",
+      "total": 114955,
+      "tagged": 45149,
+      "gap": 69806,
+      "coverage": "39.3%"
+    },
+    {
+      "source_file": "_vietphrase_1char.md",
+      "total": 3424,
+      "tagged": 2913,
+      "gap": 511,
+      "coverage": "85.1%"
+    },
+    {
+      "source_file": "_vietphrase_latin_num.md",
+      "total": 2282,
+      "tagged": 2282,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_person_east.md",
+      "total": 1164,
+      "tagged": 1164,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_bulk_phienam.md",
+      "total": 502,
+      "tagged": 502,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_person_west.md",
+      "total": 481,
+      "tagged": 481,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_loc_west.md",
+      "total": 276,
+      "tagged": 276,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_loc_east.md",
+      "total": 213,
+      "tagged": 213,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_misc_west.md",
+      "total": 146,
+      "tagged": 146,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_misc_east.md",
+      "total": 115,
+      "tagged": 115,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_org_east.md",
+      "total": 60,
+      "tagged": 60,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_names_org_west.md",
+      "total": 26,
+      "tagged": 26,
+      "gap": 0,
+      "coverage": "100.0%"
+    },
+    {
+      "source_file": "_bulk_pronouns.md",
+      "total": 21,
+      "tagged": 20,
+      "gap": 1,
+      "coverage": "95.2%"
+    },
+    {
+      "source_file": "_bulk_misc.md",
+      "total": 16,
+      "tagged": 16,
+      "gap": 0,
+      "coverage": "100.0%"
+    }
+  ],
+  "tag_distribution": [
+    {
+      "tag": "NOUN",
+      "count": 117998
+    },
+    {
+      "tag": "VERB",
+      "count": 45460
+    },
+    {
+      "tag": "ADJECTIVE",
+      "count": 25586
+    },
+    {
+      "tag": "NUMBER",
+      "count": 111
+    },
+    {
+      "tag": "PRONOUN",
+      "count": 18
+    },
+    {
+      "tag": "PARTICLE",
+      "count": 8
+    },
+    {
+      "tag": "PREPOSITION",
+      "count": 6
+    },
+    {
+      "tag": "CONJUNCTION",
+      "count": 6
+    }
+  ],
+  "untagged_samples_short": [
+    {
+      "source": "更美圆",
+      "target": "càng đồng đôla Mỹ hơn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "最内敛",
+      "target": "ẩn sâu nhất",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "他人都",
+      "target": "người khác",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "不外寇",
+      "target": "không giặc ngoại xâm",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "没毒品",
+      "target": "không ma tuý",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "够大举",
+      "target": "quy mô rất lớn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "政委的",
+      "target": "chính ủy",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "这纸鹤",
+      "target": "hạc giấy này",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "种灵谷",
+      "target": "trồng linh cốc",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "不会议",
+      "target": "không hội nghị",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "离学校",
+      "target": "cách trường học",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "蓝汪汪",
+      "target": "xanh mênh mang/xanh đầm đìa",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "同学会",
+      "target": "đồng học lại/họp lớp/hội bạn h",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "不退婚",
+      "target": "không thoái hôn/không từ hôn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "幾喜歡",
+      "target": "bao nhiêu vui vẻ",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "兵器阁",
+      "target": "binh khí các",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "最開心",
+      "target": "vui vẻ nhất",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "不定刑",
+      "target": "không kết án",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "本公公",
+      "target": "bản công công",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "越宽洪",
+      "target": "càng khoan hồng hơn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "又小学",
+      "target": "lại tiểu học",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "会家子",
+      "target": "hội gia tử (*biết võ công)",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "打趴了",
+      "target": "đánh ngã",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "更有眼",
+      "target": "càng có mắt hơn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "整个屁",
+      "target": "chỉnh cái rắm",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "澈想到",
+      "target": "nghĩ thấu đáo",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "九州岛",
+      "target": "cửu châu đảo",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "地套鐘",
+      "target": "mà chuông",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "又杀出",
+      "target": "lại giết ra",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "克萊姆",
+      "target": "golem",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "毛'线",
+      "target": "mao'Tuyến",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "测试是",
+      "target": "khảo nghiệm là",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "更多么",
+      "target": "càng cỡ nào hơn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "杏仁羹",
+      "target": "canh hạnh nhân",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "怒雷般",
+      "target": "như thiên lôi phẫn nộ",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "和整条",
+      "target": "và toàn bộ",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "逞威风",
+      "target": "ra vẻ ta đây/ta đây",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "而断离",
+      "target": "mà chia lìa",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "你姓江",
+      "target": "ngươi họ Giang",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "会 长",
+      "target": "hội trưởng",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "不公债",
+      "target": "không công trái",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "变大奇",
+      "target": "trở nên hiếu kỳ",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "又要等",
+      "target": "lại phải đợi",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "是灵魂",
+      "target": "là linh hồn",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "半周刊",
+      "target": "bán tuần san",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "那头发",
+      "target": "tóc kia",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "得之者",
+      "target": "người chiếm được",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "上百次",
+      "target": "hơn trăm lần",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "在出口",
+      "target": "ở cửa ra/ở lối ra",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    },
+    {
+      "source": "上马石",
+      "target": "thượng mã thạch",
+      "category": "vietphrase_3char",
+      "source_file": "_vietphrase_3char.md"
+    }
+  ],
+  "untagged_short_entries": 345618,
+  "untagged_vi_noun_heuristic_candidates": 10910,
+  "untagged_vi_adj_heuristic_candidates": 1228,
+  "untagged_multi_meaning": 52485,
+  "pos_sub_distribution": [
+    {
+      "sub": "location",
+      "count": 66678
+    },
+    {
+      "sub": "classifier",
+      "count": 13840
+    },
+    {
+      "sub": "abstract",
+      "count": 5198
+    },
+    {
+      "sub": "idiom",
+      "count": 3783
+    },
+    {
+      "sub": "name",
+      "count": 2540
+    },
+    {
+      "sub": "misc",
+      "count": 2150
+    },
+    {
+      "sub": "component",
+      "count": 502
+    },
+    {
+      "sub": "time",
+      "count": 12
+    },
+    {
+      "sub": "personal",
+      "count": 7
+    },
+    {
+      "sub": "honorific",
+      "count": 5
+    },
+    {
+      "sub": "aspect",
+      "count": 3
+    },
+    {
+      "sub": "simulative",
+      "count": 2
+    },
+    {
+      "sub": "reflexive",
+      "count": 2
+    },
+    {
+      "sub": "question",
+      "count": 2
+    },
+    {
+      "sub": "indefinite",
+      "count": 2
+    },
+    {
+      "sub": "demonstrative",
+      "count": 2
+    },
+    {
+      "sub": "temporal",
+      "count": 1
+    },
+    {
+      "sub": "target",
+      "count": 1
+    },
+    {
+      "sub": "suggestion",
+      "count": 1
+    },
+    {
+      "sub": "possessive",
+      "count": 1
+    },
+    {
+      "sub": "passive",
+      "count": 1
+    },
+    {
+      "sub": "locative",
+      "count": 1
+    },
+    {
+      "sub": "direction",
+      "count": 1
+    },
+    {
+      "sub": "complement",
+      "count": 1
+    },
+    {
+      "sub": "ba_construction",
+      "count": 1
+    }
+  ]
+}

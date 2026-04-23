@@ -7,6 +7,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
+from src.core.md_dictionary_compiler import DictionaryCompiler
 from src.en_vi.en_vi_translator import EnglishVietnameseTranslator
 from src.ui.command_protocol import CommandRequest
 from src.ui.sidecar_bridge import handle_request
@@ -219,3 +220,118 @@ def test_sidecar_bridge_applies_project_and_chapter_style_profiles(tmp_path):
     ))
     assert chapter_two.ok
     assert "Đã ký hợp đồng lao động rồi" in chapter_two.data["clean_text"]
+
+
+def test_sidecar_bridge_lists_and_updates_dictionary_entries_with_source_sync(tmp_path):
+    dict_root = tmp_path / "dict"
+    source_dir = dict_root / "global" / "vietphrase"
+    source_dir.mkdir(parents=True)
+    source_file = source_dir / "_bulk_test.md"
+    source_file.write_text(
+        """---
+type: bulk_dictionary
+source_language: zh
+target_language: vi
+priority: 2
+category: vietphrase_test
+---
+
+| Source | Target | Priority | Category | POS_Tag | Pinyin | Traditional | Metadata |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 林动 | Lam Dong | 2 | vietphrase_test | NOUN | lin2 dong4 | 林動 | {"pos_sub":"name","entity_type":"person","luat_nhan_trigger":1,"reorder_role":"head"} |
+""",
+        encoding="utf-8",
+    )
+
+    compiler = DictionaryCompiler(str(dict_root), str(dict_root / "_compiled"))
+    compiler.compile()
+    db_path = dict_root / "_compiled" / "trie_cache.db"
+
+    list_response = handle_request(CommandRequest(
+        command="list_dictionary_entries",
+        payload={
+            "db_path": str(db_path),
+            "query": "林动",
+            "page": 1,
+            "page_size": 10,
+        },
+    ))
+    assert list_response.ok
+    assert list_response.data["total"] == 1
+    entry = list_response.data["entries"][0]
+    assert entry["source_path"].endswith("_bulk_test.md")
+    assert entry["table_name"] == "entries"
+
+    update_response = handle_request(CommandRequest(
+        command="update_dictionary_entry",
+        payload={
+            "db_path": str(db_path),
+            "table_name": entry["table_name"],
+            "record_id": entry["row_id"],
+            "target_vi": "Lâm Động",
+            "pos_tag": "NOUN",
+            "pos_sub": "name",
+            "entity_type": "person",
+            "pinyin": "lin2 dong4",
+            "traditional": "林動",
+            "luat_nhan_trigger": True,
+            "reorder_role": "head",
+            "full_explanation": "Nhan vat chinh da duoc chuan hoa.",
+        },
+    ))
+    assert update_response.ok
+    assert update_response.data["entry"]["target_vi"] == "Lâm Động"
+    assert "Nhan vat chinh" in update_response.data["entry"]["full_explanation"]
+
+    refreshed = handle_request(CommandRequest(
+        command="search_dictionary_entries",
+        payload={
+            "db_path": str(db_path),
+            "query": "林动",
+            "limit": 5,
+        },
+    ))
+    assert refreshed.ok
+    assert refreshed.data["entries"][0]["target_vi"] == "Lâm Động"
+    assert "Lâm Động" in source_file.read_text(encoding="utf-8")
+
+
+def test_sidecar_bridge_reports_pipeline_status_after_project_workflow(tmp_path):
+    create_response = handle_request(CommandRequest(
+        command="create_project",
+        payload={
+            "base_dir": str(tmp_path),
+            "project_id": "pipeline-demo",
+        },
+    ))
+    assert create_response.ok
+
+    project_dir = Path(create_response.data["project_dir"])
+    source_path = tmp_path / "pipeline_source.md"
+    source_path.write_text("第1章 A\n林动说道：“浪漫！”", encoding="utf-8")
+
+    assert handle_request(CommandRequest(
+        command="import_file",
+        payload={
+            "project_dir": str(project_dir),
+            "filepath": str(source_path),
+        },
+    )).ok
+    assert handle_request(CommandRequest(
+        command="translate",
+        payload={"project_dir": str(project_dir)},
+    )).ok
+    assert handle_request(CommandRequest(
+        command="run_qa",
+        payload={"project_dir": str(project_dir)},
+    )).ok
+
+    pipeline_response = handle_request(CommandRequest(
+        command="get_pipeline_status",
+        payload={"project_dir": str(project_dir)},
+    ))
+    assert pipeline_response.ok
+    stages = {stage["id"]: stage for stage in pipeline_response.data["stages"]}
+    assert stages["import"]["status"] == "completed"
+    assert stages["translate"]["status"] == "completed"
+    assert stages["qa"]["status"] == "completed"
