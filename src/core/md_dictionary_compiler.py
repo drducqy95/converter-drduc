@@ -248,7 +248,6 @@ def parse_bulk_md(filepath: str, metadata: dict | None = None, body: str | None 
             if key in {
                 'source', 'target', 'one_mean', 'locked', 'notes',
                 'pos_tag', 'pos_sub', 'entity_type', 'is_function_word',
-                'pinyin', 'traditional',
                 'luat_nhan_trigger', 'reorder_role', 'cultural_origin',
                 'genre_affinity', 'register_level'
             }:
@@ -261,6 +260,7 @@ def parse_bulk_md(filepath: str, metadata: dict | None = None, body: str | None 
             target=target,
             priority=priority,
             category=category,
+            one_mean=one_mean,
             locked=locked,
             notes=notes,
             source_file=os.path.basename(filepath),
@@ -870,6 +870,9 @@ class DictionaryCompiler:
                     meta = {}
                 pinyin = str(meta.get("pinyin", "") or "").strip()
                 han_viet = str(meta.get("han_viet_readings", "") or "").strip()
+
+            if not pinyin and entry.pinyin:
+                pinyin = entry.pinyin.strip()
 
             if not han_viet and entry.category == "phien_am":
                 han_viet = entry.target.strip()

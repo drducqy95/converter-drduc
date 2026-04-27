@@ -37,10 +37,14 @@ class EnglishVietnameseTranslator:
             for entry in parse_bulk_md(str(self.lexicon_path)):
                 key = entry.source.lower()
                 lexicon[key] = entry.target
-                pos = ""
+                pos = entry.pos_tag or ""
                 if entry.metadata_json:
                     import json
-                    pos = json.loads(entry.metadata_json).get("pos", "")
+                    meta = json.loads(entry.metadata_json)
+                    pos = pos or meta.get("pos", "") or meta.get("pos_tag", "")
+                    legacy_priority = str(meta.get("priority", "")).strip().lower()
+                    if not pos and legacy_priority in {"noun", "adj", "verb", "phrase"}:
+                        pos = legacy_priority
                 pos_map[key] = pos
         return lexicon, pos_map
 

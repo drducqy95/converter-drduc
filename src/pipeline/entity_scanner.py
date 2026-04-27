@@ -85,6 +85,8 @@ INVALID_NAME_CHARS = set(
     "\u4e0b"  # 下 (down)
     "\u5411"  # 向 (toward)
     "\u9a91"  # 骑 (ride)
+    "\u540e"  # 后 (after) — prevents swallowing temporal markers such as 后来
+    "\u524d"  # 前 (before/front)
 )
 # Common word prefixes that should NEVER start a person name
 COMMON_WORD_PREFIXES = {

@@ -4,7 +4,7 @@
   "status": "ACTIVE",
   "description": "Non-LLM Chinese-Vietnamese and English-Vietnamese translation system using dictionary migration, Trie, LuatNhan, RBMT, EAPEE, QA, TM and desktop workflow.",
   "created_at": "2026-04-14T14:02:00Z",
-  "updated_at": "2026-04-15T15:05:06Z",
+  "updated_at": "2026-04-27T00:00:00Z",
   "plan_version": "2026-04-15-master-detailed-vi",
   "authoritative_plan": "plans/260414-1038-drduc-translator/master_plan_detailed_vi.md",
   "enhanced_requirements": {
@@ -74,7 +74,14 @@
       "desc": "Phase 08 - Desktop UI",
       "status": "DONE",
       "progress": 100,
-      "details": "Desktop workflow is fully operational across browser fallback and native Tauri execution: the Python sidecar exposes a versioned contract with project overview, artifact loading, dictionary search, candidate review, and QA commands; translation traces are promoted into candidate entries in project state; the React/Vite shell implements the seven planned screens with dictionary metadata inspection; src-tauri forwards frontend requests to the Python sidecar; and native icon assets are generated from `src-tauri/app-icon.svg` into `src-tauri/icons/` for bundle resources. Verification passed for `python -m pytest` (`99 passed`), `npm run build`, `npm exec tauri info`, `npm run tauri:build`, and a Windows smoke launch of `src-tauri/target/release/drduc-translator-desktop.exe`. On this machine the Rust toolchain is installed under `D:\\App\\Rust`, Visual Studio Build Tools 2022 under `D:\\App\\BuildTools\\VS2022`, and the Windows SDK under `C:\\Program Files (x86)\\Windows Kits\\10`."
+      "details": "Desktop workflow is fully operational across browser fallback and native Tauri execution: the Python sidecar exposes a versioned contract with project overview, artifact loading, dictionary search, candidate review, and QA commands; translation traces are promoted into candidate entries in project state; the React/Vite shell implements the seven planned screens with dictionary metadata inspection; src-tauri forwards frontend requests to the Python sidecar; and native icon assets are generated from `src-tauri/app-icon.svg` into `src-tauri/icons/` for bundle resources. Current repo verification after v23 baseline hardening: `python -m pytest` (`151 passed`). Earlier desktop verification covered `npm run build`, `npm exec tauri info`, `npm run tauri:build`, and a Windows smoke launch of `src-tauri/target/release/drduc-translator-desktop.exe`. On this machine the Rust toolchain is installed under `D:\\App\\Rust`, Visual Studio Build Tools 2022 under `D:\\App\\BuildTools\\VS2022`, and the Windows SDK under `C:\\Program Files (x86)\\Windows Kits\\10`."
+    },
+    {
+      "id": "T1.9",
+      "desc": "v23.0 - Core Governance + Segment/Noise Safety Foundation",
+      "status": "IN_PROGRESS",
+      "progress": 45,
+      "details": "Implemented v23 foundations without rewriting the existing Python backbone: split TranslationMemory into tm_machine/tm_approved/tm_reviewed with machine-output guard and human-review promotion; added TraceEvent and per-segment trace_id; enriched RBMT traces and QA decision paths; added SegmentType/SegmentPacket/SegmentClassifier and pre-translation segment artifact export; added ProtectedSpanRegistry, NoiseFilter hard whitelist, ClauseSegmenter, RelationDetector, RuleClaim, RuleRegistry, and ConflictResolver. Full v23 production roadmap still needs AliasGraph, 7-pass EntityPipeline, grammar P0 transfer planner, context resolver/zero-pronoun, learning promotion gate, and metric regression gate."
     }
   ],
   "milestones": [
@@ -110,7 +117,7 @@
     }
   ],
   "meta": {
-    "last_updated": "2026-04-23T21:17:14.049519",
-    "current_phase": "08-Final"
+    "last_updated": "2026-04-27T21:50:55.892367",
+    "current_phase": "implementation"
   }
 }

@@ -10,6 +10,7 @@ import unicodedata
 from dataclasses import asdict, dataclass, field
 from pathlib import Path
 
+from src.core.trace import make_trace_id
 from src.core.luat_nhan_engine import LuatNhanEngine
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.core.trie_engine import TrieEngine
@@ -245,6 +246,7 @@ class SegmentTranslation:
     draft_text: str
     emotion: str | None
     trace: list[dict]
+    trace_id: str = ""
 
 
 @dataclass(slots=True)
@@ -314,11 +316,10 @@ class RBMTTranslator:
         segments: list[SegmentTranslation] = []
         clean_sentences: list[str] = []
         draft_sentences: list[str] = []
-        tm_entries: list[tuple[str, str, float, str, str]] = []
-
-        for span in self.segmenter.split(working_text):
+        for position, span in enumerate(self.segmenter.split(working_text)):
             tm_hit = self._lookup_tm(span.text, config=config)
             display_source = self.preserver.restore(span.text, preserved.placeholders)
+            trace_id = make_trace_id(str(config.get("active_chapter_id") or "chapter"), position, display_source)
             if tm_hit:
                 clean_text = self.preserver.restore(tm_hit["target"], preserved.placeholders)
                 draft_text = clean_text
@@ -334,6 +335,7 @@ class RBMTTranslator:
                 )
                 clean_text = self.preserver.restore(clean_text, preserved.placeholders)
                 draft_text = self.preserver.restore(draft_text, preserved.placeholders)
+                trace = self._attach_trace_metadata(trace, trace_id)
 
             self.context.update(
                 source_sentence=display_source,
@@ -342,8 +344,16 @@ class RBMTTranslator:
                 emotion=emotion,
                 genre=(config.get("genre_hints") or [None])[0],
             )
-            if self.tm:
-                tm_entries.append((display_source, clean_text, 0.92, "rbmt", "verified"))
+            if self.tm and not tm_hit:
+                self.tm.store_machine(
+                    display_source,
+                    clean_text,
+                    engine_version="rbmt",
+                    quality_score=0.92,
+                    trace_json=trace,
+                )
+            elif tm_hit:
+                trace = self._attach_trace_metadata(trace, trace_id)
 
             segment = SegmentTranslation(
                 sentence_id=span.sentence_id,
@@ -352,13 +362,11 @@ class RBMTTranslator:
                 draft_text=draft_text,
                 emotion=emotion,
                 trace=trace,
+                trace_id=trace_id,
             )
             segments.append(segment)
             clean_sentences.append(clean_text)
             draft_sentences.append(draft_text)
-
-        if self.tm and tm_entries:
-            self.tm.store_many(tm_entries)
 
         return TranslationResult(
             clean_text="\n".join(clean_sentences),
@@ -383,29 +391,59 @@ class RBMTTranslator:
             return None
         if not self.enable_tm_lookup and not bool((config or {}).get("use_translation_memory")):
             return None
-        exact = self.tm.exact_match(source_text)
-        if exact:
+        match = self.tm.lookup(source_text, threshold=0.88)
+        if match:
+            score = getattr(match, "score", None)
+            if match.status == "approved" and score is None:
+                fallback_level = "tm_approved_exact"
+                priority = 99
+                reason = "translation_memory_approved_exact"
+            elif match.status == "approved":
+                fallback_level = "tm_approved_fuzzy"
+                priority = 85
+                reason = f"translation_memory_approved_fuzzy:{score:.2f}"
+            else:
+                fallback_level = "tm_machine_suggestion"
+                priority = 70
+                reason = "translation_memory_machine_suggestion"
             return {
                 "source": source_text,
-                "selected": exact.target_text,
-                "candidates": [exact.target_text],
-                "priority": 99,
-                "fallback_level": "tm_exact",
-                "reason": "translation_memory_exact",
-                "target": exact.target_text,
-            }
-        fuzzy = self.tm.fuzzy_match(source_text, threshold=0.88)
-        if fuzzy:
-            return {
-                "source": source_text,
-                "selected": fuzzy.target_text,
-                "candidates": [fuzzy.target_text],
-                "priority": 80,
-                "fallback_level": "tm_fuzzy",
-                "reason": f"translation_memory_fuzzy:{fuzzy.score:.2f}",
-                "target": fuzzy.target_text,
+                "selected": match.target_text,
+                "candidates": [match.target_text],
+                "priority": priority,
+                "fallback_level": fallback_level,
+                "reason": reason,
+                "target": match.target_text,
             }
         return None
+
+    @staticmethod
+    def _attach_trace_metadata(traces: list[dict], trace_id: str) -> list[dict]:
+        enriched: list[dict] = []
+        for trace in traces:
+            item = dict(trace)
+            item.setdefault("trace_id", trace_id)
+            item.setdefault("stage", RBMTTranslator._stage_for_fallback(item.get("fallback_level", "")))
+            item.setdefault("action", item.get("reason", "select"))
+            priority = item.get("priority", 0)
+            if "confidence" not in item:
+                item["confidence"] = min(1.0, max(0.0, float(priority) / 100.0 if isinstance(priority, (int, float)) else 0.0))
+            enriched.append(item)
+        return enriched
+
+    @staticmethod
+    def _stage_for_fallback(fallback_level: str) -> str:
+        if fallback_level.startswith("tm_"):
+            return "translation_memory"
+        if fallback_level in {"number"}:
+            return "number_converter"
+        if fallback_level in {"project_entity"}:
+            return "entity_override"
+        if fallback_level in {"pronoun"}:
+            return "context_resolver"
+        if fallback_level in {"phrase_override", "runtime", "function_map", "reading_fallback", "ambiguous", "unresolved"}:
+            return "lexical_decode"
+        return "rbmt"
 
     def _translate_sentence(
         self,

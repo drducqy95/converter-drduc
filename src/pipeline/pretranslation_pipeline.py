@@ -6,7 +6,7 @@ from __future__ import annotations
 
 import json
 import re
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from pathlib import Path
 
 from src.core.runtime_support import RuntimeDictionaryAccessor
@@ -18,6 +18,7 @@ from src.pipeline.config_generator import ConfigGenerator
 from src.pipeline.document_importer import DocumentImporter, ImportedDocument
 from src.pipeline.entity_scanner import EntityScanner
 from src.pipeline.relationship_builder import RelationshipBuilder
+from src.pipeline.segment_classifier import SegmentClassifier
 from src.pipeline.terminology_suggester import TerminologySuggester
 
 
@@ -36,6 +37,7 @@ class PreTranslationResult:
     entities: list[dict]
     relationships: list[dict]
     config: dict
+    segments: list[dict] | None = None
 
 
 class PreTranslationPipeline:
@@ -52,6 +54,7 @@ class PreTranslationPipeline:
         self.relationship_builder = RelationshipBuilder()
         self.suggester = TerminologySuggester(db_path=db_path)
         self.config_generator = ConfigGenerator(db_path=db_path)
+        self.segment_classifier = SegmentClassifier()
         self.accessor = RuntimeDictionaryAccessor(db_path) if db_path else None
 
     def close(self):
@@ -91,7 +94,8 @@ class PreTranslationPipeline:
         chapters: list[Chapter] = []
         used_chapter_ids: set[str] = set()
 
-        # Directory import: each file = 1 chapter, NO chapter splitting
+        # Directory import: each file is one logical chapter, with the file heading
+        # kept as the chapter title when present.
         for source_file in source_files:
             imported_doc = self.importer.import_file(source_file, output_dir=project_dir)
             imported_docs.append(imported_doc)
@@ -100,14 +104,14 @@ class PreTranslationPipeline:
                 used_chapter_ids,
                 self._extract_chapter_number(source_file),
             )
-            title = self._default_chapter_title(source_file)
+            title, chapter_text = self._extract_single_file_chapter(source_file, transformed_text)
             chapters.append(
                 Chapter(
                     chapter_id=chapter_id,
                     title=title,
-                    text=transformed_text.strip(),
+                    text=chapter_text,
                     start=0,
-                    end=len(transformed_text),
+                    end=len(chapter_text),
                 )
             )
 
@@ -160,10 +164,12 @@ class PreTranslationPipeline:
         )
         config = self._merge_external_project_metadata(config, metadata_source)
         self.config_generator.write(config, project_dir)
+        segment_packets = self._build_segment_packets(chapters)
 
         self._write_json(project_dir, "working/entities/entities_suggested.json", [item.to_dict() for item in entities])
         self._write_json(project_dir, "working/relationships/relationships_suggested.json", [item.to_dict() for item in relationships])
         self._write_json(project_dir, "working/config/terminology_suggestions.json", [item.to_dict() for item in terminology])
+        self._write_json(project_dir, "working/segments/segments_classified.json", segment_packets)
 
         return PreTranslationResult(
             imported=imported,
@@ -172,6 +178,7 @@ class PreTranslationPipeline:
             entities=[item.to_dict() for item in entities],
             relationships=[item.to_dict() for item in relationships],
             config=config,
+            segments=segment_packets,
         )
 
     def _transform_text(self, text: str) -> str:
@@ -278,6 +285,18 @@ class PreTranslationPipeline:
         parts = [chapter.title.strip(), chapter.text.strip()]
         return "\n".join(part for part in parts if part).strip()
 
+    def _extract_single_file_chapter(self, source_file: Path, text: str) -> tuple[str, str]:
+        split_chapters = self.splitter.split(text)
+        if split_chapters:
+            chapter = split_chapters[0]
+            if chapter.title and not chapter.title.lower().startswith("auto split"):
+                body = chapter.text.strip()
+                if len(split_chapters) > 1:
+                    rest = [self._compose_chapter_block(item) for item in split_chapters[1:]]
+                    body = "\n\n".join(part for part in [body, *rest] if part).strip()
+                return chapter.title, body
+        return self._default_chapter_title(source_file), text.strip()
+
     @staticmethod
     def _chapter_title_for_import(title: str, source_file: Path, index: int) -> str:
         cleaned = title.strip()
@@ -311,6 +330,36 @@ class PreTranslationPipeline:
         target = Path(project_dir) / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    def _build_segment_packets(self, chapters: list[Chapter]) -> list[dict]:
+        packets: list[dict] = []
+        for chapter in chapters:
+            raw_segments = [
+                line.strip()
+                for line in self._compose_chapter_block(chapter).splitlines()
+                if line.strip()
+            ]
+            for position, segment_text in enumerate(raw_segments):
+                packet = self.segment_classifier.build_packet(
+                    segment_text,
+                    chapter_id=chapter.chapter_id,
+                    position=position,
+                    total_segments=len(raw_segments),
+                )
+                packets.append({
+                    "segment_id": packet.segment_id,
+                    "trace_id": packet.trace_id,
+                    "chapter_id": packet.chapter_id,
+                    "position": packet.position,
+                    "raw_text": packet.raw_text,
+                    "normalized_text": packet.normalized_text,
+                    "seg_type": packet.seg_type.value,
+                    "confidence": packet.confidence,
+                    "protected_spans": [asdict(span) for span in packet.protected_spans],
+                    "metadata": packet.metadata,
+                    "trace": [event.to_dict() for event in packet.trace],
+                })
+        return packets
 
     def _merge_external_project_metadata(self, config: dict, source_path: Path) -> dict:
         project_root = self._detect_external_project_root(source_path)

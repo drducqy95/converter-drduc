@@ -43,6 +43,15 @@ class QAReportGenerator:
                 "segments": len(translation_result.segments),
             },
             "issues": issues,
+            "decision_paths": [
+                {
+                    "segment_id": segment.sentence_id,
+                    "trace_id": getattr(segment, "trace_id", ""),
+                    "source_text": segment.source_text,
+                    "trace": segment.trace,
+                }
+                for segment in translation_result.segments
+            ],
         }
 
     def write(self, report: dict, project_dir: str | Path, report_stem: str = "qa_report"):
@@ -63,5 +72,8 @@ class QAReportGenerator:
             )
         if not report["issues"]:
             md_lines.append("- No issues detected.")
+        md_lines.extend(["", "## Decision Paths"])
+        for item in report.get("decision_paths", []):
+            md_lines.append(f"- {item.get('segment_id', '')} / {item.get('trace_id', '')}: {len(item.get('trace', []))} trace events")
         (reports_dir / f"{report_stem}.md").write_text("\n".join(md_lines), encoding="utf-8")
         (reports_dir / f"{report_stem}.json").write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")

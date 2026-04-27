@@ -6,7 +6,7 @@ Non-LLM translation workspace focused on `ZH -> VI` with a baseline `EN -> VI` p
 
 - Production core: Python.
 - Primary execution plan: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`.
-- Current baseline: Phase 00-07 implemented and tested; Phase 08 has a verified React shell plus Python sidecar/Tauri scaffold.
+- Current baseline: Phase 00-08 implemented and tested; v23.0 core hardening foundations are in place for TM governance, trace, segment typing, protected spans, noise safety, and grammar relation detection.
 - Test command: `python -m pytest`
 - Desktop shell build: `cd desktop && npm run build`
 
@@ -30,20 +30,24 @@ This boundary is intentional. New execution work should follow the Python plan a
 - `src/eapee/`: emotion detector, emotion state machine, pronoun resolver, expression bank.
 - `src/engine/rbmt_translator.py`: clean + draft RBMT output with ambiguity trace and TM integration.
 - `src/qa/`: terminology, pronoun, emotion, structure, untranslated, length checks, and QA reports.
-- `src/state/`: project manager, SQLite TM, candidate workflow, runtime stats, Obsidian export.
+- `src/state/`: project manager, split SQLite TM governance, candidate workflow, runtime stats, Obsidian export.
+- `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: v23 segment typing and safety foundation.
+- `src/grammar/`: v23 clause segmentation, relation detection, rule claims, registry, and conflict resolver foundation.
 - `src/en_vi/en_vi_translator.py`: phrase-first EN-VI baseline with small grammar transfer rules.
 - `src/ui/`: sidecar command protocol for the desktop app.
 - `desktop/`: React shell, Tauri scaffold, and verified web build.
 
 ## Verification
 
-- `python -m pytest` -> `98 passed`
+- `python -m pytest` -> `151 passed`
 - `cd desktop && npm run build` -> Vite production build succeeds
 - Native Tauri packaging has not been validated in this environment because Rust tooling is not installed
 
 ## Project References
 
 - Master plan: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`
+- V23 hardening plan: `plans/CONVERTER_DRDUC_V23_CORE_HARDENING_PLAN.md`
+- Architecture status: `docs/ARCHITECTURE_STATUS.md`
 - Progress tracker: `project_progress.json`
 - Desktop scaffold notes: `desktop/README.md`
 
