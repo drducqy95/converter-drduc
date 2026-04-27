@@ -4,6 +4,7 @@
 
 from __future__ import annotations
 
+import re
 from dataclasses import dataclass
 from enum import Enum
 
@@ -41,19 +42,26 @@ class Clause:
 
 
 MARKERS: list[tuple[ClauseBoundary, tuple[str, ...]]] = [
-    (ClauseBoundary.CONDITIONAL, ("如果", "若", "只要", "一旦", "除非")),
-    (ClauseBoundary.CONCESSIVE, ("虽然", "即便", "哪怕", "就算", "尽管")),
-    (ClauseBoundary.CAUSE, ("因为", "由于")),
+    (ClauseBoundary.CONDITIONAL, ("如果", "若", "若是", "只要", "一旦", "除非", "倘若", "假如")),
+    (ClauseBoundary.CONCESSIVE, ("虽然", "虽说", "即便", "即使", "哪怕", "就算", "尽管")),
+    (ClauseBoundary.CAUSE, ("因为", "由于", "鉴于", "基于")),
     (ClauseBoundary.RESULT, ("所以", "因此", "于是")),
-    (ClauseBoundary.TEMPORAL, ("当", "随后", "然后", "这时", "此时")),
+    (ClauseBoundary.TEMPORAL, ("当", "当时", "随后", "然后", "这时", "此时", "随着", "直到")),
 ]
+
+AUTO_PROTECTED_PATTERNS: tuple[tuple[str, str, int], ...] = (
+    (r"【[^】]{1,120}】", "BRACKET_ITEM", 50),
+    (r"《[^》]{1,120}》", "TITLE_OR_BOOK", 50),
+    (r"\[\d{1,2}:\d{2}(?::\d{2})?\]", "TIMESTAMP", 70),
+    (r"\b\d{1,2}:\d{2}:\d{2}\b", "TIMESTAMP", 70),
+)
 
 
 class ClauseSegmenter:
     """Split Chinese text into clauses without cutting protected content."""
 
     def segment(self, text: str, protected_spans: list[ProtectedSpan] | None = None) -> list[Clause]:
-        registry = ProtectedSpanRegistry(protected_spans or [])
+        registry = ProtectedSpanRegistry(self._auto_protected_spans(text) + list(protected_spans or []))
         boundaries: list[Boundary] = []
         quote_depth = 0
 
@@ -118,3 +126,19 @@ class ClauseSegmenter:
             clauses.append(Clause(text=tail, start=start, end=len(text), boundary=None))
         return clauses or [Clause(text=text, start=0, end=len(text), boundary=None)]
 
+    @staticmethod
+    def _auto_protected_spans(text: str) -> list[ProtectedSpan]:
+        spans: list[ProtectedSpan] = []
+        for pattern, span_type, priority in AUTO_PROTECTED_PATTERNS:
+            for match in re.finditer(pattern, text):
+                spans.append(
+                    ProtectedSpan(
+                        start=match.start(),
+                        end=match.end(),
+                        text=match.group(0),
+                        span_type=span_type,
+                        priority=priority,
+                        source="clause_segmenter_auto",
+                    )
+                )
+        return spans

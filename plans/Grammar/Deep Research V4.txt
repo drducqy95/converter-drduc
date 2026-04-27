@@ -1,0 +1,1360 @@
+Deep research v4
+# Báo cáo Hoàn thiện Research: Phân tích Gap và Bổ sung Toàn diện
+
+**Kế thừa:** deep-research-report.md (v1) + v2 + v3  
+**Phạm vi:** Phân tích thiếu sót cả 3 báo cáo + bổ sung algorithm spec + implementation guidance  
+**Ngày:** 2026-04-25
+
+-----
+
+## PHẦN 0 — Nhận xét Tổng thể về 3 Báo cáo
+
+### 0.1 Điểm mạnh chung
+
+|Hạng mục                |v1           |v2       |v3                      |
+|------------------------|-------------|---------|------------------------|
+|Đánh giá repo khách quan|✅ Tốt        |✅ Tốt    |✅ Xuất sắc              |
+|Kiến trúc 4-pack        |✅            |✅        |✅                       |
+|NER pipeline spec       |⚠️ Outline    |⚠️ Outline|✅ 7-pass                |
+|Grammar algorithm       |⚠️ Pseudo-code|⚠️ Outline|✅ Clause graph          |
+|Context resolver        |⚠️ Sơ bộ      |⚠️ Sơ bộ  |✅ Speaker + zero-pronoun|
+|TM architecture risk    |❌ Thiếu      |⚠️ Mention|✅ Tách raw/approved     |
+|Metadata DB schema      |❌ Thiếu      |✅ Đầy đủ |✅ Đầy đủ                |
+|Test governance         |⚠️ Matrix     |⚠️ Lớp    |✅ Skeleton code         |
+|Milestones              |✅ 10-12 tuần |✅ 11 tuần|✅ 16-18 tuần            |
+
+**v3 là báo cáo tốt nhất** vì: (1) đọc được code thực tế, (2) chỉ ra đúng rủi ro TM architecture, (3) có segment typing làm nền cho toàn bộ stack, (4) timeline dài hơn nhưng thực tế hơn.
+
+### 0.2 Gap hệ thống qua cả 3 báo cáo
+
+Dù v3 vượt trội, cả ba báo cáo đều có **8 nhóm thiếu sót** quan trọng:
+
+```
+GAP-R1: Segment typing algorithm chưa đủ chi tiết để implement
+GAP-R2: ClauseSegmenter chưa có spec đủ để code — chỉ có pseudo-code cao cấp
+GAP-R3: Transliteration engine — phoneme rebuild thiếu post-processing
+GAP-R4: TM raw/approved — có nêu nguyên tắc nhưng thiếu migration plan
+GAP-R5: Grammar rule priority + conflict resolution chưa có spec
+GAP-R6: Zero-pronoun detection chưa có heuristic đủ chi tiết cho truyện
+GAP-R7: Noise filter — whitelist logic chưa đủ chính xác (tránh false drop)
+GAP-R8: CI/CD và regression gating — không có spec nào đề cập chi tiết
+GAP-R9: Idiom/chengyu policy — 3 level có mention nhưng thiếu implementation
+GAP-R10: Register-aware lexical decode — mention nhưng thiếu algorithm
+GAP-R11: Performance monitoring và alerting — thiếu hoàn toàn
+GAP-R12: Corpus annotation workflow — có list data cần thu nhưng không có workflow
+```
+
+-----
+
+## PHẦN 1 — GAP-R1: Segment Typing Algorithm Chi tiết
+
+Ba báo cáo đều nêu `NARRATION / DIALOGUE / THOUGHT / SYSTEM / AUTHOR_NOTE` nhưng không có algorithm classify.
+
+### 1.1 Spec đầy đủ
+
+```python
+class SegmentType(Enum):
+    NARRATION       = "narration"     # Văn miêu tả thuần túy
+    DIALOGUE        = "dialogue"      # Lời thoại trực tiếp
+    THOUGHT         = "thought"       # Nội tâm nhân vật
+    SYSTEM_PROMPT   = "system_ui"     # UI hệ thống 【...】
+    CHAPTER_TITLE   = "chapter_title" # Tiêu đề chương
+    AUTHOR_NOTE     = "author_note"   # Ghi chú tác giả
+    FORUM_POST      = "forum"         # Lời đề từ forum
+    ADVERTISEMENT   = "ad"            # Quảng cáo/CTA
+
+class SegmentClassifier:
+    """
+    Phân loại từng đoạn văn trước khi đưa vào pipeline dịch.
+    
+    Priority (từ cao đến thấp):
+    1. Hard pattern match → immediate classify
+    2. Positional heuristics (đầu chương vs thân chương vs cuối chương)
+    3. Content heuristics
+    4. Fallback: NARRATION
+    """
+
+    # ── HARD PATTERNS (P0 — xử lý trước tất cả) ──────────────────
+    
+    CHAPTER_TITLE_PATTERNS = [
+        r"^第[零一二三四五六七八九十百千\d]+[章节回卷篇]",
+        r"^Chapter\s+\d+",
+        r"^\d+\.\s+\S",
+        r"^番外[一二三四五六七八九十]",
+    ]
+
+    SYSTEM_UI_PATTERNS = [
+        r"^【[^】]{1,100}】$",           # Full bracket line
+        r"^〖[^〗]{1,100}〗$",
+        r"^「[^」]{1,100}」$",           # Japanese-style bracket
+        r"^系统提示[:：]",
+        r"^宿主[:：]",
+        r"^\[System\]",
+    ]
+
+    AUTHOR_NOTE_PATTERNS = [
+        r"(?:^|\n)\s*[（(][Pp][Ss][:：。]",
+        r"(?:求月票|求推荐票|求收藏|求订阅|求打赏)",
+        r"(?:新书上传|新人新书)",
+        r"(?:本章完|未完待续|下章预告)",
+        r"(?:请假条|作者有话说|作者留言)",
+        r"(?:^|\n)\s*\*\*作者[:：]",
+        r"感谢.{1,20}打赏",
+        r"(?:上架|全订|万订)",
+        r"感谢书友.{1,20}(?:月票|推荐票|打赏)",
+    ]
+
+    FORUM_POST_PATTERNS = [
+        r"(?:楼主|一楼|二楼|沙发|板凳)[:：]",
+        r"(?:顶|顶一下|ddd|233+|666+|哈哈哈哈{3,})",
+        r"(?:\+1|\-1|赞|同)",
+        r"^回复.{1,15}[:：]",
+    ]
+
+    DIALOGUE_MARKERS = {
+        "open":  ["「", "『", """, "\"", "【", "—"],
+        "verbs": ["说", "道", "喊", "叫", "问", "答",
+                  "怒道", "笑道", "冷道", "喝道", "低语",
+                  "嘀咕", "暗道", "心道", "心想", "沉声道",
+                  "轻声道", "惊呼", "嘶吼"],
+    }
+
+    THOUGHT_MARKERS = [
+        "心中暗道", "心想", "心道", "脑海中", "潜意识",
+        "暗自思量", "默默想道", "在心中", "内心深处"
+    ]
+
+    # ── POSITIONAL HEURISTICS ─────────────────────────────────────
+
+    CHAPTER_END_NOISE_WINDOW = 50   # chars — last 50 chars of chapter
+
+    def classify(self, segment: str, position: SegmentPosition,
+                 chapter_end_distance: int) -> SegmentType:
+        """
+        position: SegmentPosition(chapter_start=bool, chapter_end=bool)
+        chapter_end_distance: chars from end of chapter
+        """
+
+        stripped = segment.strip()
+
+        # P0: Hard patterns
+        if self._match_any(stripped, self.CHAPTER_TITLE_PATTERNS):
+            return SegmentType.CHAPTER_TITLE
+
+        if self._match_any(stripped, self.SYSTEM_UI_PATTERNS):
+            return SegmentType.SYSTEM_PROMPT
+
+        if self._match_any(stripped, self.AUTHOR_NOTE_PATTERNS):
+            return SegmentType.AUTHOR_NOTE
+
+        if self._match_any(stripped, self.FORUM_POST_PATTERNS):
+            return SegmentType.FORUM_POST
+
+        # P1: Positional + pattern
+        if chapter_end_distance <= self.CHAPTER_END_NOISE_WINDOW:
+            if self._match_any(stripped, self.AUTHOR_NOTE_PATTERNS):
+                return SegmentType.AUTHOR_NOTE
+            # Loose: short segments at chapter end with PS/求 → author note
+            if len(stripped) < 80 and re.search(r"[求谢感]", stripped):
+                return SegmentType.AUTHOR_NOTE
+
+        # P2: Content heuristics
+        if self._is_dialogue(stripped):
+            return SegmentType.DIALOGUE
+
+        if self._is_thought(stripped):
+            return SegmentType.THOUGHT
+
+        # Fallback
+        return SegmentType.NARRATION
+
+    def _is_dialogue(self, text: str) -> bool:
+        """
+        Detect dialogue từ:
+        1. Opening marker ("「 / "" / —)
+        2. Preceding speech verb pattern: X说/X道 + ：/[quote]
+        3. Closing marker với speech verb cuối
+        """
+        has_open_marker = any(text.startswith(m) for m in self.DIALOGUE_MARKERS["open"])
+        has_speech_verb = any(v in text[:50] for v in self.DIALOGUE_MARKERS["verbs"])
+        return has_open_marker and has_speech_verb
+
+    def _is_thought(self, text: str) -> bool:
+        return any(m in text for m in self.THOUGHT_MARKERS)
+```
+
+### 1.2 Edge cases quan trọng cần test
+
+```python
+SEGMENT_TYPE_TEST_CASES = [
+    # Clear cases
+    ("【面板未开启】",                  SegmentType.SYSTEM_PROMPT),
+    ("第三百二十一章 黑夜之心",          SegmentType.CHAPTER_TITLE),
+    ("（PS：明天中午12点更新）",         SegmentType.AUTHOR_NOTE),
+    ("求月票！感谢大家支持！",           SegmentType.AUTHOR_NOTE),
+
+    # Tricky: bracket entity — NOT system UI
+    ("【奇迹之冠冕号】启动完成。",       SegmentType.NARRATION),  # bracket + narrative sentence
+    ("他激活了【蜘蛛感应】技能。",       SegmentType.NARRATION),  # bracket inside narrative
+
+    # Dialogue
+    ("李宇冷声道：'你走吧。'",          SegmentType.DIALOGUE),
+    ("她说：我不想去了。",              SegmentType.DIALOGUE),
+
+    # Thought
+    ("他心中暗道：这人到底是谁？",      SegmentType.THOUGHT),
+
+    # Ambiguous: short bracket at chapter end
+    ("【本章完】",                      SegmentType.AUTHOR_NOTE),
+
+    # Forum noise
+    ("楼主说得对！顶一下！",            SegmentType.FORUM_POST),
+]
+```
+
+-----
+
+## PHẦN 2 — GAP-R2: ClauseSegmenter Specification
+
+Cả 3 báo cáo dùng `clause_segment()` như black box. Đây là spec chi tiết.
+
+### 2.1 Định nghĩa clause boundary
+
+```python
+class ClauseBoundary(Enum):
+    SENTENCE_END     = "sentence_end"       # 。！？
+    CLAUSE_SOFT      = "clause_soft"        # ，trong điều kiện ngữ pháp
+    CLAUSE_HARD      = "clause_hard"        # ；
+    QUOTE_OPEN       = "quote_open"         # ：" / 说道
+    QUOTE_CLOSE      = "quote_close"        # " / 」
+    CONJUNCTION      = "conjunction"        # 但是/而且/所以
+    CONDITIONAL      = "conditional"        # 如果/只要/一旦
+    CONCESSIVE       = "concessive"         # 虽然/尽管/哪怕
+
+class ClauseSegmenter:
+    """
+    Tách mệnh đề có awareness về protected spans.
+    Nguyên tắc: KHÔNG tách bên trong entity, số, quote, bracket.
+    """
+
+    # Discourse frame openers — signal clause boundary BEFORE them
+    FRAME_OPENERS = {
+        # Conditional
+        "如果", "若", "要是", "倘若", "假若", "假设", "假使",
+        "只要", "只有", "一旦", "万一",
+        "除非", "若非",
+        # Concessive
+        "虽然", "尽管", "即便", "即使", "哪怕", "就算", "就是",
+        # Causal
+        "因为", "由于", "既然",
+        # Result
+        "所以", "因此", "于是", "故而", "从而",
+        # Contrast
+        "但是", "但", "然而", "却", "不过", "可是", "而",
+        # Additive
+        "而且", "并且", "同时", "另外", "况且",
+        # Sequential
+        "然后", "接着", "随后", "之后", "此后",
+        # Topic
+        "至于", "关于", "对于", "至于说", "说到",
+        # Viewpoint
+        "作为", "就…而言",
+    }
+
+    # Conjunctions that signal boundary AFTER comma
+    COMMA_BOUNDARY_TRIGGERS = {
+        "但", "却", "而", "然后", "所以", "因此", "于是",
+        "不过", "可是", "就算", "哪怕", "即便",
+    }
+
+    def segment(self, text: str,
+                protected_spans: list[ProtectedSpan]) -> list[Clause]:
+        """
+        Algorithm:
+        1. Mark protected span positions
+        2. Scan left to right
+        3. At each potential boundary:
+           a. Check if in protected span → skip
+           b. Check boundary type
+           c. Check if next token is frame opener
+           d. Decide split or keep
+        """
+        positions = self._mark_protected(text, protected_spans)
+        boundaries = []
+
+        for i, char in enumerate(text):
+            if positions[i]:  # In protected span → never split
+                continue
+
+            if char in "。！？":
+                boundaries.append((i, ClauseBoundary.SENTENCE_END))
+
+            elif char == "；":
+                boundaries.append((i, ClauseBoundary.CLAUSE_HARD))
+
+            elif char == "，":
+                # Only split comma if next content is frame opener
+                lookahead = self._peek_next_token(text, i+1, positions)
+                if lookahead in self.FRAME_OPENERS:
+                    boundaries.append((i, ClauseBoundary.CONDITIONAL
+                                        if lookahead in self.FRAME_OPENERS
+                                        else ClauseBoundary.CLAUSE_SOFT))
+                elif lookahead in self.COMMA_BOUNDARY_TRIGGERS:
+                    boundaries.append((i, ClauseBoundary.CLAUSE_SOFT))
+                # else: do not split this comma
+
+        return self._build_clauses(text, boundaries)
+```
+
+### 2.2 RelationDetector
+
+```python
+RELATION_TEMPLATES = {
+    "conditional_only_if": {
+        "trigger_zh": ["只要", "只有...才"],
+        "vi_connective": "chỉ khi",
+        "scope": "main_after",
+        "particle_drop": ["才"],
+        "example": ("只要努力，就会成功", "Chỉ khi nỗ lực mới thành công"),
+    },
+    "conditional_if": {
+        "trigger_zh": ["如果", "若", "要是", "倘若"],
+        "vi_connective": "nếu",
+        "scope": "main_after",
+        "example": ("如果他来了，我就走", "Nếu hắn đến thì ta đi"),
+    },
+    "concessive": {
+        "trigger_zh": ["虽然", "尽管", "哪怕", "即便", "就算"],
+        "vi_connective": "mặc dù / dù",
+        "pair_vi": "nhưng / vẫn / vẫn cứ",
+        "example": ("虽然失败了，但没有放弃", "Mặc dù thất bại nhưng không bỏ cuộc"),
+    },
+    "passive_bei": {
+        "trigger_zh": ["被", "叫", "让"],
+        "vi_marker": "bị/được",
+        "scope": "full_clause",
+        "example": ("他被打倒了", "Hắn bị đánh ngã"),
+    },
+    "classical_passive_wei_suo": {
+        "trigger_zh": ["为...所"],
+        "vi_marker": "bị/được ... [verb]",
+        "example": ("为众人所知", "được mọi người biết đến"),
+    },
+    "disposal_ba": {
+        "trigger_zh": ["把", "将"],
+        "vi_options": ["SVO", "đem+O+V"],
+        "decision_rule": "object_length + register",
+        "example": ("他把书放下", "Hắn đặt sách xuống"),
+    },
+    "simultaneous": {
+        "trigger_zh": ["一边...一边", "边...边"],
+        "vi_connective": "vừa...vừa",
+        "example": ("一边走一边说", "vừa đi vừa nói"),
+    },
+    "cause_result": {
+        "trigger_zh": ["因为...所以", "由于...所以", "...导致"],
+        "vi_connective": "vì...nên / do...dẫn đến",
+        "example": ("由于失误，导致失败", "Do sai lầm, dẫn đến thất bại"),
+    },
+    "viewpoint": {
+        "trigger_zh": ["作为...而言", "对于...来说", "从...角度"],
+        "vi_template": "với tư cách... / đối với...",
+        "example": ("作为队长而言，他必须冷静", "Với tư cách đội trưởng, anh phải bình tĩnh"),
+    },
+    "emphatic_even": {
+        "trigger_zh": ["连...都", "就连...也"],
+        "vi_connective": "ngay cả...cũng",
+        "example": ("就连他也不知道", "Ngay cả hắn cũng không biết"),
+    },
+}
+```
+
+-----
+
+## PHẦN 3 — GAP-R3: Transliteration Engine — Phoneme Rebuild Spec
+
+V3 nêu `translit engine v1` nhưng không spec rõ.
+
+### 3.1 Algorithm 3 stage đầy đủ
+
+```python
+class TransliterationDecisionTree:
+    """
+    Stage 1: Exact glossary lookup (METHOD C)
+    Stage 2: Phoneme-based Latin rebuild (METHOD B)
+    Stage 3: Han-Viet fallback (METHOD A)
+    """
+
+    def get_vi_form(self, zh_form: str, entity_type: str,
+                    register: str, glossary: dict) -> TranslitResult:
+
+        # ── STAGE 1: Exact lookup ─────────────────────────────────
+        if zh_form in glossary:
+            return TranslitResult(
+                vi_form=glossary[zh_form],
+                method="glossary",
+                confidence=1.0
+            )
+
+        # ── Franchise shortcut ─────────────────────────────────────
+        for franchise_db in FRANCHISE_DATABASES:
+            if zh_form in franchise_db:
+                return TranslitResult(
+                    vi_form=franchise_db[zh_form],
+                    method="franchise_glossary",
+                    confidence=0.97
+                )
+
+        # ── STAGE 2: Phoneme rebuild ───────────────────────────────
+        if self._is_phoneme_transliteration(zh_form):
+            raw = self._phoneme_rebuild(zh_form)
+            polished = self._post_process_phoneme(raw, entity_type)
+            return TranslitResult(
+                vi_form=polished,
+                method="phoneme_rebuild",
+                confidence=0.72
+            )
+
+        # ── STAGE 3: Han-Viet ─────────────────────────────────────
+        hv_form = self._han_viet_convert(zh_form, register)
+        return TranslitResult(
+            vi_form=hv_form,
+            method="han_viet",
+            confidence=0.82
+        )
+
+    def _post_process_phoneme(self, raw: str,
+                               entity_type: str) -> str:
+        """
+        Post-processing sau phoneme rebuild:
+        1. Capitalize first letter của mỗi word segment
+        2. Xử lý double vowels: aei → ai, oua → oa
+        3. Xử lý đuôi đặc trưng: -si → -si (giữ), -er → không thêm r
+        4. Người tên: Title Case
+        5. Địa điểm: Title Case
+        6. Tổ chức/faction: Title Case với "Hội/Quân/Liên minh" suffix nếu cần
+        """
+        # Remove double vowels
+        result = re.sub(r"([aeiou])\1+", r"\1", raw)
+
+        # Capitalize
+        result = result.title()
+
+        # Entity-type-specific suffix (nếu cần)
+        suffix_map = {
+            "ORG":    None,       # Giữ nguyên, không thêm suffix
+            "PERSON": None,
+            "LOC":    None,
+            "FACTION": None,
+        }
+        return result
+
+    def _is_phoneme_transliteration(self, form: str) -> bool:
+        """
+        Heuristic: Form có phải tên phiên âm nước ngoài sang Hán không?
+        
+        Indicators:
+        1. Tỷ lệ char thuộc HIGH_FREQ_TRANSLIT_SET >= 0.6
+        2. Không có nghĩa Hán phổ thông khi ghép lại
+        3. Độ dài 2-6 char
+        4. Không match common Chinese word patterns
+        """
+        if not (2 <= len(form) <= 6):
+            return False
+        if form in COMMON_ZH_WORDS:
+            return False
+        translit_ratio = sum(
+            1 for c in form if c in HIGH_FREQ_TRANSLIT_CHARS
+        ) / len(form)
+        return translit_ratio >= 0.60
+```
+
+-----
+
+## PHẦN 4 — GAP-R4: TM Architecture Migration Plan
+
+V3 nêu rủi ro đúng (RBMT output → verified TM), nhưng không có migration plan cụ thể.
+
+### 4.1 Tình trạng hiện tại và rủi ro
+
+```
+Hiện tại trong RBMTTranslator:
+  output → TM.insert(score=0.92, provenance="rbmt", status="verified")
+
+Rủi ro:
+  Lần dịch chương 1: entity sai → vào TM với "verified"
+  Lần dịch chương 2: TM lookup tìm thấy → dùng lại bản sai
+  Sau 50 chương: lỗi entity khuếch đại, không thể audit
+```
+
+### 4.2 Migration Steps
+
+```sql
+-- Bước 1: Tạo bảng mới (không đổi bảng cũ)
+CREATE TABLE tm_machine (
+    tm_id         TEXT PRIMARY KEY,
+    source_hash   TEXT,
+    source_text   TEXT,
+    target_text   TEXT,
+    score         REAL,
+    provenance    TEXT,  -- "rbmt" | "fuzzy_match" | "rule_transfer"
+    model_version TEXT,
+    created_at    DATETIME,
+    flagged       INTEGER DEFAULT 0
+);
+
+CREATE TABLE tm_approved (
+    tm_id         TEXT PRIMARY KEY,
+    source_hash   TEXT,
+    source_text   TEXT,
+    target_text   TEXT,
+    reviewer_id   TEXT,
+    approved_at   DATETIME,
+    edit_distance INTEGER,      -- so với tm_machine gốc
+    bundle_id     TEXT          -- version bundle khi approve
+);
+
+-- Bước 2: Migrate bảng cũ
+INSERT INTO tm_machine
+SELECT tm_id, source_hash, source_text, target_text,
+       score, provenance, model_version, created_at, 0
+FROM existing_tm_segments
+WHERE provenance = 'rbmt';
+
+INSERT INTO tm_approved
+SELECT tm_id, source_hash, source_text, target_text,
+       'migrated', datetime('now'), 0, 'bundle_legacy'
+FROM existing_tm_segments
+WHERE provenance = 'human';
+```
+
+```python
+# Bước 3: Thay đổi lookup logic trong RBMTTranslator
+
+class TranslationMemory:
+    def lookup(self, source_hash: str,
+               fuzzy_threshold: float = 0.88) -> TMResult | None:
+        """
+        Priority:
+        1. tm_approved exact match
+        2. tm_approved fuzzy (≥ threshold)
+        3. tm_machine exact (flagged=0, score ≥ 0.92)
+           → return với marker "machine_suggestion"
+        4. None → translate fresh
+        """
+
+    def insert_machine(self, source_hash, source, target, score, version):
+        """
+        Chỉ ghi vào tm_machine, KHÔNG ghi vào tm_approved.
+        status = "pending_review"
+        """
+
+    def promote_to_approved(self, tm_id: str, reviewer_id: str,
+                            edited_target: str | None = None):
+        """
+        Human review → promote.
+        Nếu edited_target khác bản gốc → tính edit_distance,
+        cập nhật rule candidate nếu diff pattern lặp lại >= 3 lần.
+        """
+```
+
+-----
+
+## PHẦN 5 — GAP-R5: Grammar Rule Priority + Conflict Resolution
+
+Cả 3 báo cáo list frame rules nhưng không có priority system.
+
+### 5.1 Rule Priority Registry
+
+```python
+GRAMMAR_RULE_PRIORITY = {
+    # Priority 1-9: Protected span guards (KHÔNG có rule nào override)
+    1: "entity_span_guard",
+    2: "number_unit_guard",
+    3: "system_ui_guard",
+    4: "idiom_literal_forbidden_guard",
+    5: "quote_boundary_guard",
+
+    # Priority 10-29: Structural construction (reorder lớn)
+    10: "topic_comment_frame",
+    12: "exception_frame_chule",
+    15: "viewpoint_frame_zuowei",
+    18: "conditional_only_if_zhiyao",
+    19: "conditional_if_ruguo",
+    20: "conditional_unless_chufei",
+    22: "concessive_suiran",
+    24: "concessive_napa",
+    26: "disposal_ba",
+    28: "passive_bei",
+    29: "classical_passive_wei_suo",
+
+    # Priority 30-49: Clause-internal construction
+    30: "de_modifier_inversion",
+    32: "nested_possession_chain",
+    35: "resultative_complement",
+    38: "directional_complement",
+    40: "aspect_marker_le_zhe_guo",
+    42: "simultaneous_yibian",
+    44: "serial_verb_construction",
+    46: "emphatic_even_jiulian",
+
+    # Priority 50-69: Word-level transforms
+    50: "dec_adverb_di",
+    52: "demonstrative_classifier_reorder",
+    55: "quantifier_float",
+    58: "a_not_a_question",
+    60: "discourse_linker_stack",
+
+    # Priority 70-89: Post-processing
+    70: "vi_register_polish",
+    75: "duplicate_marker_cleanup",
+    80: "negation_aspect_interaction",
+    85: "sentence_final_particle",
+
+    # Priority 90-99: Surface
+    90: "punctuation_normalize",
+    95: "capitalize_sentence_start",
+}
+
+class ConflictResolver:
+    """
+    Khi hai rules cùng claim overlapping span:
+    → Rule với priority thấp hơn (số nhỏ hơn) thắng
+    → Rule thua bị skip và ghi vào trace
+    
+    Exception: Entity guard (P1-5) luôn thắng, không exception
+    """
+
+    def resolve(self, claims: list[SpanClaim]) -> list[SpanClaim]:
+        # Sort by priority ascending
+        claims.sort(key=lambda c: c.priority)
+        
+        accepted = []
+        claimed_ranges = []
+
+        for claim in claims:
+            overlap = any(
+                self._overlaps(claim, existing)
+                for existing in claimed_ranges
+            )
+            if not overlap:
+                accepted.append(claim)
+                claimed_ranges.append(claim)
+            else:
+                # Log conflict
+                logger.debug(f"Rule {claim.rule_name} (P{claim.priority}) "
+                            f"lost span conflict to higher-priority rule")
+
+        return accepted
+```
+
+-----
+
+## PHẦN 6 — GAP-R6: Zero-Pronoun Detection Heuristics Cho Truyện
+
+Ba báo cáo mention zero pronoun nhưng chỉ v3 có pseudo-code sơ bộ. Truyện web tiếng Trung cực phổ biến zero pronoun.
+
+### 6.1 Zero-Pronoun Detection
+
+```python
+class ZeroPronounDetector:
+    """
+    Trong tiếng Trung, zero pronoun (ZP) xuất hiện khi subject/object
+    được bỏ qua hoàn toàn. Ví dụ:
+    
+    ZH: 李宇走进房间。[ZP]看了看四周。
+    VI: Lý Vũ bước vào phòng. [Hắn] nhìn xung quanh.
+    
+    Tiếng Việt thường cần điền đại từ vào, nhất là khi chuyển sang
+    câu mới. Nhưng có trường hợp không cần điền (văn học tự nhiên
+    hơn khi bỏ chủ ngữ nếu subject rõ ràng).
+    """
+
+    # Verbs thường chỉ có một subject duy nhất khả dĩ trong scene
+    SINGLE_AGENT_VERBS = {
+        "站", "坐", "走", "跑", "看", "想", "说", "叫", "拿",
+        "转身", "回头", "低头", "抬头", "皱眉", "点头", "摇头",
+    }
+
+    # Verbs thường cần điền ZP rõ ràng trong tiếng Việt
+    REQUIRES_EXPLICIT_SUBJECT_VI = {
+        "说", "道", "喊", "叫",  # Speech verbs
+        "笑", "哭", "叹息",       # Emotion expressions
+        "转身", "回头",            # Directional body movement
+    }
+
+    def detect_zp_slots(self, zh_sentence: str,
+                         entity_memory: EntitySalienceMemory,
+                         window: list[str]) -> list[ZeroPronounSlot]:
+        """
+        Returns danh sách vị trí ZP cần resolve trong câu.
+        
+        Heuristic:
+        1. Câu thiếu explicit subject
+        2. Verb trong câu thuộc known verb inventory
+        3. Có entity salient gần đây (window 3-5 câu)
+        4. Segment type = NARRATION hoặc THOUGHT (không phải DIALOGUE)
+        """
+        slots = []
+
+        # Simple heuristic: câu bắt đầu bằng VV/ADV (không có NP subject)
+        if self._starts_with_verb_or_adv(zh_sentence):
+            salient = entity_memory.get_most_salient(top_k=3)
+            if salient:
+                slots.append(ZeroPronounSlot(
+                    position=0,
+                    candidates=salient,
+                    role="SUBJECT"
+                ))
+
+        return slots
+
+    def should_insert_vi(self, slot: ZeroPronounSlot,
+                          resolved_entity: EntityRecord,
+                          vi_sentence: str) -> bool:
+        """
+        Quyết định có nên chèn đại từ VI hay không.
+        
+        CHÈN khi:
+        - Entity thay đổi so với câu trước
+        - Câu dài/phức tạp và không rõ ràng
+        - Verb thuộc REQUIRES_EXPLICIT_SUBJECT_VI
+        
+        KHÔNG CHÈN khi:
+        - Entity giống câu liền trước (tránh lặp đại từ)
+        - Văn học Việt tự nhiên bỏ chủ ngữ câu tiếp
+        - Segment type là DIALOGUE (thoại tự nhiên)
+        
+        Nguyên tắc tránh over-insertion:
+        Nếu 2 câu liên tiếp có cùng entity → chèn ở câu 1, bỏ câu 2.
+        """
+        prev_entity = self._get_prev_sentence_entity()
+        if prev_entity == resolved_entity:
+            return False  # Same entity, no need to repeat
+        return True
+```
+
+### 6.2 Pronoun Selection VI
+
+```python
+class VietnamesePronounSelector:
+    """
+    Chọn đại từ tiếng Việt phù hợp dựa trên:
+    - Entity gender/role
+    - Register/genre
+    - Relationship giữa speaker và entity
+    - Scene type
+    """
+
+    # Matrix đầy đủ: (gender, register, relationship) → pronoun
+    PRONOUN_MATRIX = {
+        # Format: (entity_gender, register, relation_to_speaker) → vi_pronoun
+        ("MALE",   "modern",   "neutral"):   "anh/hắn",
+        ("MALE",   "modern",   "intimate"):  "anh",
+        ("MALE",   "modern",   "hostile"):   "hắn/y",
+        ("MALE",   "xianxia",  "neutral"):   "hắn",
+        ("MALE",   "xianxia",  "respected"): "ngài/lão",
+        ("MALE",   "xianxia",  "hostile"):   "y/hắn",
+        ("MALE",   "classical", "neutral"):  "hắn/y",
+        ("FEMALE", "modern",   "neutral"):   "cô/cô ấy",
+        ("FEMALE", "modern",   "intimate"):  "cô",
+        ("FEMALE", "xianxia",  "neutral"):   "nàng",
+        ("FEMALE", "xianxia",  "hostile"):   "thị/y",
+        ("NEUTRAL", "scifi",   "system"):    "nó",
+        ("NEUTRAL", "scifi",   "robot"):     "nó/hắn",
+        ("GROUP",  "any",      "any"):       "họ/bọn họ/chúng",
+    }
+
+    def select(self, entity: EntityRecord, register: str,
+               relation: str, speaker: EntityRecord | None) -> str:
+        key = (entity.gender, register, relation)
+        return self.PRONOUN_MATRIX.get(key, "hắn")  # Default fallback
+```
+
+-----
+
+## PHẦN 7 — GAP-R7: Noise Filter Whitelist Logic (Tránh False Drop)
+
+V2 và V3 có noise filter nhưng whitelist logic chưa đủ chính xác. Đây là vấn đề nghiêm trọng: false drop xóa nội dung quan trọng.
+
+### 7.1 Whitelist Priority System
+
+```python
+class NoiseFilterWithSafeWhitelist:
+    """
+    Nguyên tắc: Whitelist wins over noise score.
+    Bất kỳ span nào match whitelist → KEEP, bất kể noise score.
+    """
+
+    # Tier 1 Whitelist: HARD KEEP — không bao giờ drop
+    TIER1_HARD_KEEP = [
+        lambda seg, registry: registry.has_entity(seg),      # Has known entity
+        lambda seg, registry: registry.has_system_ui(seg),   # Known system prompt
+        lambda seg, _: bool(re.match(r"^第.+章", seg)),      # Chapter title
+        lambda seg, registry: registry.is_in_glossary(seg),  # Glossary term
+    ]
+
+    # Tier 2 Whitelist: SOFT KEEP — giảm noise score mạnh
+    TIER2_SOFT_KEEP = [
+        lambda seg, _: len(seg.strip()) > 200,               # Long segment = likely story
+        lambda seg, _: any(c in seg for c in "，。！？"),    # Has Chinese punctuation = story
+        lambda seg, registry: registry.has_character_name(seg),  # Contains character name
+    ]
+
+    # Noise patterns với weight
+    NOISE_PATTERNS_WEIGHTED = [
+        (r"[（(][Pp][Ss][:：。]", 0.60, "author_ps"),
+        (r"求月票|求推荐票|求收藏",  0.70, "vote_request"),
+        (r"新书上传|新人新书",       0.80, "promo"),
+        (r"本章完$",                 0.50, "chapter_end"),
+        (r"未完待续",               0.45, "to_be_continued"),
+        (r"作者有话说[:：]",        0.65, "author_note"),
+        (r"感谢.{1,30}打赏",        0.55, "donation_thanks"),
+        (r"楼主[:：]",              0.60, "forum_post"),
+        (r"\[System\]",             0.00, "protected_system"),  # Weight 0 = not noise
+    ]
+
+    def filter(self, segment: str,
+               registry: ProtectedSpanRegistry,
+               seg_type: SegmentType) -> NoiseDecision:
+
+        # TIER 1: Hard whitelist — immediate KEEP
+        for check in self.TIER1_HARD_KEEP:
+            if check(segment, registry):
+                return NoiseDecision.KEEP
+
+        # Already classified AUTHOR_NOTE/ADVERTISEMENT → DROP
+        if seg_type in {SegmentType.AUTHOR_NOTE, SegmentType.ADVERTISEMENT}:
+            return NoiseDecision.DROP
+
+        # Compute noise score
+        score = 0.0
+        for pattern, weight, label in self.NOISE_PATTERNS_WEIGHTED:
+            if re.search(pattern, segment):
+                score += weight
+
+        # TIER 2: Soft whitelist — reduce score
+        for check in self.TIER2_SOFT_KEEP:
+            if check(segment, registry):
+                score *= 0.3  # Reduce noise score by 70%
+
+        # Decision
+        if score >= 0.80:
+            return NoiseDecision.DROP
+        elif score >= 0.45:
+            return NoiseDecision.REVIEW
+        return NoiseDecision.KEEP
+```
+
+### 7.2 Test cases — tập trung false-drop prevention
+
+```python
+NOISE_FALSE_DROP_TESTS = [
+    # MUST KEEP despite bracket (entity)
+    ("【奇迹之冠冕号】启动完成。",         NoiseDecision.KEEP),
+    ("他获得了【龙之心脏基因链】",          NoiseDecision.KEEP),
+    ("系统提示：任务完成。",               NoiseDecision.KEEP),
+
+    # MUST DROP (noise)
+    ("PS：明天更新时间不确定",             NoiseDecision.DROP),
+    ("求月票！大家多支持！",               NoiseDecision.DROP),
+    ("【新书上传，求收藏推荐】",            NoiseDecision.DROP),
+    ("本章完",                            NoiseDecision.DROP),
+
+    # REVIEW (ambiguous)
+    ("感谢书友打赏，章节今天有些晚。",     NoiseDecision.REVIEW),
+
+    # TRICKY: Short chapter-end that looks like noise but has story content
+    ("第三章 完",                         NoiseDecision.KEEP),  # Chapter marker
+    ("（本章完，下章更精彩）",             NoiseDecision.DROP),
+]
+```
+
+-----
+
+## PHẦN 8 — GAP-R8: CI/CD và Regression Gating Spec
+
+Không có báo cáo nào đề cập CI workflow. Đây là lỗ hổng nghiêm trọng cho production.
+
+### 8.1 GitHub Actions Workflow
+
+```yaml
+# .github/workflows/translation-regression.yml
+name: Translation Regression Suite
+
+on:
+  push:
+    branches: [main, develop]
+    paths:
+      - 'src/**/*.py'
+      - 'data/grammar/**'
+      - 'data/entities/**'
+  pull_request:
+    branches: [main]
+
+jobs:
+  unit-tests:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.11" }
+      - run: pip install -r requirements.txt
+      - run: python -m pytest tests/ -v --tb=short
+
+  grammar-regression:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - uses: actions/checkout@v4
+      - run: pip install -r requirements.txt
+      - name: Run grammar transfer regression
+        run: |
+          python scripts/run_regression.py \
+            --suite grammar \
+            --min-pass-rate 0.90 \
+            --fail-if-below
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        with:
+          name: grammar-regression-report
+          path: reports/grammar_regression_*.json
+
+  entity-regression:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - run: pip install -r requirements.txt
+      - name: Run entity scanner regression
+        run: |
+          python scripts/run_regression.py \
+            --suite entity \
+            --min-f1 0.88 \
+            --fail-if-below
+
+  noise-regression:
+    runs-on: ubuntu-latest
+    needs: unit-tests
+    steps:
+      - run: pip install -r requirements.txt
+      - name: Run noise filter regression
+        run: |
+          python scripts/run_regression.py \
+            --suite noise \
+            --min-precision 0.95 \
+            --max-false-drop-rate 0.02 \
+            --fail-if-below
+```
+
+### 8.2 Regression Gate Logic
+
+```python
+class RegressionGate:
+    """
+    Chặn promotion nếu regression suite fails.
+    Mọi rule update/data update phải qua gate này.
+    """
+
+    THRESHOLDS = {
+        "grammar_transfer": {"min_pass_rate": 0.90},
+        "entity_ner":       {"min_f1": 0.88, "min_precision": 0.85},
+        "entity_alias":     {"min_accuracy": 0.88},
+        "transliteration":  {"min_top1_accuracy": 0.95},
+        "noise_filter":     {"min_precision": 0.95, "max_false_drop_rate": 0.02},
+        "context_coref":    {"min_accuracy": 0.82},
+    }
+
+    def check(self, suite_name: str, results: dict) -> GateResult:
+        thresholds = self.THRESHOLDS[suite_name]
+        failures = []
+
+        for metric, threshold in thresholds.items():
+            actual = results.get(metric)
+            if actual is None:
+                failures.append(f"Missing metric: {metric}")
+            elif actual < threshold:
+                failures.append(
+                    f"{metric}: {actual:.3f} < required {threshold:.3f}"
+                )
+
+        if failures:
+            return GateResult(passed=False, failures=failures)
+        return GateResult(passed=True)
+```
+
+-----
+
+## PHẦN 9 — GAP-R9: Idiom/Chengyu Policy Implementation
+
+Ba báo cáo mention 3 levels nhưng không có implementation spec.
+
+### 9.1 Idiom Classification và Policy
+
+```python
+class IdiomPolicy(Enum):
+    LITERAL_FORBIDDEN  = "literal_forbidden"   # Không được dịch literal
+    HAN_VIET_OK        = "han_viet_ok"         # Hán-Việt OK
+    SEMANTIC_REQUIRED  = "semantic_required"   # Phải dịch nghĩa
+    ALLUSION_WITH_GLOSS = "allusion_gloss"     # Giữ + thêm nghĩa nhẹ
+
+@dataclass
+class IdiomEntry:
+    zh_form:     str
+    vi_literal:  str | None      # Bản literal nếu có (để tham khảo)
+    vi_standard: str             # Bản dịch chuẩn
+    vi_alt:      str | None      # Phương án thay thế
+    policy:      IdiomPolicy
+    register:    list[str]       # ["xianxia", "classical", "modern"]
+    note:        str | None
+
+IDIOM_LEXICON = [
+    IdiomEntry(
+        zh_form="九死一生",
+        vi_literal="chín chết một sống",
+        vi_standard="cửu tử nhất sinh",
+        vi_alt="thập tử nhất sinh / thoát chết trong gang tấc",
+        policy=IdiomPolicy.HAN_VIET_OK,
+        register=["xianxia", "classical"],
+        note="Dùng 'cửu tử nhất sinh' trong văn cổ; 'thoát chết trong gang tấc' trong hiện đại"
+    ),
+    IdiomEntry(
+        zh_form="一石二鸟",
+        vi_literal=None,
+        vi_standard="nhất tiễn hạ song điêu / một mũi tên hai đích",
+        vi_alt="một công đôi việc",
+        policy=IdiomPolicy.LITERAL_FORBIDDEN,
+        register=["modern", "xianxia"],
+        note="Tuyệt đối không dịch 'một đá hai chim' - nghĩa không tự nhiên"
+    ),
+    IdiomEntry(
+        zh_form="为众人所知",
+        vi_literal="bị mọi người sở biết",  # SAI
+        vi_standard="được mọi người biết đến",
+        vi_alt=None,
+        policy=IdiomPolicy.LITERAL_FORBIDDEN,
+        register=["any"],
+        note="Classical passive 为...所 — không dịch literal"
+    ),
+    IdiomEntry(
+        zh_form="一边...一边...",
+        vi_literal="một bên... một bên...",  # SAI
+        vi_standard="vừa... vừa...",
+        vi_alt=None,
+        policy=IdiomPolicy.LITERAL_FORBIDDEN,
+        register=["any"],
+        note="Concurrent action — phải dùng vừa...vừa"
+    ),
+]
+
+class IdiomResolver:
+    def lookup(self, span: str, register: str) -> IdiomEntry | None:
+        # Exact match
+        for entry in IDIOM_LEXICON:
+            if entry.zh_form == span and register in entry.register + ["any"]:
+                return entry
+        return None
+
+    def apply_policy(self, entry: IdiomEntry,
+                     register: str) -> str:
+        if entry.policy == IdiomPolicy.LITERAL_FORBIDDEN:
+            return entry.vi_standard
+        elif entry.policy == IdiomPolicy.HAN_VIET_OK:
+            if register in ["xianxia", "classical"]:
+                return entry.vi_standard  # Hán-Việt
+            return entry.vi_alt or entry.vi_standard  # Modern
+        elif entry.policy == IdiomPolicy.SEMANTIC_REQUIRED:
+            return entry.vi_alt or entry.vi_standard
+        return entry.vi_standard
+```
+
+-----
+
+## PHẦN 10 — GAP-R10: Register-Aware Lexical Decode
+
+Ba báo cáo mention register nhưng không có spec decode.
+
+### 10.1 Register Decision Table
+
+```python
+REGISTER_LEXICAL_MAP = {
+    # Format: (zh_token, register) → vi_form
+    # Đại từ
+    ("我", "modern"):   "tôi/mình",
+    ("我", "xianxia"):  "ta",
+    ("我", "scifi"):    "tôi",
+    ("你", "modern"):   "bạn/anh/chị",
+    ("你", "xianxia"):  "ngươi",
+    ("他", "modern"):   "anh ấy/hắn",
+    ("他", "xianxia"):  "hắn/y",
+    ("她", "modern"):   "cô ấy",
+    ("她", "xianxia"):  "nàng/thị",
+
+    # Connectives
+    ("但是", "modern"):   "nhưng",
+    ("但是", "classical"): "nhưng/song",
+    ("然而", "modern"):   "tuy nhiên",
+    ("然而", "classical"): "thế nhưng/song",
+    ("虽然", "modern"):   "mặc dù",
+    ("虽然", "xianxia"):  "tuy",
+
+    # Common verbs — register-specific nuance
+    ("死", "modern"):     "chết",
+    ("死", "xianxia"):    "chết/viên tịch/ngã xuống",
+    ("死", "classical"):  "băng hà/tử trận",
+    ("说", "modern"):     "nói",
+    ("说", "xianxia"):    "nói/đạo",
+    ("说", "classical"):  "nói/viết",
+}
+
+class RegisterAwareLexicalDecoder:
+    def decode(self, token: str, register: str,
+               trie: TrieEngine) -> str:
+        # 1. Register-specific override map
+        key = (token, register)
+        if key in REGISTER_LEXICAL_MAP:
+            return REGISTER_LEXICAL_MAP[key]
+
+        # 2. Trie lookup với register filter
+        result = trie.lookup(token, register_filter=register)
+        if result:
+            return result
+
+        # 3. Trie lookup không filter (fallback)
+        result = trie.lookup(token)
+        if result:
+            return result
+
+        # 4. Unresolved
+        return f"[[UNRESOLVED:{token}]]"
+```
+
+-----
+
+## PHẦN 11 — GAP-R11: Performance Monitoring và Alerting
+
+Không có báo cáo nào mention monitoring.
+
+### 11.1 Performance Tracking
+
+```python
+class PipelinePerformanceMonitor:
+    """
+    Track latency, throughput và memory theo từng stage.
+    Alert khi vượt budget.
+    """
+
+    STAGE_BUDGETS_MS = {
+        "segment_typing":      2.0,
+        "protected_span_mark": 3.0,
+        "entity_scanner":     15.0,
+        "clause_segmenter":    5.0,
+        "relation_detector":   5.0,
+        "grammar_transfer":   20.0,
+        "lexical_decode":      8.0,
+        "vi_realizer":         5.0,
+        "context_resolver":    8.0,
+        "noise_filter":        3.0,
+        "qa_checks":           5.0,
+        # Total budget per sentence
+        "total":              80.0,    # p50 target
+        "total_p95":         150.0,    # p95 target
+    }
+
+    def measure_stage(self, stage_name: str):
+        """Context manager decorator"""
+        start = time.perf_counter()
+        yield
+        elapsed = (time.perf_counter() - start) * 1000
+        budget = self.STAGE_BUDGETS_MS.get(stage_name, 10.0)
+        self._record(stage_name, elapsed)
+        if elapsed > budget * 1.5:  # 50% over budget = warning
+            logger.warning(f"Stage {stage_name}: {elapsed:.1f}ms > budget {budget}ms")
+        if elapsed > budget * 3.0:  # 3x over = critical alert
+            logger.error(f"CRITICAL: Stage {stage_name}: {elapsed:.1f}ms (3x budget)")
+
+    def report_chapter(self, chapter_id: str,
+                       sentence_count: int) -> dict:
+        """Per-chapter performance report"""
+        return {
+            "chapter_id": chapter_id,
+            "sentence_count": sentence_count,
+            "avg_ms_per_sentence": self._avg("total"),
+            "p95_ms_per_sentence": self._p95("total"),
+            "max_ms_per_sentence": self._max("total"),
+            "slowest_stage": self._find_slowest(),
+            "trie_hit_rate": self._trie_stats["hit_rate"],
+            "tm_hit_rate": self._tm_stats["hit_rate"],
+            "entity_resolve_rate": self._entity_stats["resolve_rate"],
+        }
+```
+
+-----
+
+## PHẦN 12 — GAP-R12: Corpus Annotation Workflow
+
+Ba báo cáo list data cần thu nhưng không có workflow cụ thể.
+
+### 12.1 Annotation Pipeline
+
+```
+BƯỚC 1: Auto-extraction từ corpus (automated)
+  ├── Chạy entity scanner → extract entity candidates
+  ├── Chạy grammar frame detector → flag sentences với construction
+  ├── Chạy noise classifier → flag noise candidates
+  └── Export: annotation_candidates.jsonl
+
+BƯỚC 2: Annotation tool (semi-automated)
+  ├── Load annotation_candidates.jsonl
+  ├── Annotator review từng candidate:
+  │   ├── Entity: confirm/reject/edit canonical + type + vi_form
+  │   ├── Grammar: confirm/reject frame label + vi_output
+  │   ├── Noise: confirm drop/keep + reason
+  │   └── Alias: connect A→B nếu same entity
+  └── Export: gold_annotations.jsonl
+
+BƯỚC 3: Quality control
+  ├── Inter-annotator agreement cho 10% sample (κ ≥ 0.75)
+  ├── Adjudication cho cases bất đồng
+  └── Final gold set
+
+BƯỚC 4: Split
+  ├── 70% → train/dev (cho tuning)
+  └── 30% → test (holdout, không dùng trong development)
+```
+
+### 12.2 Annotation Schema
+
+```python
+@dataclass
+class AnnotationRecord:
+    record_id:   str
+    source_text: str           # ZH input
+    record_type: str           # "grammar" | "entity" | "noise" | "coref"
+
+    # Grammar annotation
+    construction:    str | None  # Frame type
+    vi_output_gold:  str | None  # Correct VI output
+    vi_output_bad:   str | None  # Common wrong output (for contrastive)
+
+    # Entity annotation
+    zh_span:     str | None
+    entity_type: str | None    # PERSON/LOC/ORG/...
+    vi_form:     str | None
+    canonical:   str | None
+
+    # Metadata
+    annotator:    str
+    confidence:   float          # Annotator confidence 0-1
+    reviewed:     bool
+    source_chapter: int
+```
+
+-----
+
+## PHẦN 13 — Ma trận Thiếu sót và Ưu tiên Fix
+
+|Gap                     |Mức độ ảnh hưởng                      |Dễ fix    |Ưu tiên|
+|------------------------|--------------------------------------|----------|-------|
+|R1: Segment typing spec |🔴 Cao — mọi pipeline stage phụ thuộc  |Trung bình|**P0** |
+|R4: TM raw/approved     |🔴 Cao — rủi ro khuếch đại lỗi         |Dễ        |**P0** |
+|R7: Noise whitelist     |🔴 Cao — false drop mất nội dung       |Trung bình|**P0** |
+|R2: ClauseSegmenter     |🔴 Cao — grammar transfer depends      |Khó       |**P1** |
+|R5: Rule priority       |🟡 Trung — conflict không có resolution|Trung bình|**P1** |
+|R6: Zero-pronoun        |🟡 Trung — chất lượng context          |Trung bình|**P1** |
+|R9: Idiom policy        |🟡 Trung — sai nghĩa idiom             |Dễ        |**P1** |
+|R10: Register decode    |🟡 Trung — xưng hô sai register        |Trung bình|**P2** |
+|R3: Translit phoneme    |🟡 Trung — tên phiên âm sai            |Dễ        |**P2** |
+|R8: CI/CD               |🟢 Thấp ngắn hạn — cao dài hạn         |Trung bình|**P2** |
+|R11: Performance monitor|🟢 Thấp — operational                  |Dễ        |**P3** |
+|R12: Annotation workflow|🟢 Thấp ngắn hạn                       |Trung bình|**P3** |
+
+-----
+
+## PHẦN 14 — Kết luận và Roadmap Tổng hợp từ 3 Báo cáo
+
+### 14.1 Consensus từ 3 báo cáo (giữ nguyên)
+
+Ba báo cáo đồng thuận cao về:
+
+1. **Không viết lại** — backbone hiện tại đúng hướng
+1. **4-pack architecture** — Grammar / Entity / Context / Noise
+1. **Deterministic-first** — rule/heuristic trước, ML sau nếu cần
+1. **Trace và provenance** — mọi output phải traceable
+1. **Human-in-the-loop** — đặc biệt cho TM và entity promotion
+
+### 14.2 Thứ tự triển khai được research tổng hợp xác nhận
+
+```
+WEEK 1-2: Hardening (đồng thuận cả 3 báo cáo)
+  - Đồng bộ README/tracker/test count
+  - TẠO NGAY: tách tm_machine khỏi tm_approved [GAP-R4]
+  - Freeze trace schema
+
+WEEK 3-4: Segment typing + Noise filter [GAP-R1, R7]
+  - SegmentClassifier với 8 types
+  - NoiseFilter với whitelist tầng 1/2
+  - Protected span registry
+
+WEEK 5-8: NER + Grammar [GAP-R2, R3, R5]
+  - ClauseSegmenter với protected span awareness
+  - RelationDetector + 12 relation templates
+  - Grammar rule priority registry
+  - Entity scanner 7-pass
+  - TransliterationEngine 3-stage
+
+WEEK 9-11: Context + Idiom [GAP-R6, R9, R10]
+  - ZeroPronounDetector + ViPronounSelector
+  - IdiomLexicon + 3-level policy
+  - Register-aware lexical decode
+
+WEEK 12-14: CI/CD + Learning loop [GAP-R8, R12]
+  - GitHub Actions regression
+  - RegressionGate với thresholds
+  - Annotation workflow
+
+WEEK 15-18: Integration + Calibration [GAP-R11]
+  - Performance monitoring
+  - Chapter-level benchmark
+  - Human eval round
+  - Release candidate
+```
+
+### 14.3 Metrics tổng hợp — Definition of Done
+
+```
+GRAMMAR TRANSFER:
+  ✓ 10 P0 frames: ≥ 92% accuracy trên contrastive set
+  ✓ Không còn "một bên...một bên..." cho 一边...一边
+  ✓ Không còn "bị...chỗ..." cho 为...所...
+
+ENTITY SCANNER:
+  ✓ Span micro-F1 ≥ 88%
+  ✓ Canonical accuracy ≥ 90%
+  ✓ Transliteration top-1 ≥ 95% cho known names
+  ✓ Alias chain đúng cho 李宇↔龙尊↔超越者
+
+CONTEXT:
+  ✓ Pronoun consistency trên 5-câu window ≥ 85%
+  ✓ Zero-pronoun false insertion rate ≤ 8%
+  ✓ Speaker attribution accuracy ≥ 90%
+
+NOISE FILTER:
+  ✓ Drop precision ≥ 95%
+  ✓ False drop rate ≤ 2%
+  ✓ Entity bracket false drop = 0%
+  ✓ Residual Hanzi = 0 trong final output
+
+TM ARCHITECTURE:
+  ✓ Không có RBMT output nào trong tm_approved chưa qua human review
+  ✓ Mọi run có bundle_id traceable
+
+PERFORMANCE:
+  ✓ p50 latency ≤ 80ms/câu warm-cache
+  ✓ p95 latency ≤ 150ms/câu warm-cache
+  ✓ Zero crash trên chapter batch 500+ câu
+```
+
+-----
+
+*Research hoàn thiện v4 — Tổng hợp và bổ sung từ v1/v2/v3*  
+*Các gap bổ sung: 12 nhóm kỹ thuật cụ thể + algorithm spec + CI workflow + annotation pipeline*

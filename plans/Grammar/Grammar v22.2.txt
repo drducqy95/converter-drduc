@@ -1,0 +1,2250 @@
+Grammar v22.2
+
+# GRAMMAR_TRANSFER_PLAN_v22_FINAL_COMPLETE
+**Repo:** `converter-drduc`  
+**Kế thừa:** v22_GAP_COMPLETION + bổ sung toàn bộ phần còn thiếu  
+**Ngày:** 2026-04-25  
+**Phiên bản:** v22.1 FINAL — Complete Implementation Specification
+
+---
+
+## MỤC LỤC
+
+```
+PHẦN A — Phân tích những thiếu sót còn lại của v22.0
+PHẦN B — Named Entity Scanner: Bổ sung phần còn thiếu
+PHẦN C — Grammar Rules: Implement đầy đủ GAP-J, L, R, T + bổ sung mới
+PHẦN D — Transliteration Engine: Hoàn chỉnh Algorithm
+PHẦN E — Error Handling & Edge Cases toàn pipeline
+PHẦN F — Integration Architecture chi tiết
+PHẦN G — Performance Optimization
+PHẦN H — Data Files: Spec đầy đủ từng file
+PHẦN I — Test Suite Hoàn chỉnh (350+ cases)
+PHẦN J — Sprint Timeline chi tiết
+PHẦN K — Master Checklist Tổng hợp
+```
+
+---
+
+## PHẦN A — Phân tích thiếu sót còn lại của v22.0
+
+### A.1 — Những gì v22.0 có nhưng chưa đủ chi tiết
+
+```
+NER Pipeline:
+  - PASS 2 PatternBasedNER: TYPE 2 (Prefix-based) chưa implement
+  - PASS 3 Context Confirmation: _count_as_subject() thiếu negative case
+  - PASS 5 TransliterationEngine: METHOD B phoneme rebuild thiếu
+    post-processing (capitalize, separator)
+  - PASS 6 AliasHierarchy: conflict resolution khi confidence bằng nhau
+  - PASS 7 ReviewExporter: thiếu diff tool so sánh với glossary cũ
+
+Grammar Rules:
+  - GAP-J: `被X所V` classical passive — chưa có rule
+  - GAP-L: Projection scene — chưa có rule
+  - GAP-R: `被...所...` nested entity passive — chưa có rule
+  - GAP-T: `一边X一边Y` sci-fi context — chưa có rule
+  - rule_mei_frequency: thiếu edge cases với entity name
+  - rule_time_skip: thiếu xử lý `此后X年` / `自此之后`
+
+Number System:
+  - SSS/SS rating: thiếu context-aware (评价 vs 等级 vs standalone)
+  - Countdown: thiếu `T-X` format (sci-fi countdown style)
+  - Geometric expression: thiếu `n次方` và `平方/立方`
+
+Entity System:
+  - GAP-K alias chain: thiếu ordered-priority khi nhiều alias xuất hiện
+    cùng một context
+  - GAP-L projection: thiếu rule phân biệt
+  - GAP-X final arc alias `龙尊`: chưa có evidence collector
+  - Thiếu entity memory persistence across session (chapter batch)
+```
+
+### A.2 — Những gì v22.0 hoàn toàn thiếu (bổ sung mới)
+
+```
+GAP-NEW-1: `虽说/说是/话说` meta-discourse opener
+GAP-NEW-2: `哪怕/哪怕是` strong concession (khác với即便)
+GAP-NEW-3: `所谓` definitional frame (cái gọi là / điều gọi là)
+GAP-NEW-4: `X罢了/X而已` minimizing suffix
+GAP-NEW-5: `恰好/刚好/正好` coincidence markers
+GAP-NEW-6: `说不定/也许/或许` probability hedging
+GAP-NEW-7: `一来...二来...` enumeration structure
+GAP-NEW-8: `以防万一/以防` precaution frame
+GAP-NEW-9: `相比之下/对比之下/比起来` comparison frame
+GAP-NEW-10: `就算...也...` strong concessive conditional
+GAP-NEW-11: System log timestamp format `[HH:MM:SS]` bảo vệ
+GAP-NEW-12: `无论如何/不管怎样` regardless frame
+GAP-NEW-13: `就连X也Y` (even X does Y) — v15 có 连X都Y, thiếu `就连`
+GAP-NEW-14: `据X称/据X说/据说` evidential frame (theo X thì)
+GAP-NEW-15: `非X不可/非X莫属` necessity frame
+GAP-NEW-16: `鉴于X/有鉴于此` formal reasoning opener
+GAP-NEW-17: Quoted number trong dialogue `"三十亿"他说` — bảo vệ
+GAP-NEW-18: Ellipsis mark `……/…` handling trong system log vs narrative
+GAP-NEW-19: `由于X/因为X，所以Y/导致Y` complete cause-effect frame
+GAP-NEW-20: Nested entity possession `A的B的C` — 3 levels
+```
+
+---
+
+## PHẦN B — Named Entity Scanner: Bổ sung hoàn chỉnh
+
+### B.1 — PASS 2 bổ sung: TYPE 2 Prefix-based NER
+
+```python
+class PatternBasedNER:
+
+    # ── TYPE 2: PREFIX-BASED ──────────────────────────────────────
+    PREFIX_PATTERNS = {
+        # Tên nhân vật có prefix chức danh
+        "PERSON_TITLED": [
+            (r"(?:舰长|将军|指挥官|议长|族长|团长|队长)([^，。！？\s]{2,6})", 1),
+            (r"([^，。！？\s]{2,6})(?:舰长|将军|指挥官)", 1),
+            # Xianxia titles
+            (r"(?:道友|前辈|大人|阁下|殿下|陛下)\s*([^，。！？\s]{2,6})", 1),
+            (r"([^，。！？\s]{2,6})\s*(?:道友|前辈|大人|阁下|殿下|陛下)", 1),
+        ],
+        # Franchise entity với prefix rõ ràng
+        "FRANCHISE_ENTITY": [
+            (r"(?:漫威|DC|星战|变形金刚|生化危机)(?:的|中的)?([^，。！？\s]{2,8})", 1),
+        ],
+        # Tên hành tinh/địa điểm với prefix vị trí
+        "PLACE_PREFIXED": [
+            (r"(?:前往|到达|位于|来自|出发自)\s*([\u4e00-\u9fff]{2,8}星(?:球|系)?)", 1),
+            (r"([\u4e00-\u9fff]{2,8})\s*(?:星系|星域|星区)", 1),
+        ],
+        # System/tech entity với prefix
+        "SYSTEM_ENTITY": [
+            (r"(?:使用|激活|装备|携带|持有|获得)\s*【([^】]{2,20})】", 1),
+            (r"(?:解锁|升级|点化|进阶)\s*([\u4e00-\u9fff]{2,10})", 1),
+        ],
+    }
+
+    def _scan_prefix(self, text: str, chapter: int) -> list[EntityCandidate]:
+        candidates = []
+        for entity_type, patterns in self.PREFIX_PATTERNS.items():
+            for pattern, group_idx in patterns:
+                for m in re.finditer(pattern, text):
+                    name = m.group(group_idx)
+                    if len(name) >= 2:
+                        candidates.append(EntityCandidate(
+                            form=name.strip(),
+                            type=entity_type,
+                            source="prefix_pattern",
+                            chapter=chapter,
+                            confidence=0.72
+                        ))
+        return candidates
+
+    # ── TYPE 6: REPEATED SUBJECT DETECTION ───────────────────────
+    # Cụm xuất hiện ≥ 3 lần là subject trong đoạn văn → likely entity
+    def _scan_repeated_subject(self, text: str, chapter: int,
+                                min_count: int = 3) -> list[EntityCandidate]:
+        """
+        Tách câu, lấy subject candidate (NP đứng đầu câu trước verb),
+        đếm tần suất, nếu ≥ min_count → add candidate.
+        """
+        sentence_starts = re.findall(
+            r"(?:^|[。！？\n])([^，。！？\n]{2,8})(?:是|有|将|会|走|站|看|说|道|喊|叫)",
+            text
+        )
+        counter = Counter(sentence_starts)
+        candidates = []
+        for form, count in counter.items():
+            if count >= min_count and len(form) >= 2:
+                candidates.append(EntityCandidate(
+                    form=form,
+                    type="REPEATED_SUBJECT",
+                    source="frequency_subject",
+                    chapter=chapter,
+                    confidence=0.60 + min(count * 0.05, 0.25)
+                ))
+        return candidates
+```
+
+### B.2 — PASS 3 bổ sung: Negative Context Penalties
+
+```python
+class ContextConfirmationPass:
+
+    # Common words không bao giờ là entity
+    COMMON_WORD_BLACKLIST = {
+        # Verbs
+        "知道", "明白", "感觉", "觉得", "认为", "希望", "相信",
+        "需要", "可以", "应该", "必须", "愿意", "同意", "拒绝",
+        # Adjectives
+        "强大", "聪明", "美丽", "危险", "重要", "简单", "复杂",
+        "特殊", "普通", "正常", "奇怪", "可怕", "厉害",
+        # Abstract nouns
+        "问题", "情况", "方式", "方法", "原因", "结果", "过程",
+        "时间", "地方", "事情", "消息", "信息", "数据", "能力",
+        # Sci-fi generic
+        "系统", "任务", "奖励", "等级", "能量", "攻击", "防御",
+        "技能", "装备", "武器", "战斗", "战力",
+    }
+
+    # Patterns thường xuyên xuất hiện KHÔNG phải entity dù có suffix
+    FALSE_POSITIVE_PATTERNS = [
+        r"^[\d]+[级品阶]$",          # Thuần số + rank suffix
+        r"^[这那此彼][\u4e00-\u9fff]",  # Demonstrative + noun
+        r"^[很非常极]",              # Degree adverb đầu
+        r"^[的地得]",               # Particles
+        r"^[了着过]",               # Aspect markers
+    ]
+
+    def _apply_penalties(self, candidate: EntityCandidate,
+                         text: str) -> float:
+        score = candidate.confidence
+
+        # Blacklist check
+        if candidate.form in self.COMMON_WORD_BLACKLIST:
+            return 0.0  # Hard reject
+
+        # False positive pattern check
+        for fp_pattern in self.FALSE_POSITIVE_PATTERNS:
+            if re.match(fp_pattern, candidate.form):
+                score -= 0.40
+
+        # Single char penalty
+        if len(candidate.form) == 1:
+            score -= 0.80
+
+        # Too generic (only suffix, no specific prefix)
+        if candidate.form in {"军团", "舰队", "文明", "帝国", "组织"}:
+            score -= 0.30
+
+        # Preceded by 一个/一名/一位 → likely common noun not proper
+        generic_det = rf"(?:一个|一名|一位|一只|一条)\s*{re.escape(candidate.form)}"
+        if re.search(generic_det, text):
+            score -= 0.20
+
+        return max(score, 0.0)
+```
+
+### B.3 — PASS 5 bổ sung: Phoneme Rebuild Post-processing
+
+```python
+class TransliterationEngine:
+
+    def _phoneme_rebuild(self, form: str) -> str:
+        """
+        Phiên âm ngược từ Hán sang Latin approximate.
+        
+        Rules:
+        1. Ghép phoneme từng chữ
+        2. Title-case toàn từ
+        3. Xử lý các suffix đặc biệt
+        4. Gộp nguyên âm cuối + đầu để tránh double vowel
+        """
+        phonemes = []
+        for char in form:
+            p = self.TRANSLIT_PHONEME_MAP.get(char, "")
+            if p:
+                phonemes.append(p)
+            else:
+                # Unknown char → dùng pinyin approximation
+                phonemes.append(char)
+
+        if not phonemes:
+            return form
+
+        # Post-process: gộp và capitalize
+        result = "".join(phonemes)
+
+        # Xử lý double vowel (aei → ai, oua → oa)
+        result = re.sub(r"([aeiou])\1+", r"\1", result)
+
+        # Capitalize đúng cách
+        return result.title()
+
+    def _is_transliteration(self, form: str) -> bool:
+        """
+        Phát hiện xem span có phải là tên phiên âm không.
+        
+        Heuristics:
+        1. Không có nghĩa khi ghép lại (kiểm tra trong từ điển thông dụng)
+        2. Kết hợp các phoneme phổ biến dùng cho phiên âm
+        3. Không match common Chinese word patterns
+        4. Độ dài 2-5 chữ
+        """
+        if len(form) < 2 or len(form) > 6:
+            return False
+        if form in self.COMMON_WORD_BLACKLIST:
+            return False
+
+        # Đếm số chars thuộc phoneme high-frequency set
+        HIGH_FREQ_TRANSLIT = set(self.TRANSLIT_PHONEME_MAP.keys())
+        translit_ratio = sum(1 for c in form if c in HIGH_FREQ_TRANSLIT) / len(form)
+        return translit_ratio >= 0.6
+
+    def get_vi_form(self, entity: EntityCandidate,
+                    glossary: dict,
+                    register: str = "modern") -> str:
+        """
+        Unified entry point:
+        - Kiểm tra glossary trước
+        - Quyết định METHOD A/B/C
+        - Apply register rules
+        """
+        form = entity.form
+
+        # METHOD C: Glossary (highest priority)
+        if form in glossary:
+            return glossary[form]
+
+        # Sci-fi franchise lookup
+        for franchise_dict in [
+            self.MARVEL_GLOSSARY, self.DC_GLOSSARY,
+            self.STARWARS_GLOSSARY, self.TRANSFORMERS_GLOSSARY
+        ]:
+            if form in franchise_dict:
+                return franchise_dict[form]
+
+        # METHOD B: Transliteration
+        if form in self.TRANSLIT_CHAR_MAP:
+            return self.TRANSLIT_CHAR_MAP[form]
+        if self._is_transliteration(form):
+            rebuilt = self._phoneme_rebuild(form)
+            return rebuilt
+
+        # METHOD A: Han-Viet
+        return self._hanviet_convert(form, register)
+
+    def _hanviet_convert(self, form: str, register: str) -> str:
+        """
+        Chuyển đổi Hán → Hán Việt.
+        
+        Register-aware:
+        - xianxia: giữ nguyên Hán Việt (Lâm Động, Tu Vi)
+        - sci-fi modern: có thể semantic-translate nếu tên chức danh
+        - classical: Hán Việt thuần
+        """
+        # Dùng table lookup đã có trong dict
+        # Fallback: transliterate từng chữ theo bảng Hán Việt
+        result = []
+        for char in form:
+            hv = HAN_VIET_TABLE.get(char, char)
+            result.append(hv)
+        return " ".join(result).title()
+```
+
+### B.4 — PASS 6 bổ sung: Conflict Resolution đầy đủ
+
+```python
+class AliasHierarchyResolver:
+
+    def resolve_conflicts(self, edges: list[AliasEdge]) -> list[AliasEdge]:
+        """
+        Khi alias A→B và alias A→C xuất hiện cùng lúc:
+        1. Nếu B và C là cùng loại (cả hai là EVOLUTION) → giữ cả hai
+           như parallel evolution state
+        2. Nếu confidence khác nhau → keep higher
+        3. Nếu confidence bằng nhau → keep later chapter (more recent)
+        4. Nếu một là EVOLUTION và một là NICKNAME → keep cả hai,
+           với priority EVOLUTION > NICKNAME cho canonical lookup
+        
+        Special case: Multi-level protagonist alias
+        李宇 → 龙尊 → 超越者 → 圣·天尊
+        Tất cả point về canonical 李宇 (first seen name)
+        """
+        # Group by alias target
+        by_alias: dict[str, list[AliasEdge]] = defaultdict(list)
+        for edge in edges:
+            by_alias[edge.alias].append(edge)
+
+        resolved = []
+        for alias, competing in by_alias.items():
+            if len(competing) == 1:
+                resolved.append(competing[0])
+            else:
+                # Multiple canonical forms for same alias
+                # Sort by: confidence DESC, chapter DESC
+                competing.sort(key=lambda e: (e.confidence, e.chapter_first),
+                               reverse=True)
+                # Keep best, mark others as secondary
+                best = competing[0]
+                best.is_primary = True
+                resolved.append(best)
+                for secondary in competing[1:]:
+                    secondary.is_primary = False
+                    secondary.conflict_with = best.canonical
+                    resolved.append(secondary)
+
+        return resolved
+
+    def build_protagonist_chain(self,
+                                 aliases: dict[str, str],
+                                 protagonist_seed: dict) -> dict:
+        """
+        Xây dựng alias chain đặc biệt cho nhân vật chính.
+        
+        Input protagonist_seed:
+        {
+            "李宇": {"type": "PERSON", "role": "protagonist"},
+            "aliases": ["龙尊", "超越者", "圣·天尊", "一号", "一号分身的本体"]
+        }
+        
+        Output:
+        Mọi alias đều resolve về 李宇 với VI form "Lý Vũ"
+        """
+        canonical = protagonist_seed["canonical"]
+        vi_form = protagonist_seed["vi_form"]
+        result = {canonical: vi_form}
+        for alias in protagonist_seed.get("aliases", []):
+            result[alias] = vi_form
+        return result
+```
+
+### B.5 — PASS 7 bổ sung: Diff Tool và Session Persistence
+
+```python
+class ReviewExporter:
+
+    def export_with_diff(self, records: list[EntityRecord],
+                         existing_glossary_path: str,
+                         output_path: str):
+        """
+        So sánh glossary mới với glossary cũ (nếu có).
+        Output thêm file: changes.md với danh sách thêm/sửa/xóa.
+        """
+        old_glossary = {}
+        if os.path.exists(existing_glossary_path):
+            with open(existing_glossary_path) as f:
+                old_glossary = json.load(f)
+
+        new_glossary = {r.canonical: r.vi_form
+                        for r in records if r.confidence >= 0.85}
+
+        added   = {k: v for k, v in new_glossary.items()
+                   if k not in old_glossary}
+        removed = {k: v for k, v in old_glossary.items()
+                   if k not in new_glossary}
+        changed = {k: (old_glossary[k], new_glossary[k])
+                   for k in new_glossary
+                   if k in old_glossary and old_glossary[k] != new_glossary[k]}
+
+        with open(f"{output_path}/changes.md", "w") as f:
+            f.write(f"# Glossary Changes\n\n")
+            f.write(f"## Added ({len(added)})\n")
+            for k, v in sorted(added.items()):
+                f.write(f"- `{k}` → `{v}`\n")
+            f.write(f"\n## Removed ({len(removed)})\n")
+            for k, v in sorted(removed.items()):
+                f.write(f"- `{k}` (was `{v}`)\n")
+            f.write(f"\n## Changed ({len(changed)})\n")
+            for k, (old, new) in sorted(changed.items()):
+                f.write(f"- `{k}`: `{old}` → `{new}`\n")
+
+class EntityMemoryStore:
+    """
+    Lưu trữ entity memory persistent qua các chapter batch.
+    Dùng SQLite để đảm bảo không mất data giữa các lần chạy.
+    """
+
+    def __init__(self, db_path: str):
+        self.conn = sqlite3.connect(db_path)
+        self._init_schema()
+
+    def _init_schema(self):
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS entities (
+                canonical TEXT PRIMARY KEY,
+                vi_form TEXT,
+                entity_type TEXT,
+                confidence REAL,
+                first_chapter INTEGER,
+                last_chapter INTEGER,
+                chapter_count INTEGER,
+                aliases TEXT,  -- JSON array
+                sources TEXT   -- JSON array
+            )
+        """)
+        self.conn.execute("""
+            CREATE TABLE IF NOT EXISTS alias_map (
+                alias TEXT PRIMARY KEY,
+                canonical TEXT,
+                alias_type TEXT,
+                confidence REAL
+            )
+        """)
+        self.conn.commit()
+
+    def upsert_entity(self, record: EntityRecord):
+        existing = self.conn.execute(
+            "SELECT * FROM entities WHERE canonical = ?",
+            (record.canonical,)
+        ).fetchone()
+
+        if existing:
+            # Update: tăng chapter count, update last chapter
+            self.conn.execute("""
+                UPDATE entities SET
+                    last_chapter = MAX(last_chapter, ?),
+                    chapter_count = chapter_count + 1,
+                    confidence = MAX(confidence, ?)
+                WHERE canonical = ?
+            """, (record.first_chapter, record.confidence, record.canonical))
+        else:
+            self.conn.execute("""
+                INSERT INTO entities VALUES (?,?,?,?,?,?,?,?,?)
+            """, (
+                record.canonical, record.vi_form, record.type,
+                record.confidence, record.first_chapter, record.first_chapter,
+                1, json.dumps(record.aliases), json.dumps(record.sources)
+            ))
+        self.conn.commit()
+
+    def get_alias(self, form: str) -> str | None:
+        """Tra cứu alias → canonical → vi_form"""
+        row = self.conn.execute(
+            "SELECT canonical FROM alias_map WHERE alias = ?", (form,)
+        ).fetchone()
+        if not row:
+            return None
+        canonical = row[0]
+        entity = self.conn.execute(
+            "SELECT vi_form FROM entities WHERE canonical = ?", (canonical,)
+        ).fetchone()
+        return entity[0] if entity else None
+```
+
+---
+
+## PHẦN C — Grammar Rules: Implement đầy đủ phần còn thiếu
+
+### C.1 — GAP-J: `为...所...` và `被X所V` Classical Passive
+
+```python
+# File: src/grammar/transfer_rules/rule_wei_suo_passive.py
+
+WEI_SUO_PATTERNS = [
+    # 为X所V (classical: bị X làm V)
+    # 为众人所知 → được mọi người biết đến
+    # 为敌军所俘 → bị quân địch bắt giữ
+    {
+        "pattern": r"为([\u4e00-\u9fff]{1,8})所([\u4e00-\u9fff]{1,4})",
+        "type": "wei_suo",
+        "template": "{patient} bị/được {agent} {verb}",
+    },
+    # 被X所V (mixed classical-modern)
+    # 被历史所铭记 → được lịch sử ghi nhớ
+    # 被命运所捉弄 → bị số phận đùa giỡn
+    {
+        "pattern": r"被([\u4e00-\u9fff]{1,8})所([\u4e00-\u9fff]{1,4})",
+        "type": "bei_suo",
+        "template": "{patient} bị/được {agent} {verb}",
+    },
+]
+
+def rule_wei_suo_passive(construction, nodes, vi_tokens):
+    """
+    为/被 + AGENT + 所 + V
+
+    Decision bị vs được:
+    - Dùng sentiment_lexicon của V (kế thừa từ BEI rule)
+    - 为X所知/所见/所称 → được (positive)
+    - 为X所杀/所俘/所困 → bị (negative)
+    
+    VI output:
+    为众人所知 → được mọi người biết đến
+    为命运所捉弄 → bị số phận đùa giỡn
+    被历史所铭记 → được lịch sử ghi nhớ
+    
+    Xử lý 所:
+    - 所 không được dịch (là marker cú pháp, không có nghĩa độc lập)
+    - Mark 所 as skip_lexical
+    """
+    wei_idx = construction.marker_idx
+    suo_idx = construction.suo_idx
+    agent_span = construction.agent_span
+    verb_idx = construction.verb_idx
+
+    v_form = nodes[verb_idx].form
+    v_sentiment = sentiment_lexicon.get(v_form, Sentiment.NEUTRAL)
+    passive_marker = "được" if v_sentiment == Sentiment.POSITIVE else "bị"
+
+    result = list(vi_tokens)
+    # 为/被 → passive marker
+    result[wei_idx] = VIToken(passive_marker)
+    # 所 → skip
+    result[suo_idx] = VIToken("", skip=True)
+
+    return result, GrammarTrace(
+        rule="wei_suo_passive",
+        action=f"classical_passive_{passive_marker}",
+        source_span=(wei_idx, verb_idx)
+    )
+
+
+# Tests
+WEI_SUO_TESTS = [
+    ("为众人所知",         "được mọi người biết đến",       "wei_suo_positive"),
+    ("为命运所捉弄",       "bị số phận đùa giỡn",          "wei_suo_negative"),
+    ("被历史所铭记",       "được lịch sử ghi nhớ",          "bei_suo_positive"),
+    ("为敌军所俘",         "bị quân địch bắt giữ",          "wei_suo_captured"),
+    ("不愿为权势所压迫",   "không muốn bị quyền thế áp bức", "wei_suo_negative_negated"),
+    ("终于为天下人所承认", "cuối cùng được thiên hạ công nhận", "wei_suo_finally"),
+]
+```
+
+### C.2 — GAP-L: Projection/Communication Scene
+
+```python
+# File: src/grammar/transfer_rules/rule_projection_scene.py
+
+PROJECTION_INDICATORS = [
+    "远程投影", "全息投影", "虚拟投影", "影像",
+    "屏幕上", "投影仪", "远程会议", "通话",
+    "连线", "视频通话", "传音", "传讯",
+]
+
+PHYSICAL_PRESENCE_INDICATORS = [
+    "亲自", "本人", "现身", "到场", "出席",
+    "进入会议室", "走进", "站在",
+]
+
+class ProjectionSceneDetector:
+    """
+    Phân biệt nhân vật hiện diện vật lý vs xuất hiện qua màn hình/hologram.
+    
+    Tại sao quan trọng:
+    - Physical: "他走向XXX握手" → thực sự bắt tay
+    - Projection: "他的投影走向XXX" → không thực sự
+    - Ảnh hưởng đến dịch verb: "握手" → "bắt tay" vs "như thể bắt tay"
+    
+    Scope: paragraph-level detection
+    """
+
+    def detect_scene_type(self, paragraph: str) -> str:
+        """Returns: "physical" | "projection" | "mixed" | "unknown" """
+        proj_score = sum(1 for ind in PROJECTION_INDICATORS
+                         if ind in paragraph)
+        phys_score = sum(1 for ind in PHYSICAL_PRESENCE_INDICATORS
+                         if ind in paragraph)
+        if proj_score > 0 and phys_score == 0:
+            return "projection"
+        elif phys_score > 0 and proj_score == 0:
+            return "physical"
+        elif proj_score > 0 and phys_score > 0:
+            return "mixed"
+        return "unknown"
+
+    def annotate_entities(self, paragraph: str,
+                          entities: list[str]) -> dict[str, str]:
+        """
+        Trả về dict entity → presence_type
+        "第一时间双方都没有说话" trong projection scene:
+        → biết đây là projection → không dịch action verbs theo nghĩa literal
+        """
+        scene = self.detect_scene_type(paragraph)
+        result = {}
+        for entity in entities:
+            if entity in paragraph:
+                if f"{entity}的投影" in paragraph or f"{entity}的影像" in paragraph:
+                    result[entity] = "projection"
+                else:
+                    result[entity] = scene if scene != "unknown" else "physical"
+        return result
+
+PROJECTION_VERB_MAP = {
+    # Khi entity là projection → dùng verb nhẹ hơn hoặc thêm marker
+    "physical_to_projection": {
+        "走向": "hình chiếu tiến về phía",
+        "握手": "như thể bắt tay",
+        "拥抱": "như thể ôm",
+        "站在": "hiện diện (qua hình chiếu) tại",
+    }
+}
+```
+
+### C.3 — GAP-R: `被...所...` Nested Entity Passive (Sci-fi)
+
+```python
+# Extend rule_bei_passive.py với sci-fi nested pattern
+
+SCIFI_PASSIVE_PATTERNS = [
+    # 系统被XX控制 (system controlled by XX)
+    {
+        "pattern": r"([\u4e00-\u9fff]{2,8})被([\u4e00-\u9fff]{2,8})(?:所)?控制",
+        "vi": "{patient} bị {agent} kiểm soát",
+    },
+    # 数据被...覆盖/篡改/加密
+    {
+        "pattern": r"(数据|信息|系统|网络)被([\u4e00-\u9fff]{2,8})(?:所)?(覆盖|篡改|加密|入侵|破解)",
+        "vi": "{patient} bị {agent} {verb}",
+        "verb_map": {
+            "覆盖": "phủ đè", "篡改": "giả mạo/sửa đổi",
+            "加密": "mã hóa", "入侵": "xâm nhập",
+            "破解": "giải mã/bẻ khóa",
+        }
+    },
+    # 【X】被激活/封印/解除
+    {
+        "pattern": r"【([^】]+)】被(激活|封印|解除|压制|摧毁)",
+        "vi": "[{item}] bị/được {verb}",
+        "verb_sentiment": {
+            "激活": "positive", "解除": "positive",
+            "封印": "negative", "压制": "negative", "摧毁": "negative",
+        }
+    },
+]
+
+# Tests
+SCIFI_PASSIVE_TESTS = [
+    ("系统被敌方入侵了",          "hệ thống bị địch phương xâm nhập rồi",     "sci_fi_system_invaded"),
+    ("数据被加密处理",             "dữ liệu bị mã hóa xử lý",                 "data_encrypted"),
+    ("【死星】被全面激活",         "[Death Star] được kích hoạt toàn diện",     "artifact_activated"),
+    ("【共生殖装】被强制压制",     "[Thực Trang Cộng Sinh] bị cưỡng chế áp chế","symbiote_suppressed"),
+    ("为黑暗力量所侵染",          "bị lực lượng đen tối xâm nhiễm",           "wei_suo_scifi"),
+]
+```
+
+### C.4 — GAP-T: `一边X一边Y` Sci-fi Context
+
+```python
+# Extend rule_concurrent_action.py với sci-fi/system context
+
+CONCURRENT_SCIFI_PATTERNS = {
+    # Standard
+    "standard": {
+        "pattern": r"一边([^一边，。！？]{2,20})一边([^，。！？]{2,20})",
+        "vi": "vừa {V1} vừa {V2}",
+        "example": "一边走一边想 → vừa đi vừa nghĩ",
+    },
+    # System/tech (parallel processes)
+    "system_parallel": {
+        "pattern": r"一边((?:分析|处理|扫描|计算|同步|加载)[^，。]{0,10})一边((?:分析|处理|扫描|计算|同步|加载)[^，。]{0,10})",
+        "vi": "vừa {V1} vừa {V2}",  # Same as standard
+        "example": "一边扫描一边传输数据 → vừa quét vừa truyền dữ liệu",
+    },
+    # Combat concurrent
+    "combat_concurrent": {
+        "pattern": r"一边((?:攻击|防御|闪躲|反击)[^，。！]{0,15})一边([^，。！]{2,20})",
+        "vi": "vừa {V1} vừa {V2}",
+        "example": "一边攻击一边后退 → vừa tấn công vừa rút lui",
+    },
+    # 一边V，一边V pattern với dấu phẩy giữa
+    "with_comma": {
+        "pattern": r"一边([^，。！？]{2,20})，一边([^，。！？]{2,20})",
+        "vi": "vừa {V1} vừa {V2}",
+    },
+    # Thiếu trong v22.0: Đây variant 边V边V (không có 一)
+    "bianbianV": {
+        "pattern": r"边([\u4e00-\u9fff]{1,8})边([\u4e00-\u9fff]{1,8})",
+        "vi": "vừa {V1} vừa {V2}",
+        "example": "边走边想 → vừa đi vừa nghĩ",
+    },
+}
+
+# Tests
+CONCURRENT_TESTS = [
+    ("一边扫描一边传输数据",     "vừa quét vừa truyền dữ liệu",          "system_parallel"),
+    ("一边攻击，一边后退",       "vừa tấn công vừa rút lui",              "combat_comma"),
+    ("边走边想",                "vừa đi vừa nghĩ",                      "bianbian_short"),
+    ("一边处理任务一边分析威胁", "vừa xử lý nhiệm vụ vừa phân tích mối đe dọa", "system_complex"),
+    ("一边燃烧源质一边感知宇宙", "vừa đốt cháy nguyên chất vừa cảm nhận vũ trụ", "cultivation_concurrent"),
+]
+```
+
+---
+
+## PHẦN D — Grammar Rules: 20 GAP mới (GAP-NEW-1 đến GAP-NEW-20)
+
+### D.1 — GAP-NEW-1: `虽说/说是/话说` Meta-discourse
+
+```python
+META_DISCOURSE_OPENERS = {
+    "虽说":     "tuy rằng / mặc dù nói là",
+    "说是":     "nói là / gọi là",
+    "话说":     "nói về / mà nói đến",
+    "说起来":   "nói đến thì",
+    "说实话":   "nói thật ra",
+    "说白了":   "nói thẳng ra",
+    "说到底":   "nói cho cùng / suy cho cùng",
+    "换句话说": "nói cách khác",
+    "也就是说": "tức là / nghĩa là",
+}
+
+# Rule: Các opener này thường đứng đầu câu
+# 虽说强大，但也有弱点 → tuy rằng mạnh, nhưng cũng có điểm yếu
+# 话说，这里本来是...  → mà nói đến thì, nơi này vốn là...
+```
+
+### D.2 — GAP-NEW-2: `哪怕/哪怕是` Strong Concession
+
+```python
+NA_PA_PATTERNS = {
+    "哪怕": {
+        "vi": "dù / dù cho",
+        "pair": ["也", "都", "仍然", "还是"],
+        "pair_vi": "cũng / vẫn",
+        "example": "哪怕失败了，也要坚持 → dù thất bại, cũng phải kiên trì",
+    },
+    "哪怕是": {
+        "vi": "dù chỉ là / dù chỉ",
+        "example": "哪怕是一秒钟都很珍贵 → dù chỉ là một giây cũng rất quý giá",
+    },
+    # Phân biệt với 即便 (v22.0 đã có):
+    # 哪怕 = mạnh hơn, thường chứa element extreme
+    # 即便 = neutral concession
+    "disambiguation": "哪怕 > 即便 > 就算 > 即使 (degree of concession)",
+}
+```
+
+### D.3 — GAP-NEW-3: `所谓` Definitional Frame
+
+```python
+SUO_WEI_RULE = {
+    "pattern": r"所谓的?([\u4e00-\u9fff\w]{2,10})[，,]?(?:就是|即|是指|指的是)?",
+    "vi_templates": {
+        "followed_by_definition": "cái gọi là {X}, [definition]",
+        "standalone":             "cái gọi là {X}",
+        "ironic":                 "cái họ gọi là {X}",
+    },
+    "examples": {
+        "所谓的规则": "cái gọi là quy tắc",
+        "所谓天道，即为规则": "cái gọi là Thiên Đạo, tức là quy tắc",
+        "所谓超越者，就是...": "cái gọi là Siêu Việt Giả, chính là...",
+    },
+    "irony_detection": "Nếu context có 讽刺/嘲讽 → dùng 'cái gọi là' (giọng mỉa)",
+}
+```
+
+### D.4 — GAP-NEW-4: `X罢了/X而已` Minimizing Suffix
+
+```python
+MINIMIZING_SUFFIX_MAP = {
+    "罢了": "thôi / chỉ vậy thôi / chẳng qua là",
+    "而已": "thôi / mà thôi / chỉ vậy",
+    "而已罢了": "chỉ vậy thôi",
+    "不过如此": "chỉ vậy thôi / không hơn gì",
+    "如此而已": "chỉ như vậy thôi",
+}
+
+# Rule:
+# V/ADJ + 罢了 → V/ADJ + thôi  (cuối câu)
+# 只是 + [clause] + 罢了 → chỉ là + [clause] + thôi
+# Example:
+# 不过是个小把戏罢了 → chỉ là một trò nhỏ thôi
+# 他只是在试探而已 → hắn chỉ đang thử thôi
+```
+
+### D.5 — GAP-NEW-5: `恰好/刚好/正好` Coincidence Markers
+
+```python
+COINCIDENCE_MAP = {
+    "恰好": "vừa hay / đúng lúc / tình cờ",
+    "刚好": "vừa vặn / vừa đúng",
+    "正好": "vừa hay / đúng lúc",
+    "恰巧": "tình cờ thay",
+    "碰巧": "tình cờ",
+    "巧了": "thật trùng hợp / thật may",
+    "凑巧": "tình cờ / may mắn thay",
+}
+
+# Rule: các marker này đứng trước VP
+# 恰好他也在那里 → Vừa hay hắn cũng ở đó
+# 刚好三枚丹药 → Vừa vặn ba viên đan dược
+```
+
+### D.6 — GAP-NEW-6: `说不定/也许/或许` Probability Hedging
+
+```python
+PROBABILITY_HEDGE_MAP = {
+    # Ordered by probability strength
+    "也许":   "có lẽ / có thể",       # ~50-60%
+    "或许":   "có lẽ / hoặc là",      # ~40-50%
+    "可能":   "có thể / khả năng",    # neutral
+    "说不定": "biết đâu / có khi",    # ~30-50%, casual
+    "没准":   "biết đâu / có khi",    # casual
+    "估计":   "ước tính / có lẽ",     # estimation
+    "大概":   "đại khái / khoảng chừng",
+    "应该":   "nên / đáng ra",         # obligation/expectation
+    "想必":   "chắc hẳn / chắc là",   # ~70-80%
+    "想来":   "nghĩ lại thì / chắc là",
+    "多半":   "đa phần là / có lẽ",   # ~60-70%
+}
+
+# Rule: đứng trước VP
+# 说不定他早就知道了 → Biết đâu hắn đã biết từ lâu rồi
+# 也许这就是命运 → Có lẽ đây chính là số phận
+```
+
+### D.7 — GAP-NEW-7: `一来...二来...` Enumeration
+
+```python
+YI_LAI_PATTERNS = {
+    "yi_er_lai": {
+        "pattern": r"一来([^二三，。！？]+)(?:，)?二来([^三，。！？]+)(?:(?:，)?三来([^，。！？]+))?",
+        "vi": "thứ nhất là {reason1}, thứ hai là {reason2}[, thứ ba là {reason3}]",
+        "example": "一来可以赚钱，二来可以历练 → thứ nhất có thể kiếm tiền, thứ hai có thể rèn luyện",
+    },
+    # Variant: 一方面...另一方面/另外...
+    "yi_fangmian": {
+        "pattern": r"一方面([^，。另]{2,30})(?:，)?(?:另一方面|另外)([^，。！？]{2,30})",
+        "vi": "một mặt {A}, mặt khác {B}",
+    },
+    # Variant: 首先...其次...最后...
+    "shouzhi_qici": {
+        "pattern": r"首先([^其次，。]+)，?其次([^最后，。]+)(?:，?最后([^，。！？]+))?",
+        "vi": "trước tiên {A}, tiếp theo {B}[, cuối cùng {C}]",
+    },
+}
+```
+
+### D.8 — GAP-NEW-8: `以防万一/以防` Precaution Frame
+
+```python
+YI_FANG_MAP = {
+    "以防万一":   "phòng khi vạn nhất / đề phòng",
+    "以防":       "đề phòng / phòng khi",
+    "为了以防":   "để đề phòng",
+    "以备不时之需": "phòng khi cần thiết / dự phòng",
+    "备用":       "dự phòng",
+    "保险起见":   "cho chắc ăn / để an toàn",
+}
+
+# Rule:
+# 以防万一 + [clause] → đề phòng [clause]
+# 带上装备，以防万一 → Mang theo trang bị, đề phòng vạn nhất
+```
+
+### D.9 — GAP-NEW-9: `相比之下/对比之下` Comparison Frame
+
+```python
+COMPARISON_FRAME_MAP = {
+    "相比之下":     "so sánh mà xem / trong khi đó",
+    "相比之前":     "so với trước đây",
+    "对比之下":     "khi so sánh / đặt bên cạnh thì",
+    "与X相比":      "so với X",
+    "和X比起来":    "so ra thì so với X",
+    "比起X来":      "so với X",
+    "与X相比较":    "so sánh với X",
+}
+
+# Rule:
+# 相比之下，他的实力更为强大
+# → So sánh mà xem, thực lực của hắn mạnh hơn nhiều
+#
+# 与普通人相比，超越者的能力简直是降维打击
+# → So với người thường, năng lực của Siêu Việt Giả gần như là đánh vào chiều kích thấp hơn
+```
+
+### D.10 — GAP-NEW-10: `就算...也...` Strong Concessive Conditional
+
+```python
+JIU_SUAN_RULE = {
+    "pattern": r"就算([^也都，。！？]{2,25})(?:，)?(也|都)([^，。！？]{2,20})",
+    "vi": "dù cho {condition}, {result} cũng/vẫn {result_v}",
+    "examples": {
+        "就算失败也不后悔":     "dù thất bại cũng không hối hận",
+        "就算是超越者也要低头": "dù là Siêu Việt Giả cũng phải cúi đầu",
+        "就算你不说我也知道":   "dù ngươi không nói ta cũng biết",
+    },
+    "disambiguation": {
+        "就算 vs 即便": "就算 thường informal hơn, 即便 formal hơn",
+        "就算 vs 哪怕": "哪怕 nhấn mạnh extreme condition hơn",
+    }
+}
+```
+
+### D.11 — GAP-NEW-11: System Log Timestamp
+
+```python
+TIMESTAMP_GUARD = {
+    # HH:MM:SS format trong system log
+    "hms_pattern":    r"\b\d{1,2}:\d{2}:\d{2}\b",
+    # Date format
+    "date_pattern":   r"\b\d{4}[-/年]\d{1,2}[-/月]\d{1,2}[日]?\b",
+    # Sci-fi timestamp
+    "scifi_timestamp": r"\b[T\-]\d+(?:\.\d+)?\b",
+    # System duration format
+    "duration_dash":  r"持续时间[-–]\d+[秒分小时天]",
+    
+    "rule": "Protect all timestamp patterns from number conversion",
+    "examples": [
+        "持续时间-720小时 → 持续时间: 720 giờ (dash → colon only)",
+        "[12:34:56] → [12:34:56] (giữ nguyên)",
+    ]
+}
+```
+
+### D.12 — GAP-NEW-12: `无论如何/不管怎样` Regardless Frame
+
+```python
+REGARDLESS_MAP = {
+    "无论如何":   "dù thế nào / dù sao đi nữa",
+    "不管怎样":   "dù sao / dù thế nào đi chăng nữa",
+    "不管怎么":   "dù thế nào / bằng mọi cách",
+    "不管怎么说": "dù nói gì thì nói",
+    "无论如何":   "dù thế nào đi nữa",
+    "不论":       "dù là / không kể",
+    "不管":       "không kể / dù",
+    "管他呢":     "kệ nó / mặc kệ",
+    "随便":       "tùy thôi / tùy ý",
+}
+```
+
+### D.13 — GAP-NEW-13: `就连X也Y`
+
+```python
+# v15 đã có 连X都Y, bổ sung variant 就连X也Y
+JIU_LIAN_RULE = {
+    "pattern": r"就连([\u4e00-\u9fff\w]{1,12})(?:也|都)([\u4e00-\u9fff\w\s]{2,20})",
+    "vi": "ngay cả {X} cũng {Y}",
+    "examples": {
+        "就连系统也无法预测":    "ngay cả hệ thống cũng không thể dự đoán",
+        "就连超越者也要退避":    "ngay cả Siêu Việt Giả cũng phải tránh né",
+        "就连他自己也不清楚":    "ngay cả hắn cũng không rõ",
+    },
+    "difference_from_lian": {
+        "就连X也Y": "nhấn mạnh hơn 连X都Y một chút, tính cảm thán cao hơn",
+    }
+}
+```
+
+### D.14 — GAP-NEW-14: `据X称/据X说/据说` Evidential Frame
+
+```python
+JU_EVIDENTIAL_MAP = {
+    "据说":       "nghe nói / theo lời đồn",
+    "据X称":      "theo lời X / X nói rằng",
+    "据X所说":    "theo những gì X nói",
+    "据悉":       "theo thông tin được biết / theo tiết lộ",
+    "据消息人士": "theo nguồn tin thạo việc",
+    "据报道":     "theo báo cáo / theo nguồn tin",
+    "据了解":     "theo tìm hiểu / được biết",
+}
+
+# Rule:
+# 据说他已经达到了超越者的境界
+# → Nghe nói hắn đã đạt đến cảnh giới của Siêu Việt Giả
+#
+# 据系统的分析称，成功率为73%
+# → Theo phân tích của hệ thống, tỷ lệ thành công là 73%
+```
+
+### D.15 — GAP-NEW-15: `非X不可/非X莫属` Necessity Frame
+
+```python
+FEI_BU_KE_RULE = {
+    "fei_bu_ke": {
+        "pattern": r"非([\u4e00-\u9fff\w]{1,10})不可",
+        "vi": "nhất định phải {X} / không thể không {X}",
+        "examples": {
+            "非去不可":     "nhất định phải đi",
+            "非他不可":     "nhất định phải là hắn / chỉ có hắn mới được",
+            "非死不可":     "nhất định phải chết / không thể không chết",
+        }
+    },
+    "fei_mo_shu": {
+        "pattern": r"([\u4e00-\u9fff\w]{1,10})非([\u4e00-\u9fff\w]{1,10})莫属",
+        "vi": "{title/role} không ai khác ngoài {X}",
+        "examples": {
+            "这件事非他莫属": "việc này không ai làm được ngoài hắn",
+        }
+    },
+}
+```
+
+### D.16 — GAP-NEW-16: `鉴于X/有鉴于此` Formal Reasoning Opener
+
+```python
+JIAN_YU_MAP = {
+    "鉴于X":     "xét đến X / vì X",
+    "有鉴于此":  "vì vậy / dựa trên điều này",
+    "基于X":     "dựa trên X / trên cơ sở X",
+    "基于此":    "trên cơ sở đó / dựa vào đó",
+    "出于X":     "xuất phát từ X / vì X",
+    "出于安全考虑": "vì lý do an toàn",
+    "从X角度来看": "từ góc độ X mà xem",
+    "从长远来看": "nhìn dài hạn / từ góc nhìn dài hạn",
+}
+```
+
+### D.17 — GAP-NEW-17: Quoted Number Protection
+
+```python
+class QuotedNumberGuard:
+    """
+    Bảo vệ số nằm trong dấu nháy (dialogue context).
+    
+    Problem: "三十亿" 他说 → số 30 tỷ nằm trong quote
+    Nếu number converter chạy trên toàn câu → có thể convert nhầm
+    
+    Rule:
+    1. Detect quoted spans: "X" / 「X」/ 『X』
+    2. Mark nội dung trong quote là protected từ number conversion
+       (trừ khi số đó cần convert theo ngữ nghĩa của thoại)
+    3. Số trong direct speech → convert theo register của speaker
+    """
+
+    def protect_quoted_numbers(self, text: str,
+                                registered_spans: SpanRegistry) -> str:
+        quote_patterns = [
+            r'"([^"]+)"',
+            r'"([^"]+)"',
+            r'「([^」]+)」',
+            r'『([^』]+)』',
+        ]
+        for pattern in quote_patterns:
+            for m in re.finditer(pattern, text):
+                # Mark span as quoted_speech
+                registered_spans.claim(
+                    rule_name="quoted_number_guard",
+                    start=m.start(1), end=m.end(1),
+                    priority=5,
+                    action="quoted_speech"
+                )
+        return text
+```
+
+### D.18 — GAP-NEW-18: Ellipsis Mark Handling
+
+```python
+ELLIPSIS_HANDLING = {
+    # Trong system log: "..." = hệ thống đang xử lý
+    "system_processing": {
+        "context": "system panel 【...】",
+        "pattern": r"【[^】]*…{1,3}[^】]*】",
+        "vi_treatment": "giữ nguyên dấu ...",
+        "example": "【系统计算中…】→ 【Hệ thống đang tính toán...】",
+    },
+    # Trong thoại: "..." = do dự, ngắt lời, im lặng
+    "dialogue_hesitation": {
+        "context": "trong câu thoại",
+        "pattern": r'"[^"]*…{1,3}[^"]*"',
+        "vi_treatment": "giữ nguyên ... hoặc chuyển sang —",
+        "example": "他…他回来了 → Hắn... hắn trở về rồi",
+    },
+    # Stutter pattern: 怎么…怎么…会
+    "stutter_pattern": {
+        "context": "nhân vật lắp bắp",
+        "pattern": r"([\u4e00-\u9fff]{1,3})…\1",
+        "vi_treatment": "giữ nguyên pattern",
+        "example": "怎么…怎么会 → sao... sao lại thế",
+    },
+    # Narrative ellipsis: đoạn hồi ký bỏ lửng
+    "narrative_omission": {
+        "context": "cuối đoạn văn miêu tả",
+        "pattern": r"[^。！？]{5,}…{2,}$",
+        "vi_treatment": "giữ nguyên ...",
+    },
+}
+```
+
+### D.19 — GAP-NEW-19: `由于/因为...所以/导致` Complete Cause-Effect
+
+```python
+CAUSE_EFFECT_FRAMES = {
+    # Frame 1: 由于X，所以Y
+    "youyu_suoyi": {
+        "pattern": r"由于([^，。]+)(?:，\s*)?(?:所以|因此|故而)([^，。！？]+)",
+        "vi": "do {cause}, nên/vì vậy {effect}",
+        "example": "由于他的努力，所以成功了 → Do hắn nỗ lực, nên đã thành công",
+    },
+    # Frame 2: 因为X，所以Y
+    "yinwei_suoyi": {
+        "pattern": r"因为([^，。]+)(?:，\s*)?(?:所以|因此)([^，。！？]+)",
+        "vi": "vì {cause}, nên {effect}",
+        "example": "因为失误，所以失败 → Vì sai lầm, nên thất bại",
+    },
+    # Frame 3: X导致Y (X gây ra Y)
+    "daozhi": {
+        "pattern": r"([^，。]+)导致([^，。！？]+)",
+        "vi": "{cause} dẫn đến {effect} / {cause} khiến {effect}",
+        "example": "战争导致了大量伤亡 → Chiến tranh dẫn đến thương vong lớn",
+    },
+    # Frame 4: X造成Y
+    "zaocheng": {
+        "pattern": r"([^，。]+)造成([^，。！？]+)",
+        "vi": "{cause} gây ra {effect}",
+    },
+    # Frame 5: 正因如此/正是因为这样
+    "zhengyin_ruci": {
+        "pattern": r"正因(?:如此|此|为此)(?:，)?([^，。！？]+)",
+        "vi": "chính vì vậy {result}",
+    },
+}
+```
+
+### D.20 — GAP-NEW-20: Nested `A的B的C` — 3 Levels
+
+```python
+class NestedPossessionRule:
+    """
+    Xử lý chuỗi sở hữu lồng nhau 3 cấp.
+    
+    ZH: A的B的C
+    VI: C của B của A  (đảo ngược hoàn toàn)
+    
+    Nhưng có exception khi A/B/C là entity:
+    - 星耀帝国的德罗耶达的命令
+      → Mệnh lệnh của Droieda thuộc Tinh Diệu Đế Quốc
+      (KHÔNG: "lệnh của Droieda của Đế Quốc")
+    
+    - 李宇的分身的实力
+      → Thực lực của phân thân của Lý Vũ  (OK, giữ nguyên đảo)
+    
+    Algorithm:
+    1. Parse 的-chain: A[的]B[的]C
+    2. Identify types: ENTITY, ROLE, ATTRIBUTE, ITEM
+    3. Apply inversion: C của B của A
+    4. Post-merge: nếu B là role của A → "B + A" (không dùng của)
+       (德罗耶达的帝国 → Đế Quốc Droieda, không "Đế Quốc của Droieda")
+    """
+
+    def parse_de_chain(self, tokens: list[Token]) -> list[tuple]:
+        """
+        Returns: list of (span, type) tuples separated by 的
+        Example: [(A, ENTITY), (B, ROLE), (C, ATTRIBUTE)]
+        """
+        de_positions = [i for i, t in enumerate(tokens) if t.form == "的"]
+        if len(de_positions) < 2:
+            return []  # Not 3-level
+
+        # Split into segments
+        segments = []
+        prev = 0
+        for pos in de_positions:
+            seg = tokens[prev:pos]
+            segments.append(seg)
+            prev = pos + 1
+        segments.append(tokens[prev:])  # Last segment
+
+        return [(seg, self._classify_segment(seg)) for seg in segments]
+
+    def _classify_segment(self, tokens: list[Token]) -> str:
+        """Classify segment as ENTITY/ROLE/ATTRIBUTE/ITEM"""
+        form = "".join(t.form for t in tokens)
+        if form in entity_memory:
+            return "ENTITY"
+        for suffix in ROLE_SUFFIXES:
+            if form.endswith(suffix):
+                return "ROLE"
+        return "ATTRIBUTE"
+
+    def transfer(self, segments: list[tuple]) -> str:
+        """
+        Transfer 3-level possession to VI.
+        A (ENTITY), B (ROLE), C (ATTRIBUTE)
+        → C của B [+ merge rule] A
+        """
+        if len(segments) == 3:
+            a, type_a = segments[0]
+            b, type_b = segments[1]
+            c, type_c = segments[2]
+
+            a_vi = translate(a)
+            b_vi = translate(b)
+            c_vi = translate(c)
+
+            if type_b == "ROLE" and type_a == "ENTITY":
+                # Merge: B của A → "B A" (tên + tổ chức)
+                b_a_merged = f"{b_vi} {a_vi}"
+                return f"{c_vi} của {b_a_merged}"
+            else:
+                return f"{c_vi} của {b_vi} của {a_vi}"
+
+        return None  # Fallback to standard DE rule
+```
+
+---
+
+## PHẦN E — Error Handling & Edge Cases
+
+### E.1 — Entity Scanner Error Recovery
+
+```python
+class EntityScannerErrorHandler:
+    """
+    Xử lý các trường hợp lỗi trong entity scanner.
+    """
+
+    def handle_pass_failure(self, pass_name: str,
+                             exception: Exception,
+                             fallback_result: list) -> list:
+        """
+        Nếu một pass fail → log error, trả về fallback (kết quả rỗng)
+        Không cho phép một pass fail crash toàn pipeline.
+        """
+        logger.error(f"Entity scanner PASS {pass_name} failed: {exception}")
+        return fallback_result  # Empty list, pipeline continues
+
+    def handle_transliteration_unknown(self, form: str) -> str:
+        """
+        Khi không biết transliterate form như thế nào:
+        1. Thử phoneme rebuild
+        2. Nếu rebuild ra chuỗi không đọc được → giữ nguyên Hán Việt
+        3. Flag for manual review
+        """
+        rebuilt = self._phoneme_rebuild(form)
+        if not self._is_readable_latin(rebuilt):
+            self._flag_for_review(form, "unresolvable_transliteration")
+            return hanviet_convert(form)
+        return rebuilt
+
+    def handle_alias_cycle(self, chain: list[str]) -> str:
+        """
+        Khi alias chain tạo vòng tròn: A→B→C→A
+        → Break cycle tại điểm đầu tiên
+        → Log warning
+        → Return first element as canonical
+        """
+        logger.warning(f"Alias cycle detected: {chain}")
+        return chain[0]  # First seen = canonical
+
+    def handle_confidence_tie(self, candidates: list[EntityCandidate]) -> EntityCandidate:
+        """
+        Khi 2 candidates có cùng confidence:
+        → Chọn candidate xuất hiện trước (chapter nhỏ hơn)
+        → Nếu cùng chapter → chọn cái dài hơn (longer form = more specific)
+        """
+        candidates.sort(key=lambda c: (c.chapter, -len(c.form)))
+        return candidates[0]
+```
+
+### E.2 — Grammar Rule Edge Cases
+
+```python
+# Edge cases cần handle đặc biệt cho mỗi rule
+
+EDGE_CASES = {
+    "rule_de_inversion": [
+        # Nested DE với entity ở giữa
+        # 那个来自于星耀帝国的将军的命令
+        # → Mệnh lệnh của vị Tướng quân đến từ Tinh Diệu Đế Quốc đó
+        "nested_de_with_entity",
+        # DE sau số từ và lượng từ
+        # 三名来自归星的战士
+        # → ba chiến binh đến từ Quy Tinh
+        "de_after_numeral_classifier",
+    ],
+    "rule_aspect": [
+        # 了 trong compound word (không phải aspect)
+        # 了解/了然/了断 → VV not ASP
+        "le_in_compound",
+        # Stacked aspect: 已经V了/刚刚V了
+        "stacked_aspect_marker",
+    ],
+    "rule_ba": [
+        # 把 với entity trong BA object
+        # 他把【超级士兵血清】注射进了体内
+        # → Hắn tiêm [Huyết thanh Siêu Chiến Binh] vào trong cơ thể
+        "ba_with_bracketed_entity",
+    ],
+    "rule_bei": [
+        # 被 khi entity là agent
+        # 【死星】被超越者点化
+        # → [Death Star] được Siêu Việt Giả điểm hóa
+        "bei_entity_as_agent",
+    ],
+}
+```
+
+### E.3 — Number Conversion Edge Cases
+
+```python
+NUMBER_EDGE_CASES = {
+    "grade_vs_number": {
+        "problem": "D级 có thể bị nhầm với số D",
+        "solution": "AlphanumericGradeGuard chạy TRƯỚC số converter",
+        "test": [("D级", "cấp D"), ("D大调", "NOT a grade, is music key")],
+    },
+    "time_ratio_vs_math_ratio": {
+        "problem": "1:2 có thể là time ratio hoặc math ratio",
+        "solution": "Context lookup: 流速/比例/主世界 → time | 赔率 → odds",
+        "test": [
+            ("主世界比例1:2", "tỷ lệ 1:2"),
+            ("赔率1:2", "tỷ lệ cược 1:2"),
+            ("能量比例1:2", "tỷ lệ năng lượng 1:2"),
+        ],
+    },
+    "sss_vs_entity": {
+        "problem": "SSS có thể là rating hoặc tên nhân vật/tổ chức",
+        "solution": "Nếu tiếp theo là 评价/等级/级别 → RATING, else → possible entity",
+        "test": [
+            ("SSS评价", "đánh giá SSS"),
+            ("SSS级别", "cấp SSS"),
+            ("SSS小队", "tiểu đội SSS"),  # Tên tổ chức → protect
+        ],
+    },
+    "percent_in_system": {
+        "problem": "10%的锚点进度 — số không được convert thêm",
+        "solution": "Nếu đã là % form → giữ nguyên, chỉ dịch suffix",
+        "test": [("10%的锚点进度", "10% tiến độ neo điểm")],
+    },
+}
+```
+
+---
+
+## PHẦN F — Integration Architecture Chi tiết
+
+### F.1 — Complete Pipeline với tất cả v22 rules
+
+```python
+class GrammarTransferPipelineV22:
+    """
+    Complete pipeline tích hợp v14/v15 core + v21 domain + v22 gaps.
+    """
+
+    def __init__(self, config: PipelineConfig):
+        # ── ENTITY SCANNER STACK ─────────────────────────────────
+        self.entity_memory    = EntityMemoryStore(config.db_path)
+        self.title_seeder     = ChapterTitleEntitySeeder()
+        self.bracket_extractor= BracketItemExtractor()
+        self.pattern_ner      = PatternBasedNER()
+        self.context_confirm  = ContextConfirmationPass()
+        self.crosschapter     = CrossChapterCooccurrence()
+        self.translit_engine  = TransliterationEngine()
+        self.alias_resolver   = AliasHierarchyResolver()
+        self.review_exporter  = ReviewExporter()
+        self.quoted_guard     = QuotedNumberGuard()
+        self.projection_det   = ProjectionSceneDetector()
+
+        # ── CORE GRAMMAR (v14/v15) ────────────────────────────────
+        self.span_registry    = SpanRegistry()
+        self.register_detect  = RegisterDetector()
+        self.trie_guard       = TriePhraseGuard()
+        self.transfer_engine  = TransferEngine(self._load_all_rules())
+
+        # ── DOMAIN RULES (v16-v21) ────────────────────────────────
+        self.system_panel     = SystemPanelParser()
+        self.grade_rank       = GradeRankConverter()
+        self.timeflow_ratio   = TimeFlowRatioConverter()
+        self.currency_conv    = CurrencyResourceConverter()
+        self.auction_parser   = AuctionPriceParser()
+        self.number_analyzer  = NumberQuantityAnalyzer()
+
+        # ── V22 NEW RULES ─────────────────────────────────────────
+        self.wei_suo_rule     = WeiSuoPassiveRule()
+        self.projection_rule  = ProjectionSceneRule()
+        self.zuowei_rule      = ZuoWeiFrameRule()
+        self.ji_disambig      = JiDisambiguationRule()
+        self.discourse_linker = DiscourseLinkerStackRule()
+        self.time_skip        = TimeSkipRule()
+        self.dramatic_speech  = DramaticSpeechRule()
+        self.countdown        = CountdownRule()
+        self.emphatic_neg     = EmphaticNegationRule()
+        self.concurrent_v22   = ConcurrentActionV22Rule()
+        self.meta_discourse   = MetaDiscourseOpenerRule()
+        self.na_pa_rule       = NaPaConcessionRule()
+        self.suo_wei_rule     = SuoWeiDefinitionalRule()
+        self.minimizing_sfx   = MinimizingSuffixRule()
+        self.coincidence_mark = CoincidenceMarkerRule()
+        self.prob_hedge       = ProbabilityHedgeRule()
+        self.yi_lai_rule      = YiLaiEnumerationRule()
+        self.precaution_rule  = PrecautionFrameRule()
+        self.comparison_frame = ComparisonFrameRule()
+        self.jiu_suan_rule    = JiuSuanConcessiveRule()
+        self.regardless_rule  = RegardlessFrameRule()
+        self.jiu_lian_rule    = JiuLianEvenFocusRule()
+        self.evidential_rule  = EvidentialFrameRule()
+        self.fei_buke_rule    = FeiBuKeNecessityRule()
+        self.jian_yu_rule     = JianYuFormalReasonRule()
+        self.nested_poss_rule = NestedPossessionRule()
+
+    def pre_scan_all_chapters(self, chapters: list[tuple[int, str]]):
+        """
+        Gọi trước khi dịch. Seed entity memory từ title + bracket scan.
+        """
+        seeds = self.title_seeder.scan_all_titles(chapters)
+        for form, seed in seeds.items():
+            self.entity_memory.upsert_entity(EntityRecord.from_seed(seed))
+
+    def translate_chapter(self, chapter_num: int, text: str,
+                           context: TranslationContext) -> str:
+        """
+        Dịch một chương hoàn chỉnh.
+        """
+        # 0. Quoted number protection
+        self.quoted_guard.protect_quoted_numbers(text, self.span_registry)
+
+        # 1. Author meta filter
+        text, meta_sections = self.filter_author_meta(text)
+
+        # 2. Paragraph-level processing
+        paragraphs = self.split_paragraphs(text)
+        translated_paragraphs = []
+
+        for para in paragraphs:
+            # Detect scene type
+            scene_type = self.projection_det.detect_scene_type(para)
+            context.scene_type = scene_type
+
+            # Sentence-level processing
+            sentences = self.split_sentences(para)
+            translated_sentences = []
+
+            for sent in sentences:
+                vi_sent = self._translate_sentence(sent, chapter_num, context)
+                translated_sentences.append(vi_sent)
+
+            translated_paragraphs.append(" ".join(translated_sentences))
+
+        result = "\n\n".join(translated_paragraphs)
+
+        # Restore author meta (if config says preserve)
+        result = self.restore_author_meta(result, meta_sections)
+
+        # Update entity memory from this chapter's discoveries
+        new_entities = self.pattern_ner.scan(text, chapter_num)
+        confirmed = self.context_confirm.batch_confirm(new_entities, text)
+        for e in confirmed:
+            if e.confidence >= 0.65:
+                self.entity_memory.upsert_entity(EntityRecord.from_candidate(e))
+
+        return result
+
+    def _translate_sentence(self, sentence: str, chapter: int,
+                             context: TranslationContext) -> str:
+        """Core sentence translation pipeline."""
+        # P00-P20: Protected spans + entity detection
+        tokens = self.tokenizer.tokenize(sentence)
+        tagged = self.pos_tagger.tag(tokens)
+
+        # Claim trie phrases
+        trie_phrases = self.trie_guard.mark_trie_phrases(tagged, self.trie)
+        for start, end in trie_phrases:
+            self.span_registry.claim("trie_guard", start, end, 0, "phrase")
+
+        # Grammar transfer
+        dep_tree = self.dep_parser.parse(tagged)
+        constructions = self.construction_detector.detect(dep_tree)
+
+        vi_tokens = [VIToken.from_tagged(t) for t in tagged]
+        vi_tokens, traces = self.transfer_engine.transfer(
+            dep_tree, constructions, vi_tokens, self.span_registry
+        )
+
+        # Surface realization
+        vi_sentence = self.surface_realizer.realize(vi_tokens, context)
+        return vi_sentence
+
+    def _load_all_rules(self) -> list[TransferRule]:
+        """Load tất cả rules theo thứ tự priority."""
+        return sorted([
+            # v15 core rules
+            TransferRule("topic_comment",        TC,    5,   rule_topic_comment),
+            TransferRule("even_focus",           EF,    8,   rule_even_focus),
+            TransferRule("exception_frame",      EXC,   10,  rule_exception_frame),
+            TransferRule("preference_frame",     PREF,  12,  rule_preference_frame),
+            TransferRule("ba_construction",      BA,    20,  rule_ba_transfer),
+            TransferRule("ba_gei",               BAGE,  22,  rule_ba_gei),
+            TransferRule("bei_passive",          BEI,   24,  rule_bei_transfer),
+            TransferRule("wei_suo_passive",      WSP,   26,  rule_wei_suo_passive),  # NEW
+            TransferRule("causative",            CAU,   28,  rule_causative),
+            TransferRule("cleft",                CLF,   30,  rule_cleft),
+            TransferRule("copula_shi",           SHI,   32,  rule_copula_shi),
+            TransferRule("de_inversion",         DE,    35,  rule_de_modifier_inversion),
+            TransferRule("nested_possession",    NP3,   36,  rule_nested_possession),  # NEW
+            TransferRule("resultative",          RVC,   37,  rule_resultative),
+            TransferRule("comparison_frame",     COMP,  38,  rule_comparison_frame),  # NEW
+            TransferRule("dei_degree",           DEI,   40,  rule_dei_degree),
+            TransferRule("dec_adverb",           DEC,   45,  rule_dec_adverb),
+            TransferRule("dir_complement",       DIR,   50,  rule_dir_complement),
+            TransferRule("prep_svc",             PREP,  55,  rule_prep_svc),
+            TransferRule("projection_scene",     PROJ,  56,  rule_projection_scene),  # NEW
+            TransferRule("aspect",               ASP,   60,  rule_aspect_transfer),
+            TransferRule("existential",          EXIST, 62,  rule_existential),
+            TransferRule("you_existential",      YOU,   63,  rule_you_existential),
+            TransferRule("concurrent_v22",       CONC,  65,  rule_concurrent_v22),  # NEW
+            TransferRule("discourse_linker",     DISC,  66,  rule_discourse_linker),  # NEW
+            TransferRule("a_not_a",              ANOTA, 70,  rule_anota_question),
+            TransferRule("rhetorical",           RHET,  72,  rule_rhetorical),
+            TransferRule("reduplication",        REDUP, 73,  rule_reduplication),
+            TransferRule("serial_verb",          SVC,   75,  rule_serial_verb),
+            # v22 new discourse rules
+            TransferRule("zuowei_frame",         ZW,    77,  rule_zuowei_frame),  # NEW
+            TransferRule("ji_disambig",          JI,    78,  rule_ji_disambiguation),  # NEW
+            TransferRule("time_skip",            TS,    79,  rule_time_skip),  # NEW
+            TransferRule("yi_lai_enum",          YLE,   80,  rule_yi_lai_enumeration),  # NEW
+            TransferRule("jiu_suan",             JS,    81,  rule_jiu_suan),  # NEW
+            TransferRule("jiu_lian",             JL,    82,  rule_jiu_lian),  # NEW
+            TransferRule("emphatic_neg",         EN,    83,  rule_emphatic_negation),  # NEW
+            TransferRule("regardless",           RG,    84,  rule_regardless_frame),  # NEW
+            TransferRule("na_pa",                NP,    85,  rule_na_pa_concession),  # NEW
+            TransferRule("suo_wei",              SW,    86,  rule_suo_wei_definitional),  # NEW
+            TransferRule("dramatic_speech",      DS,    87,  rule_dramatic_speech),  # NEW
+            TransferRule("evidential",           EV,    88,  rule_evidential_frame),  # NEW
+            TransferRule("fei_buke",             FB,    89,  rule_fei_bu_ke),  # NEW
+            TransferRule("negation_complex",     NC,    90,  rule_negation_patterns),
+            TransferRule("sp_particles",         SP,    95,  rule_sentence_particle),
+        ], key=lambda r: r.priority)
+```
+
+---
+
+## PHẦN G — Performance Optimization
+
+### G.1 — Trie Cache Warm-up
+
+```python
+class TrieCacheManager:
+    """
+    Warm up Trie cache trước khi dịch để tránh cold-start penalty.
+    """
+
+    def warmup(self, entity_glossary: dict):
+        """
+        Load tất cả entity từ glossary vào Trie với priority cao.
+        Chạy 1 lần khi khởi động.
+        """
+        for zh_form, vi_form in entity_glossary.items():
+            self.trie.insert(zh_form, vi_form, priority=10)
+
+    def batch_insert(self, records: list[EntityRecord]):
+        for r in records:
+            self.trie.insert(r.canonical, r.vi_form, priority=8)
+            for alias in r.aliases:
+                self.trie.insert(alias, r.vi_form, priority=7)
+```
+
+### G.2 — Rule Short-circuit
+
+```python
+class TransferEngine:
+    def transfer(self, nodes, constructions, vi_tokens, registry):
+        """
+        Short-circuit: Nếu không có construction nào phù hợp với rule
+        → skip rule hoàn toàn, không tốn overhead.
+        """
+        construction_types = {c.type for c in constructions}
+
+        for rule in self.rules:
+            # Short-circuit check
+            if rule.trigger not in construction_types:
+                continue  # Skip this rule entirely
+
+            relevant = [c for c in constructions if c.type == rule.trigger]
+            for construction in relevant:
+                span = rule.get_primary_span(construction)
+                if span and not registry.can_claim(*span, rule.priority):
+                    continue
+
+                vi_tokens, trace = rule.transform(
+                    construction, nodes, vi_tokens, registry
+                )
+
+        return vi_tokens
+```
+
+### G.3 — Performance Budget per Rule
+
+```python
+RULE_PERFORMANCE_BUDGET = {
+    # Max milliseconds per rule per sentence
+    "de_inversion":    5.0,   # Complex, allow more
+    "nested_de":       8.0,   # Very complex
+    "aspect":          2.0,   # Simple substitution
+    "bei_passive":     2.0,
+    "wei_suo":         2.0,
+    "ba_construction": 4.0,
+    "serial_verb":     5.0,
+    "time_skip":       1.0,
+    "dramatic_speech": 1.0,
+    "meme_typography": 0.5,
+    # Default budget for all others
+    "default":         3.0,
+}
+
+class RulePerformanceMonitor:
+    def run_with_budget(self, rule, *args) -> tuple:
+        start = time.perf_counter()
+        result = rule.transform(*args)
+        elapsed_ms = (time.perf_counter() - start) * 1000
+
+        budget = RULE_PERFORMANCE_BUDGET.get(rule.name,
+                 RULE_PERFORMANCE_BUDGET["default"])
+
+        if elapsed_ms > budget:
+            logger.warning(
+                f"Rule {rule.name} exceeded budget: "
+                f"{elapsed_ms:.1f}ms > {budget}ms"
+            )
+        return result
+```
+
+---
+
+## PHẦN H — Data Files: Spec đầy đủ
+
+### H.1 — `entity_suffix_ontology_v22.json` (đầy đủ)
+
+```json
+{
+  "PERSON": {
+    "suffixes": ["者", "人", "主", "王", "帝", "尊", "君", "师",
+                 "长", "官", "将", "兵", "卫", "徒", "祭司", "领袖",
+                 "舰长", "指挥官", "议长", "族长", "团长", "队长",
+                 "天尊", "道君", "真君", "圣人", "至尊"],
+    "confidence_base": 0.70
+  },
+  "PLACE_PLANET": {
+    "suffixes": ["星", "星球", "母星", "行星", "归星", "母星"],
+    "confidence_base": 0.75,
+    "min_prefix_length": 2
+  },
+  "PLACE_STAR_SYSTEM": {
+    "suffixes": ["星系", "星域", "星区", "宇宙带"],
+    "confidence_base": 0.80
+  },
+  "PLACE_ORGANIZATION": {
+    "suffixes": ["基地", "营地", "据点", "总部", "研究所", "研究院",
+                 "实验室", "秘密仓库", "圣殿", "神殿", "会议室"],
+    "confidence_base": 0.72
+  },
+  "POLITY": {
+    "suffixes": ["文明", "帝国", "王国", "联盟", "联邦", "共和国",
+                 "议会", "联合", "组织", "集团", "公司"],
+    "confidence_base": 0.78
+  },
+  "MILITARY_GROUP": {
+    "suffixes": ["军团", "舰队", "部队", "小队", "分队", "战队",
+                 "使徒", "特遣队", "联合舰队", "联合军", "精锐队"],
+    "confidence_base": 0.80
+  },
+  "SPECIES": {
+    "suffixes": ["族", "种族", "生命体", "异形", "克隆体",
+                 "机械体", "意识体", "变异体"],
+    "confidence_base": 0.75
+  },
+  "ARTIFACT": {
+    "suffixes": ["宝石", "手套", "权杖", "王冠", "法宝",
+                 "宝典", "神器", "法器", "至宝"],
+    "confidence_base": 0.82
+  },
+  "WEAPON": {
+    "suffixes": ["刀", "剑", "枪", "手枪", "炮", "弓", "矛",
+                 "之刃", "之剑", "战斧"],
+    "confidence_base": 0.78
+  },
+  "EQUIPMENT": {
+    "suffixes": ["殖装", "装甲", "护盾", "外骨骼", "推进器",
+                 "义肢", "增强版", "改造版"],
+    "confidence_base": 0.80
+  },
+  "BIO_ITEM": {
+    "suffixes": ["基因链", "血清", "药剂", "原液", "病毒",
+                 "模组", "芯片", "基因", "血脉"],
+    "confidence_base": 0.82
+  },
+  "SHIP": {
+    "suffixes": ["飞船", "战舰", "母舰", "旗舰", "运输舰",
+                 "星舰", "号", "巡洋舰", "驱逐舰"],
+    "confidence_base": 0.80
+  },
+  "EVENT": {
+    "suffixes": ["之战", "战役", "冲突", "革命", "起义", "危机", "之乱"],
+    "confidence_base": 0.72
+  },
+  "ABILITY": {
+    "suffixes": ["感应", "魔法", "附魔", "无效化", "神通",
+                 "天赋", "能力", "技能", "招式"],
+    "confidence_base": 0.68
+  }
+}
+```
+
+### H.2 — `transliteration_char_map.json` (70+ entries)
+
+```json
+{
+  "personal_names": {
+    "泰塔斯": "Titas", "多诺万": "Donovan",
+    "埃尔顿": "Elton", "荷鲁斯": "Horus",
+    "霖克": "Link", "古斯特": "Gust",
+    "撒斯特": "Sast", "维玛拉": "Vimara",
+    "阿列克谢": "Aleksei", "科尔森": "Coulson",
+    "科德里": "Koderi", "西格尔": "Sigel",
+    "莱茵哈特": "Reinhardt", "比安奇": "Bianchi",
+    "尼尔森": "Nielsen", "德罗耶达": "Droieda",
+    "哈纳多": "Hanado", "阿尔弗莱": "Alfray",
+    "罗杰": "Roger", "伊斯特拉": "Istra",
+    "克里斯": "Chris", "托马斯": "Thomas",
+    "亚历山大": "Alexander", "维克多": "Victor",
+    "塔尼亚": "Tanya", "娜塔莎": "Natasha",
+    "佩顿": "Payton", "麦克斯": "Max",
+    "奥利弗": "Oliver", "塞缪尔": "Samuel"
+  },
+  "place_names": {
+    "巨魔星": "Hành tinh Cự Ma",
+    "归星": "Quy Tinh",
+    "鄂多斯星系": "Tinh Hệ Eddos",
+    "琉星": "Lưu Tinh",
+    "本菲尔": "Benfell"
+  },
+  "franchise_terms": {
+    "凯伯": "Kyber",
+    "冈戈尔": "Gongor",
+    "昆塔莎": "Quintessa",
+    "莫比乌斯": "Mobius",
+    "沙巴克": "Shabak",
+    "荣格": "Jung",
+    "渊首": "Uyên Thủ",
+    "恐虐": "Khorne"
+  }
+}
+```
+
+### H.3 — `alias_trigger_verbs.json`
+
+```json
+{
+  "identity_triggers": {
+    "又叫": {"vi": "còn gọi là", "type": "NICKNAME", "confidence": 0.88},
+    "也叫": {"vi": "cũng gọi là", "type": "NICKNAME", "confidence": 0.85},
+    "自称": {"vi": "tự xưng là", "type": "SELF_TITLE", "confidence": 0.82},
+    "被称为": {"vi": "được gọi là", "type": "EXTERNAL_TITLE", "confidence": 0.85},
+    "即": {"vi": "tức là", "type": "IDENTITY", "confidence": 0.80},
+    "也就是": {"vi": "tức là", "type": "IDENTITY", "confidence": 0.88},
+    "说的是": {"vi": "ý nói là", "type": "REFERENCE", "confidence": 0.75},
+    "就是": {"vi": "chính là", "type": "IDENTITY", "confidence": 0.72},
+    "叫做": {"vi": "gọi là", "type": "NAMING", "confidence": 0.90},
+    "名为": {"vi": "tên là", "type": "NAMING", "confidence": 0.92},
+    "以X之名": {"vi": "với tên X", "type": "TITLE_ALIAS", "confidence": 0.88},
+    "化名": {"vi": "bí danh là", "type": "ALIAS", "confidence": 0.90}
+  },
+  "evolution_triggers": {
+    "点化": {"vi": "điểm hóa", "type": "EVOLUTION", "confidence": 0.85},
+    "进阶": {"vi": "tiến giai", "type": "EVOLUTION", "confidence": 0.82},
+    "升华": {"vi": "thăng hoa", "type": "EVOLUTION", "confidence": 0.80},
+    "升级为": {"vi": "nâng cấp thành", "type": "UPGRADE", "confidence": 0.85},
+    "蜕变为": {"vi": "lột xác thành", "type": "EVOLUTION", "confidence": 0.88},
+    "进化为": {"vi": "tiến hóa thành", "type": "EVOLUTION", "confidence": 0.88},
+    "变为": {"vi": "biến thành", "type": "TRANSFORMATION", "confidence": 0.75},
+    "成为": {"vi": "trở thành", "type": "TRANSFORMATION", "confidence": 0.70}
+  }
+}
+```
+
+### H.4 — `protagonist_seed.json` (cho truyện hiện tại)
+
+```json
+{
+  "主角": {
+    "canonical": "李宇",
+    "vi_form": "Lý Vũ",
+    "type": "PERSON",
+    "role": "protagonist",
+    "aliases": [
+      "龙尊",
+      "超越者",
+      "圣·天尊",
+      "一号",
+      "宿主"
+    ],
+    "alias_vi_forms": {
+      "龙尊": "Long Tôn",
+      "超越者": "Siêu Việt Giả",
+      "圣·天尊": "Thánh · Thiên Tôn",
+      "一号": "Một"
+    },
+    "alias_contexts": {
+      "龙尊": "sau khi nhận được title/danh hiệu",
+      "超越者": "sau khi đạt cảnh giới Siêu Việt",
+      "圣·天尊": "sau khi đạt cảnh giới Thánh"
+    }
+  }
+}
+```
+
+---
+
+## PHẦN I — Test Suite Hoàn chỉnh
+
+### I.1 — Named Entity Scanner Tests (200 cases)
+
+```python
+# tests/test_grammar_new_story/test_name_scanner_v22.py
+
+NER_UNIT_TESTS = [
+    # PASS 0: Chapter title seeding
+    ("第101章 【漫威】世界",    {"漫威世界": "WORLD"},           "title_bracket_world"),
+    ("第108章 【岩狮基因链】",  {"岩狮基因链": "BIO_ITEM"},      "title_bracket_bioitem"),
+    ("第246章 【钢铁侠的装备升级卡】", {"钢铁侠的装备升级卡": "ARTIFACT"}, "title_nested_bracket"),
+
+    # PASS 1: Bracket extraction
+    ("【宿主:李宇】",           [BracketEntity("宿主:李宇", "SYSTEM_HOST")], "system_host"),
+    ("【获得绿色称号-剧情破坏者】", [BracketEntity("获得绿色称号-剧情破坏者", "SYSTEM_REWARD")], "reward"),
+    ("【蜘蛛感应】",            [BracketEntity("蜘蛛感应", "ABILITY")],        "ability"),
+
+    # PASS 2: Pattern NER - Suffix
+    ("帝国舰队突然出现",        EntityCandidate("帝国舰队", "MILITARY_GROUP", conf=0.80), "suffix_fleet"),
+    ("巨魔族的首领",            EntityCandidate("巨魔族", "SPECIES", conf=0.75),         "suffix_species"),
+    ("黑瞳舰队的旗舰",          EntityCandidate("黑瞳舰队", "MILITARY_GROUP", conf=0.80),"suffix_proper_fleet"),
+
+    # PASS 2: Transliteration detection
+    ("泰塔斯站了起来",          EntityCandidate("泰塔斯", "PERSON_TRANSLIT", conf=0.55), "translit_person"),
+    ("多诺万发出了命令",        EntityCandidate("多诺万", "PERSON_TRANSLIT", conf=0.55), "translit_command"),
+
+    # PASS 3: Context confirmation
+    # 泰塔斯 xuất hiện 5 lần là subject → confidence tăng
+    ("泰塔斯看了看，泰塔斯说道...",
+     EntityCandidate("泰塔斯", "PERSON", conf=0.75), "context_subject_freq"),
+
+    # PASS 3: Penalty
+    ("系统分析中",              None,  "common_word_rejected"),  # 系统 là common word
+    ("攻击力很强",              None,  "adjective_rejected"),
+
+    # PASS 5: Transliteration
+    ("泰塔斯",   "Titas",       "translit_method_C"),
+    ("多诺万",   "Donovan",     "translit_method_C"),
+    ("科德里",   "Koderi",      "translit_method_C"),
+    ("黑瞳舰队", "Hạm đội Hắc Đồng", "hanviet_method_A"),
+    ("死星",     "Death Star",  "franchise_method_C"),
+    ("原力",     "Force",       "franchise_method_C"),
+
+    # PASS 6: Alias resolution
+    ("李宇又叫龙尊",            {"李宇": canonical, "龙尊": alias},        "alias_nickname"),
+    ("点化【死星】…【帝死星】诞生", {"死星": "canonical", "帝死星": "evolved"}, "alias_evolution"),
+
+    # Edge cases
+    ("G病毒稳定强化药剂",       {"G病毒": "FRANCHISE_BIO", "G": "NOT_GRADE"}, "g_virus_vs_grade"),
+    ("E+级以下",               {"E+": "GRADE", "E+级": "GRADE_FULL"},         "grade_not_entity"),
+]
+```
+
+### I.2 — Grammar Rule Tests (200 cases)
+
+```python
+GRAMMAR_V22_TESTS = [
+
+    # GAP-J: 为...所...
+    ("为众人所知",             "được mọi người biết đến",          "wei_suo_known"),
+    ("为命运所捉弄",           "bị số phận đùa giỡn",             "wei_suo_fate"),
+    ("被历史所铭记",           "được lịch sử ghi nhớ",            "bei_suo_history"),
+    ("不愿为强权所屈服",       "không muốn khuất phục trước quyền lực","wei_suo_negated"),
+
+    # GAP-L: Projection scene
+    ("他的投影走向了大屏幕",   "Hình chiếu của hắn tiến về phía màn hình lớn", "projection_walk"),
+    ("远程投影中的他开口道",   "Hắn trong hình chiếu từ xa mở miệng nói",      "projection_speech"),
+
+    # GAP-R: Sci-fi passive
+    ("系统被敌方入侵了",       "hệ thống bị địch phương xâm nhập rồi",         "scifi_system_bei"),
+    ("【死星】被全面激活",     "[Death Star] được kích hoạt toàn diện",         "artifact_bei_activated"),
+
+    # GAP-T: 一边 sci-fi
+    ("一边扫描一边传输数据",   "vừa quét vừa truyền dữ liệu",                  "concurrent_system"),
+    ("边走边想",               "vừa đi vừa nghĩ",                              "bianbian_short"),
+
+    # GAP-NEW-1: 虽说/话说
+    ("虽说强大，但也有弱点",   "tuy rằng mạnh, nhưng cũng có điểm yếu",        "suishuo_concede"),
+    ("话说这次任务有点奇怪",   "Mà nói đến thì lần này nhiệm vụ hơi kỳ lạ",   "huashuo_opener"),
+    ("说白了就是去送死",       "Nói thẳng ra thì là đi chết",                  "shuobaile"),
+
+    # GAP-NEW-2: 哪怕
+    ("哪怕失败，也要去尝试",   "Dù thất bại, cũng phải thử",                  "napa_try"),
+    ("哪怕是超越者也不例外",   "Dù là Siêu Việt Giả cũng không ngoại lệ",     "napa_entity"),
+
+    # GAP-NEW-3: 所谓
+    ("所谓的天道",             "cái gọi là Thiên Đạo",                         "suowei_simple"),
+    ("所谓超越者，就是进化顶端", "cái gọi là Siêu Việt Giả, chính là đỉnh cao tiến hóa", "suowei_defined"),
+
+    # GAP-NEW-4: 罢了/而已
+    ("不过是个小把戏罢了",     "chỉ là một trò nhỏ thôi",                      "bale_minimizing"),
+    ("他只是在试探而已",       "hắn chỉ đang thử thôi",                       "eryi_minimizing"),
+
+    # GAP-NEW-5: 恰好/刚好
+    ("恰好他也在那里",         "Vừa hay hắn cũng ở đó",                       "qiahao_coincidence"),
+    ("刚好三枚丹药",           "Vừa vặn ba viên đan dược",                    "gangHao_count"),
+
+    # GAP-NEW-6: 说不定/也许
+    ("说不定他早就知道了",     "Biết đâu hắn đã biết từ lâu rồi",             "shuoboding_maybe"),
+    ("也许这就是命运",         "Có lẽ đây chính là số phận",                  "yexu_fate"),
+
+    # GAP-NEW-7: 一来...二来
+    ("一来省时间，二来省力气", "thứ nhất là tiết kiệm thời gian, thứ hai là tiết kiệm sức", "yilai_elaI"),
+    ("一方面危险，另一方面又必要", "một mặt nguy hiểm, mặt khác lại cần thiết", "yifangmian"),
+
+    # GAP-NEW-8: 以防万一
+    ("带上武器，以防万一",     "Mang theo vũ khí, đề phòng vạn nhất",         "yifang_precaution"),
+
+    # GAP-NEW-9: 相比之下
+    ("相比之下，他的实力更强", "So sánh mà xem, thực lực của hắn mạnh hơn",   "xiangbi_compare"),
+    ("与普通人相比，差距巨大", "So với người thường, khoảng cách rất lớn",     "yu_xiangbi"),
+
+    # GAP-NEW-10: 就算...也
+    ("就算失败也不后悔",       "Dù thất bại cũng không hối hận",              "jiusuan_no_regret"),
+    ("就算是超越者也要低头",   "Dù là Siêu Việt Giả cũng phải cúi đầu",      "jiusuan_entity"),
+
+    # GAP-NEW-11: Timestamp protection
+    ("持续时间-720小时",       "thời gian duy trì: 720 giờ",                  "timestamp_duration"),
+    ("【系统计算中…】",        "【Hệ thống đang tính toán...】",               "system_ellipsis"),
+
+    # GAP-NEW-12: 无论如何
+    ("无论如何都要完成任务",   "Dù thế nào cũng phải hoàn thành nhiệm vụ",   "wulun_regardless"),
+    ("不管怎样，先活下去",     "Dù sao đi nữa, trước tiên hãy sống sót",     "buguan_survive"),
+
+    # GAP-NEW-13: 就连...也
+    ("就连系统也无法预测",     "Ngay cả hệ thống cũng không thể dự đoán",    "jiulian_system"),
+    ("就连超越者也要退避",     "Ngay cả Siêu Việt Giả cũng phải tránh né",   "jiulian_entity"),
+
+    # GAP-NEW-14: 据说/据X称
+    ("据说他已经达到超越者境界","Nghe nói hắn đã đạt đến cảnh giới Siêu Việt Giả", "jushuo_rumor"),
+    ("据系统分析称，成功率73%", "Theo phân tích của hệ thống, tỷ lệ thành công 73%","ju_system_analysis"),
+
+    # GAP-NEW-15: 非X不可
+    ("非去不可",               "nhất định phải đi",                            "fei_buke_go"),
+    ("这件事非他莫属",         "việc này không ai làm được ngoài hắn",         "fei_moshu"),
+
+    # GAP-NEW-16: 鉴于/基于
+    ("鉴于当前形势，决定撤退", "Xét đến tình thế hiện tại, quyết định rút lui", "jianyu_situation"),
+    ("基于安全考虑",           "Dựa trên lý do an toàn",                       "jiyu_safety"),
+
+    # GAP-NEW-18: Ellipsis handling
+    ("他…他怎么会在这里",      "Hắn... hắn sao lại ở đây",                    "stutter_ellipsis"),
+
+    # GAP-NEW-19: 由于/因为...导致
+    ("由于他的努力，所以成功了","Do hắn nỗ lực, nên đã thành công",           "youyu_suoyi"),
+    ("战争导致了大量伤亡",     "Chiến tranh dẫn đến thương vong lớn",          "daozhi_war"),
+    ("正因如此，他选择了放弃", "Chính vì vậy, hắn lựa chọn từ bỏ",           "zhengyin_ruci"),
+
+    # GAP-NEW-20: Nested possession 3 levels
+    ("星耀帝国的德罗耶达的命令","Mệnh lệnh của Droieda thuộc Tinh Diệu Đế Quốc", "nested_3level_entity"),
+    ("李宇的分身的实力",        "Thực lực của phân thân của Lý Vũ",             "nested_3level_person"),
+]
+```
+
+---
+
+## PHẦN J — Sprint Timeline Chi tiết
+
+```
+TUẦN 1 — Entity Scanner Foundation
+  Mon: ChapterTitleEntitySeeder (A.1)
+  Tue: BracketItemExtractor (A.2) + KIND_CLASSIFIERS
+  Wed: PatternBasedNER TYPE 1+2 (A.3)
+  Thu: PatternBasedNER TYPE 3+4+5+6 (A.3 cont.)
+  Fri: Unit tests PASS 0, 1, 2 (50 cases)
+
+TUẦN 2 — Entity Scanner: Confirmation + Transliteration
+  Mon: ContextConfirmationPass (A.4) với boost/penalty
+  Tue: CrossChapterCooccurrence (A.5)
+  Wed: TransliterationEngine METHOD A/B/C (A.6)
+       TransliterationEngine edge cases + phoneme rebuild
+  Thu: AliasHierarchyResolver (A.7): trigger + evolution
+       AliasHierarchyResolver: chain flatten + conflict resolution
+  Fri: Unit tests PASS 3-6 (75 cases)
+
+TUẦN 3 — Entity Scanner: Export + Persistence
+  Mon: ReviewExporter (A.8): 3 output files + diff tool
+  Tue: EntityMemoryStore (SQLite persistence)
+  Wed: Error handling: failure recovery + cycle detection
+       protagonist_seed.json setup
+  Thu: Integration test: full scan trên 100 chương mẫu
+  Fri: Performance profiling entity scanner
+
+TUẦN 4 — Grammar: GAP-J, L, R, T + Core gaps
+  Mon: rule_wei_suo_passive (GAP-J) + tests
+  Tue: rule_projection_scene (GAP-L) + ProjectionSceneDetector
+  Wed: rule_scifi_passive (GAP-R) + tests
+       rule_concurrent_v22 (GAP-T) bianbian variant
+  Thu: rule_zuowei_frame (GAP-C) + rule_ji_disambiguation (GAP-D)
+  Fri: rule_discourse_linker_stack (GAP-E) + rule_time_skip (GAP-F)
+
+TUẦN 5 — Grammar: GAP-G đến GAP-W
+  Mon: rule_yi_dan_entity (GAP-G) + rule_mei_frequency (GAP-H)
+  Tue: SSS/SS rating (GAP-I) + countdown (GAP-V) + emphatic_neg (GAP-W)
+  Wed: rule_dramatic_speech (GAP-N) + rule_tech_version (GAP-O)
+  Thu: rule_zai_kuang_xia (GAP-P) + rule_qi_reference (GAP-Q)
+  Fri: rule_math_expression (GAP-M, S) + meme_typography (GAP-U)
+
+TUẦN 6 — Grammar: 20 GAP-NEW rules
+  Mon: GAP-NEW 1-5 (虽说/哪怕/所谓/罢了/恰好)
+  Tue: GAP-NEW 6-10 (说不定/一来/以防/相比/就算)
+  Wed: GAP-NEW 11-15 (timestamp/无论如何/就连/据说/非不可)
+  Thu: GAP-NEW 16-20 (鉴于/quoted number/ellipsis/由于/nested possession)
+  Fri: Tests: 200 grammar cases
+
+TUẦN 7 — Data Files
+  Mon: entity_suffix_ontology_v22.json (complete)
+  Tue: transliteration_char_map.json (70+ entries)
+       alias_trigger_verbs.json
+  Wed: phoneme_map.json + confidence_boost_rules.json
+       common_word_blacklist.txt (500+ words)
+  Thu: grammar_v22 data files (14 files)
+  Fri: protagonist_seed.json + franchise_glossary update
+
+TUẦN 8 — Integration & Calibration
+  Mon: Wire tất cả vào GrammarTransferPipelineV22
+  Tue: Performance optimization: Trie warm-up, rule short-circuit
+       Performance budget monitor
+  Wed: Regression tests: v14→v21 full suite
+  Thu: Full story scan → export glossary + review list
+       Manual review pass (sample 50 low-confidence entities)
+  Fri: Fix top 5 error patterns từ review
+
+TUẦN 9 — Final Testing & Documentation
+  Mon: Full test suite: 350+ cases
+  Tue: Performance profiling: đảm bảo ≤ 150ms/câu
+  Wed: Accuracy report per construction type
+  Thu: Documentation: known limitations v22 + upgrade notes
+  Fri: Sign-off: Definition of Done checklist
+```
+
+---
+
+## PHẦN K — Master Checklist Tổng hợp v22 FINAL
+
+### K.1 — Named Entity Scanner (A series)
+- [ ] A.1a ChapterTitleEntitySeeder: `_extract_brackets()` nested support
+- [ ] A.1b ChapterTitleEntitySeeder: `_extract_proper_nouns()` suffix + translit
+- [ ] A.2a BracketItemExtractor: 15+ KIND_CLASSIFIERS
+- [ ] A.2b BracketItemExtractor: nested bracket parser
+- [ ] A.3a PatternBasedNER TYPE 1: Suffix scan (15 entity types, 100+ suffixes)
+- [ ] A.3b PatternBasedNER TYPE 2: Prefix scan (5 patterns)
+- [ ] A.3c PatternBasedNER TYPE 3: Transliteration detection (30 phoneme patterns)
+- [ ] A.3d PatternBasedNER TYPE 4: Role-title (15 markers)
+- [ ] A.3e PatternBasedNER TYPE 5: Naming structure (名为/叫做/又叫)
+- [ ] A.3f PatternBasedNER TYPE 6: Repeated subject (≥3 times)
+- [ ] A.4a ContextConfirmationPass: 8 confidence boosts
+- [ ] A.4b ContextConfirmationPass: 7 confidence penalties + blacklist
+- [ ] A.4c ContextConfirmationPass: `_count_as_subject()` with negative cases
+- [ ] A.5a CrossChapterCooccurrence: chapter count boost
+- [ ] A.5b CrossChapterCooccurrence: cooccurrence with known entities
+- [ ] A.6a TransliterationEngine: METHOD C (glossary)
+- [ ] A.6b TransliterationEngine: METHOD B (TRANSLIT_CHAR_MAP 70+ entries)
+- [ ] A.6c TransliterationEngine: METHOD B (phoneme rebuild + post-process)
+- [ ] A.6d TransliterationEngine: METHOD A (Han-Viet)
+- [ ] A.6e TransliterationEngine: `_is_transliteration()` heuristic
+- [ ] A.7a AliasHierarchyResolver: trigger verb detection (12 verbs)
+- [ ] A.7b AliasHierarchyResolver: evolution verb detection (8 verbs)
+- [ ] A.7c AliasHierarchyResolver: chain flatten (BFS)
+- [ ] A.7d AliasHierarchyResolver: conflict resolution (confidence + chapter)
+- [ ] A.7e AliasHierarchyResolver: `build_protagonist_chain()` for 李宇
+- [ ] A.8a ReviewExporter: `glossary.json` (≥0.85 confidence)
+- [ ] A.8b ReviewExporter: `review_candidates.md` (0.45–0.85)
+- [ ] A.8c ReviewExporter: `rejected.json` (<0.45)
+- [ ] A.8d ReviewExporter: `changes.md` diff tool vs old glossary
+- [ ] A.9a EntityMemoryStore: SQLite schema (entities + alias_map)
+- [ ] A.9b EntityMemoryStore: `upsert_entity()` with conflict merge
+- [ ] A.9c EntityMemoryStore: `get_alias()` chain lookup
+- [ ] A.10 Error handling: pass failure recovery, cycle detection, confidence tie
+- [ ] A.11 Tests: 200 entity scanner cases
+
+### K.2 — Grammar Rules (B series: original v22 gaps)
+- [ ] B.1  rule_zuowei_frame: 3 patterns (subject/material/role-perspective)
+- [ ] B.2  rule_ji_disambiguation: 4 types (identity/concessive/copula/classical)
+- [ ] B.3  rule_discourse_linker_stack: 5 linkers (只不过/不过/倒是/反而/而且还)
+- [ ] B.4  rule_time_skip: 12 markers + special cases (此后X年/自此之后)
+- [ ] B.5  rule_yi_dan_entity: embedded entity clause protection
+- [ ] B.6  rule_mei_frequency: 8 patterns + entity edge case
+- [ ] B.7  rule_dramatic_speech: 3 patterns (identity/summon/command)
+- [ ] B.8  rule_tech_version: 7 version suffixes
+- [ ] B.9  rule_zai_kuang_xia: 7 frame patterns
+- [ ] B.10 rule_qi_reference: 6 reference terms
+- [ ] B.11 rule_countdown: 4 patterns + T-X sci-fi format
+- [ ] B.12 rule_emphatic_negation: 8 patterns (extend v14)
+- [ ] B.13 rule_math_expression: geometric/exponential + n次方
+- [ ] B.14 rule_meme_typography: 又双叒叕 full character set
+- [ ] B.J  rule_wei_suo_passive: 为/被+所+V (GAP-J)
+- [ ] B.L  rule_projection_scene: physical vs projection detection (GAP-L)
+- [ ] B.R  rule_scifi_nested_passive: system/artifact BEI (GAP-R)
+- [ ] B.T  rule_concurrent_v22: bianbian variant + sci-fi parallel (GAP-T)
+- [ ] B.15 Tests: 200 grammar cases
+
+### K.3 — Grammar Rules (C series: 20 NEW gaps)
+- [ ] C.1  rule_meta_discourse_opener: 8 openers (虽说/话说/说白了...)
+- [ ] C.2  rule_na_pa_concession: 哪怕/哪怕是 (vs 即便 disambiguation)
+- [ ] C.3  rule_suo_wei_definitional: 所谓 + irony detection
+- [ ] C.4  rule_minimizing_suffix: 罢了/而已/不过如此
+- [ ] C.5  rule_coincidence_marker: 恰好/刚好/正好/碰巧
+- [ ] C.6  rule_probability_hedge: 8 hedges ordered by strength
+- [ ] C.7  rule_yi_lai_enumeration: 一来/二来 + 一方面 + 首先/其次
+- [ ] C.8  rule_precaution_frame: 以防万一/以防/保险起见
+- [ ] C.9  rule_comparison_frame: 相比之下/与X相比/比起X来
+- [ ] C.10 rule_jiu_suan_concessive: 就算...也 (disambiguation)
+- [ ] C.11 rule_timestamp_guard: HH:MM:SS + date + sci-fi + duration dash
+- [ ] C.12 rule_regardless_frame: 无论如何/不管怎样/管他呢
+- [ ] C.13 rule_jiu_lian_even: 就连X也Y (vs 连X都Y)
+- [ ] C.14 rule_evidential_frame: 据说/据X称/据悉/据报道
+- [ ] C.15 rule_fei_buke_necessity: 非X不可/非X莫属
+- [ ] C.16 rule_jian_yu_formal: 鉴于/基于/出于/从X角度
+- [ ] C.17 rule_quoted_number_guard: protect numbers inside quotes
+- [ ] C.18 rule_ellipsis_handling: system/dialogue/stutter/narrative variants
+- [ ] C.19 rule_cause_effect_frame: 由于/因为+所以/导致/造成/正因如此
+- [ ] C.20 rule_nested_possession_3level: A的B的C inversion + entity merge
+
+### K.4 — Data Files
+- [ ] entity_suffix_ontology_v22.json (15 entity types, 100+ suffixes)
+- [ ] transliteration_char_map.json (70+ entries: personal + place + franchise)
+- [ ] phoneme_map.json (60+ chars)
+- [ ] confidence_boost_rules.json (8 boosts, 7 penalties)
+- [ ] common_word_blacklist.txt (500+ words)
+- [ ] alias_trigger_verbs.json (12 identity + 8 evolution)
+- [ ] evolution_verbs.json
+- [ ] protagonist_seed.json (李宇 + all aliases)
+- [ ] grammar_v22/zuowei_frame_patterns.json
+- [ ] grammar_v22/ji_disambiguation_patterns.json
+- [ ] grammar_v22/discourse_linker_stack.json
+- [ ] grammar_v22/time_skip_markers.json
+- [ ] grammar_v22/dramatic_speech_patterns.json
+- [ ] grammar_v22/tech_version_suffixes.json
+- [ ] grammar_v22/zai_kuang_xia_patterns.json
+- [ ] grammar_v22/qi_reference_map.json
+- [ ] grammar_v22/countdown_patterns.json
+- [ ] grammar_v22/emphatic_negation_map.json
+- [ ] grammar_v22/math_expression_map.json
+- [ ] grammar_v22/meeting_scene_idiom_guard.txt
+- [ ] grammar_v22/meme_typography_map.json
+- [ ] grammar_v22/new_gaps_data.json (20 new gap data)
+
+### K.5 — Integration & Performance
+- [ ] Wire GrammarTransferPipelineV22 tất cả components
+- [ ] TrieCacheManager: warmup với entity glossary
+- [ ] RulePerformanceMonitor: budget tracking
+- [ ] TransferEngine short-circuit optimization
+- [ ] Regression: v14/v15/v21 tests 100% pass
+- [ ] Full story entity scan → glossary.json + review_candidates.md
+- [ ] Manual review: 50 low-confidence samples
+- [ ] Accuracy report: per construction type + per entity type
+- [ ] Performance: ≤ 150ms/câu average trên 1000-câu sample
+- [ ] Documentation: known limitations v22 + upgrade notes v21→v22
+
+---
+
+## Definition of Done — v22 FINAL
+
+```
+✓ Entity Scanner:
+  - Transliteration accuracy (known names): ≥ 95%
+  - Suffix entity detection precision: ≥ 88%
+  - Alias chain resolution: ≥ 90%
+  - Auto-glossary precision: ≥ 95% (< 5% false positives)
+  - EntityMemoryStore: zero data loss across chapters
+
+✓ Grammar Rules (original v22 gaps):
+  - 为...所... passive: ≥ 90%
+  - Discourse linker: ≥ 88%
+  - Time skip: ≥ 92%
+  - Dramatic speech: ≥ 90%
+  - Math expression: ≥ 90%
+  - Countdown/timestamp: ≥ 98%
+
+✓ Grammar Rules (20 new gaps):
+  - Meta discourse opener: ≥ 90%
+  - 哪怕 concession: ≥ 90%
+  - 所谓 definitional: ≥ 88%
+  - Enumeration 一来/二来: ≥ 90%
+  - Cause-effect frame: ≥ 88%
+  - Nested possession 3-level: ≥ 85%
+
+✓ Integration:
+  - 98 original tests: 100% pass
+  - v14/v15/v21 full regression: 100% pass
+  - v22 test corpus (50 câu): ≥ 85% pass
+  - Full story scan: zero crash
+  - Pipeline performance: ≤ 150ms/câu average
+  - Glossary auto-export: runs without error
+```
+
+---
+
+*v22.1 FINAL — Complete specification*  
+*Named entity scanner: 8-pass pipeline với 200 test cases*  
+*Grammar rules: 38 rules tổng (14 original gap + 4 implement + 20 new)*  
+*Data files: 23 files đầy đủ specification*  
+*Timeline: 9 tuần triển khai*  
+*Tổng accumulated v14→v22: 50+ grammar rules, 1.800+ tests, 60+ data files*

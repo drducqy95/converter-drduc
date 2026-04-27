@@ -28,6 +28,9 @@ class RelationType(Enum):
     PRECAUTION = "precaution"
     EMPHATIC_EVEN = "emphatic_even"
     NECESSITY = "necessity"
+    REGARDLESS = "regardless"
+    PROBABILITY = "probability"
+    CORRECTION = "correction"
 
 
 @dataclass(slots=True)
@@ -39,19 +42,22 @@ class Relation:
 
 
 MARKER_MAP: dict[RelationType, tuple[str, ...]] = {
-    RelationType.CONDITION: ("如果", "若", "只要", "一旦", "除非"),
-    RelationType.CONCESSION: ("虽然", "即便", "哪怕", "就算", "尽管"),
-    RelationType.CAUSE_EFFECT: ("因为", "由于", "所以", "因此", "于是"),
-    RelationType.VIEWPOINT: ("作为", "从", "就", "对于", "对"),
+    RelationType.CONDITION: ("如果", "若", "若是", "只要", "一旦", "除非", "倘若", "假如"),
+    RelationType.CONCESSION: ("虽然", "虽说", "即便", "即使", "哪怕", "就算", "尽管"),
+    RelationType.CAUSE_EFFECT: ("因为", "由于", "鉴于", "基于", "所以", "因此", "于是", "导致", "使得"),
+    RelationType.VIEWPOINT: ("作为", "从", "就", "对于", "对", "至于", "关于"),
     RelationType.PARALLEL_ACTION: ("一边", "一面", "边"),
-    RelationType.DEFINITION: ("所谓", "也就是说", "换言之"),
-    RelationType.EVIDENTIAL: ("据说", "据", "称"),
+    RelationType.DEFINITION: ("所谓", "所谓的", "也就是说", "换言之", "换句话说"),
+    RelationType.EVIDENTIAL: ("据说", "据悉", "据了解", "据报道", "据", "称"),
     RelationType.PRECAUTION: ("以防", "以防万一", "以备不时之需"),
     RelationType.EMPHATIC_EVEN: ("就连", "连"),
     RelationType.PASSIVE: ("被", "为", "所"),
     RelationType.DISPOSAL: ("把", "将"),
     RelationType.COMPARISON: ("比", "不如", "胜过"),
     RelationType.NECESSITY: ("必须", "需要", "不得不"),
+    RelationType.REGARDLESS: ("无论如何", "不管怎样", "不管怎么说", "无论", "不管"),
+    RelationType.PROBABILITY: ("说不定", "也许", "或许", "大概", "估计", "想必", "多半"),
+    RelationType.CORRECTION: ("不是", "而是", "并非", "不但", "不仅"),
 }
 
 
@@ -95,6 +101,14 @@ class RelationDetector:
             return "为...所"
         if relation_type == RelationType.PARALLEL_ACTION and re.search(r"一[边面].+?一[边面]", text):
             return "一边...一边"
+        if relation_type == RelationType.CONDITION and re.search(r"(?:如果|只要|一旦).+?就", text):
+            return "condition...就"
+        if relation_type == RelationType.CONCESSION and re.search(r"(?:哪怕|就算|即便|即使).+?(?:也|都|仍然|还是)", text):
+            return "concession...也"
+        if relation_type == RelationType.REGARDLESS and re.search(r"(?:无论|不管).+?(?:也|都)", text):
+            return "无论/不管...都"
+        if relation_type == RelationType.CORRECTION and re.search(r"不是.+?而是", text):
+            return "不是...而是"
         for marker in sorted(markers, key=len, reverse=True):
             if marker in text:
                 return marker
@@ -111,4 +125,3 @@ class RelationDetector:
             seen.add(key)
             deduped.append(relation)
         return deduped
-

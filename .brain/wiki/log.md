@@ -1,0 +1,54 @@
+# 📜 Trinity Wiki Log
+
+_Append-only operation history._
+
+- `2026-04-14T08:47:36` — CREATE [entity] Project Converter by DrDuc → .brain\wiki\entities\project-converter-by-drduc.md
+- `2026-04-14T08:47:36` — CREATE [insight] Session 2026-04-14 08-47-36 → .brain\wiki\insights\session-2026-04-14-08-47-36.md
+- `2026-04-14T08:47:36` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-14T11:00:24` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-14T11:00:24` — CREATE [insight] Session 2026-04-14 11-00-24 → .brain\wiki\insights\session-2026-04-14-11-00-24.md
+- `2026-04-14T11:00:24` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-14T15:25:39` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-14T15:25:39` — CREATE [insight] Session 2026-04-14 15-25-39 → .brain\wiki\insights\session-2026-04-14-15-25-39.md
+- `2026-04-14T15:25:39` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T19:50:00` — CREATE [pattern] desktop-ui-transport - ConfigurationError Pattern → .brain\wiki\patterns\desktop-ui-transport-configurationerror-pattern.md
+- `2026-04-20T19:50:00` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T19:54:28` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T19:54:28` — CREATE [insight] Session 2026-04-20 19-54-28 → .brain\wiki\insights\session-2026-04-20-19-54-28.md
+- `2026-04-20T19:54:28` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T20:13:21` — CREATE [decision] HTTP Bridge Transport for Browser Dev Mode → .brain\wiki\decisions\http-bridge-transport-for-browser-dev-mode.md
+- `2026-04-20T20:13:23` — CREATE [entity] Fix UI Pipeline Feature → .brain\wiki\entities\fix-ui-pipeline-feature.md
+- `2026-04-20T20:14:00` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T20:14:00` — CREATE [insight] Session 2026-04-20 20-14-00 → .brain\wiki\insights\session-2026-04-20-20-14-00.md
+- `2026-04-20T20:14:00` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-20T22:04:20` — CREATE [pattern] PreTranslationPipeline - ValueError Pattern → .brain\wiki\patterns\pretranslationpipeline-valueerror-pattern.md
+- `2026-04-20T22:04:20` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-21T11:59:00` — CREATE [pattern] PreTranslationPipeline._finalize_preparation - MemoryError Pattern → .brain\wiki\patterns\pretranslationpipeline-finalize-preparation-memoryerror-pattern.md
+- `2026-04-21T11:59:01` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-21T15:50:13` — UPDATE [pattern] pretranslationpipeline-finalize-preparation-memoryerror-pattern
+- `2026-04-22T09:32:58` — CREATE [pattern] Translation Engine - Chinese Structure Rewriter - RegexOverlap/TranslationAmbiguity Pattern → .brain\wiki\patterns\translation-engine-chinese-structure-rewriter-regexoverlaptranslationambiguity-pattern.md
+- `2026-04-22T09:32:58` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T10:07:27` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T10:07:27` — CREATE [insight] Session 2026-04-22 10-07-27 → .brain\wiki\insights\session-2026-04-22-10-07-27.md
+- `2026-04-22T10:07:27` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T10:38:22` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T10:38:22` — CREATE [insight] Session 2026-04-22 10-38-22 → .brain\wiki\insights\session-2026-04-22-10-38-22.md
+- `2026-04-22T10:38:22` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T15:54:02` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-22T15:54:02` — CREATE [insight] Session 2026-04-22 15-54-02 → .brain\wiki\insights\session-2026-04-22-15-54-02.md
+- `2026-04-22T15:54:03` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-23T14:39:51` — CREATE [pattern] POS Migration Execution - LogicError Pattern → .brain\wiki\patterns\pos-migration-execution-logicerror-pattern.md
+- `2026-04-23T14:39:51` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-23T16:13:07` — UPDATE [pattern] pos-migration-execution-logicerror-pattern
+- `2026-04-23T16:17:00` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-23T16:17:00` — CREATE [insight] Session 2026-04-23 16-17-00 → .brain\wiki\insights\session-2026-04-23-16-17-00.md
+- `2026-04-23T16:17:00` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-23T21:17:14` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-23T21:17:14` — CREATE [insight] Session 2026-04-23 21-17-14 → .brain\wiki\insights\session-2026-04-23-21-17-14.md
+- `2026-04-23T21:17:14` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-27T21:50:56` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-27T21:50:56` — CREATE [insight] Session 2026-04-27 21-50-56 → .brain\wiki\insights\session-2026-04-27-21-50-56.md
+- `2026-04-27T21:50:56` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-27T22:14:18` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-27T22:14:18` — CREATE [insight] Session 2026-04-27 22-14-18 → .brain\wiki\insights\session-2026-04-27-22-14-18.md
+- `2026-04-27T22:14:18` — UPDATE [entity] project-converter-by-drduc

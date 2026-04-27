@@ -7,7 +7,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 - Production core: Python.
 - Kế hoạch thực thi chính: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`.
 - Phase 00-08 đã có artifact chạy được và test.
-- v23.0 đã có nền tảng hardening cho TM governance, trace, segment typing, protected span, noise filter và grammar relation detection.
+- v23.0 đã có nền tảng hardening cho TM governance, trace, segment typing, protected span, noise filter, grammar relation detection và grammar transfer pack thận trọng.
 - Lệnh test chuẩn: `python -m pytest`
 
 ## Những Gì Đang Chạy Được
@@ -18,7 +18,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 - `src/qa/`: terminology/pronoun/emotion/structure/untranslated/length checks và QA report.
 - `src/state/`: project manager, SQLite translation memory đã tách `tm_machine`/`tm_approved`/`tm_reviewed`, candidate workflow, runtime stats, Obsidian export.
 - `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: nền tảng v23 cho segment typing và an toàn noise/protected span.
-- `src/grammar/`: ClauseSegmenter, RelationDetector, RuleClaim/RuleRegistry/ConflictResolver.
+- `src/grammar/`: ClauseSegmenter, RelationDetector, GrammarTransferEngine, RuleClaim/RuleRegistry/ConflictResolver.
 - `src/en_vi/en_vi_translator.py`: baseline EN-VI phrase-first với grammar rules cơ bản.
 - `src/ui/`: command protocol và sidecar bridge cho desktop app.
 - `desktop/`: React shell build được bằng `npm run build`; `src-tauri/` đã có skeleton tối thiểu.
@@ -30,7 +30,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 
 ## Kiểm Chứng Gần Nhất
 
-- `python -m pytest`: `151 passed`
+- `python -m pytest`: `156 passed`
 - `desktop/npm run build`: build web shell thành công
 
 ## Tài Liệu Chính

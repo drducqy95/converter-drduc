@@ -476,6 +476,10 @@ class NumberConverter:
         if result:
             return result
 
+        result = self._try_semantic_number(text, pos)
+        if result:
+            return result
+
         result = self._try_arabic_unit(text, pos)
         if result:
             return result
@@ -497,6 +501,272 @@ class NumberConverter:
             return result
 
         return None
+
+    # ─── Semantic number/rating/countdown frames ───
+
+    def _try_semantic_number(self, text: str, pos: int) -> ConversionResult | None:
+        for handler in (
+            self._try_rating,
+            self._try_percent,
+            self._try_fraction,
+            self._try_countdown_or_duration,
+            self._try_ordinal_time,
+            self._try_math_expression,
+        ):
+            result = handler(text, pos)
+            if result:
+                return result
+        return None
+
+    def _try_rating(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        match = re.match(r"^(SSS|SS|S|A|B|C|D|E|F)([+-]?)(评价|评级|级别|等级|级|小队|队伍)", rem, flags=re.IGNORECASE)
+        if not match:
+            return None
+        grade = (match.group(1) + match.group(2)).upper()
+        suffix = match.group(3)
+        if suffix in {"评价", "评级"}:
+            text_out = f"đánh giá {grade}"
+        elif suffix in {"级别", "等级", "级"}:
+            text_out = f"cấp {grade}"
+        else:
+            text_out = f"tiểu đội {grade}"
+        return ConversionResult(text=text_out, consumed=match.end(), conv_type="rating")
+
+    def _try_percent(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        prefix = "百分之"
+        if not rem.startswith(prefix):
+            return None
+        tail = rem[len(prefix):]
+
+        approx = self._consume_approx_percent(tail)
+        if approx:
+            selected, consumed = approx
+            return ConversionResult(text=selected, consumed=len(prefix) + consumed, conv_type="percent_approx")
+
+        number = self._consume_semantic_number(tail)
+        if not number:
+            return None
+        number_text, consumed, value = number
+        rest = tail[consumed:]
+        total = len(prefix) + consumed
+
+        if rest.startswith("点几"):
+            return ConversionResult(text=f"hơn {number_text}%", consumed=total + 2, conv_type="percent_decimal_approx")
+        decimal = re.match(r"^点(\d+)", rest)
+        if decimal:
+            return ConversionResult(
+                text=f"{number_text}.{decimal.group(1)}%",
+                consumed=total + decimal.end(),
+                conv_type="percent_decimal",
+            )
+        if rest.startswith("左右"):
+            return ConversionResult(text=f"khoảng {number_text}%", consumed=total + 2, conv_type="percent_approx")
+        if rest.startswith("还多"):
+            return ConversionResult(text=f"hơn {number_text}%", consumed=total + 2, conv_type="percent_excess")
+        if value > 100:
+            return ConversionResult(text=f"{number_text}%", consumed=total, conv_type="percent_over_100")
+        return ConversionResult(text=f"{number_text}%", consumed=total, conv_type="percent")
+
+    def _consume_approx_percent(self, text: str) -> tuple[str, int] | None:
+        if len(text) < 2:
+            return None
+        first = DIGIT_MAP.get(text[0])
+        second = DIGIT_MAP.get(text[1])
+        if first is None or second is None:
+            return None
+        if len(text) >= 3 and text[2] == "十":
+            return f"khoảng {first * 10}-{second * 10}%", 3
+        if text[1] in DIGIT_MAP:
+            return f"khoảng {first}-{second}%", 2
+        return None
+
+    def _try_fraction(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        denom = self._consume_semantic_number(rem)
+        if not denom:
+            return None
+        denom_text, denom_consumed, denom_value = denom
+        if not rem[denom_consumed:].startswith("分之"):
+            return None
+        numerator = self._consume_semantic_number(rem[denom_consumed + 2:])
+        if not numerator:
+            return None
+        numerator_text, numerator_consumed, numerator_value = numerator
+        total = denom_consumed + 2 + numerator_consumed
+        return ConversionResult(
+            text=self._format_fraction(denom_text, denom_value, numerator_text, numerator_value),
+            consumed=total,
+            conv_type="fraction",
+        )
+
+    def _try_countdown_or_duration(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        duration_match = re.match(r"^持续时间[-—–:：]\s*", rem)
+        if duration_match:
+            number = self._consume_semantic_number(rem[duration_match.end():])
+            if not number:
+                return None
+            number_text, consumed, _ = number
+            unit = self._consume_time_unit(rem[duration_match.end() + consumed:])
+            if not unit:
+                return None
+            unit_text, unit_consumed = unit
+            return ConversionResult(
+                text=f"thời gian duy trì: {number_text} {unit_text}",
+                consumed=duration_match.end() + consumed + unit_consumed,
+                conv_type="duration_dash",
+            )
+
+        t_match = re.match(r"^T-\s*", rem, flags=re.IGNORECASE)
+        if t_match:
+            number = self._consume_semantic_number(rem[t_match.end():])
+            if not number:
+                return None
+            number_text, consumed, _ = number
+            unit = self._consume_time_unit(rem[t_match.end() + consumed:])
+            if not unit:
+                return ConversionResult(text=f"T-{number_text}", consumed=t_match.end() + consumed, conv_type="countdown_t")
+            unit_text, unit_consumed = unit
+            return ConversionResult(
+                text=f"T-{number_text} {unit_text}",
+                consumed=t_match.end() + consumed + unit_consumed,
+                conv_type="countdown_t",
+            )
+
+        for prefix, vi_prefix in (
+            ("倒计时", "đếm ngược"),
+            ("还剩", "còn lại"),
+            ("剩余", "còn lại"),
+            ("限时", "giới hạn thời gian"),
+        ):
+            if not rem.startswith(prefix):
+                continue
+            number = self._consume_semantic_number(rem[len(prefix):])
+            if not number:
+                continue
+            number_text, consumed, _ = number
+            unit = self._consume_time_unit(rem[len(prefix) + consumed:])
+            if not unit:
+                return ConversionResult(text=f"{vi_prefix} {number_text}", consumed=len(prefix) + consumed, conv_type="countdown")
+            unit_text, unit_consumed = unit
+            return ConversionResult(
+                text=f"{vi_prefix} {number_text} {unit_text}",
+                consumed=len(prefix) + consumed + unit_consumed,
+                conv_type="countdown",
+            )
+        return None
+
+    def _try_ordinal_time(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        if not rem.startswith("第"):
+            return None
+
+        first = self._consume_semantic_number(rem[1:])
+        if not first:
+            return None
+        first_text, first_consumed, _ = first
+        after_first = rem[1 + first_consumed:]
+
+        if after_first.startswith(("分", "分钟")):
+            unit_len = 2 if after_first.startswith("分钟") else 1
+            second = self._consume_semantic_number(after_first[unit_len:])
+            if second and after_first[unit_len + second[1]:].startswith("秒"):
+                return ConversionResult(
+                    text=f"{first_text} phút {second[0]} giây",
+                    consumed=1 + first_consumed + unit_len + second[1] + 1,
+                    conv_type="elapsed_time",
+                )
+            return ConversionResult(
+                text=f"phút thứ {first_text}",
+                consumed=1 + first_consumed + unit_len,
+                conv_type="ordinal_time",
+            )
+
+        unit = self._consume_time_unit(after_first)
+        if not unit:
+            return None
+        unit_text, unit_consumed = unit
+        return ConversionResult(
+            text=f"{unit_text} thứ {first_text}",
+            consumed=1 + first_consumed + unit_consumed,
+            conv_type="ordinal_time",
+        )
+
+    def _try_math_expression(self, text: str, pos: int) -> ConversionResult | None:
+        rem = text[pos:]
+        number = self._consume_semantic_number(rem)
+        if not number:
+            return None
+        number_text, consumed, _ = number
+        rest = rem[consumed:]
+        if rest.startswith("次方"):
+            return ConversionResult(text=f"lũy thừa {number_text}", consumed=consumed + 2, conv_type="power")
+        if rest.startswith("平方"):
+            return ConversionResult(text=f"{number_text} bình phương", consumed=consumed + 2, conv_type="square")
+        if rest.startswith("立方"):
+            return ConversionResult(text=f"{number_text} lập phương", consumed=consumed + 2, conv_type="cube")
+        return None
+
+    def _consume_time_unit(self, text: str) -> tuple[str, int] | None:
+        units = {
+            "小时": "giờ",
+            "分钟": "phút",
+            "分": "phút",
+            "秒": "giây",
+            "天": "ngày",
+            "日": "ngày",
+            "年": "năm",
+        }
+        for source, target in sorted(units.items(), key=lambda item: len(item[0]), reverse=True):
+            if text.startswith(source):
+                return target, len(source)
+        return None
+
+    def _consume_semantic_number(self, text: str) -> tuple[str, int, float] | None:
+        digit_match = re.match(r"^\d+(?:\.\d+)?", text)
+        if digit_match:
+            raw = digit_match.group(0)
+            value = float(raw)
+            return raw, digit_match.end(), value
+
+        end = 0
+        while end < len(text) and text[end] in NUMBER_CHARS:
+            end += 1
+        if end == 0:
+            return None
+        raw = text[:end]
+        value = parse_chinese_number(raw)
+        if value is None:
+            return None
+        return str(value), end, float(value)
+
+    def _format_fraction(self, denom_text: str, denom_value: float, numerator_text: str, numerator_value: float) -> str:
+        if numerator_value == 1 and denom_value == 2:
+            return "một nửa"
+
+        denom_vi = self._fraction_denominator_text(denom_text, denom_value)
+        numerator_vi = self._fraction_numerator_text(numerator_text, numerator_value)
+        if numerator_value == 1:
+            return f"một phần {denom_vi}"
+        return f"{numerator_vi} phần {denom_vi}"
+
+    @staticmethod
+    def _fraction_denominator_text(denom_text: str, denom_value: float) -> str:
+        if denom_text in {"10000", "万", "萬"} or denom_value == 10000:
+            return "vạn"
+        if denom_value == 4:
+            return "tư"
+        if denom_value.is_integer() and 0 <= denom_value <= 99:
+            return spell_vietnamese_number(int(denom_value))
+        return str(int(denom_value) if denom_value.is_integer() else denom_value)
+
+    @staticmethod
+    def _fraction_numerator_text(numerator_text: str, numerator_value: float) -> str:
+        if numerator_value.is_integer() and 0 <= numerator_value <= 99:
+            return spell_vietnamese_number(int(numerator_value))
+        return numerator_text
 
     # ─── Weekday ───
 

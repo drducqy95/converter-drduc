@@ -27,6 +27,7 @@ from src.engine.structure_preserver import StructurePreserver
 from src.engine.traditional_to_simplified import TraditionalToSimplifiedConverter
 from src.eapee.pronoun_resolver import PronounResolver
 from src.eapee.emotion_detector import EmotionDetector
+from src.grammar.transfer_engine import GrammarTransferEngine
 from src.engine.zh_structure_rewriter import rewrite_chinese_structure
 from src.engine.vi_grammar_rewriter import rewrite_vietnamese_grammar
 from src.state.translation_memory import TranslationMemory
@@ -282,6 +283,7 @@ class RBMTTranslator:
         self.emotion_detector = EmotionDetector()
         self.expression_bank = ExpressionBank()
         self.pronoun_resolver = PronounResolver()
+        self.grammar_transfer = GrammarTransferEngine()
         self.tm = TranslationMemory(tm_db_path) if tm_db_path else None
         self.enable_tm_lookup = enable_tm_lookup
         self.function_translations = dict(DEFAULT_FUNCTION_TRANSLATIONS)
@@ -441,6 +443,8 @@ class RBMTTranslator:
             return "entity_override"
         if fallback_level in {"pronoun"}:
             return "context_resolver"
+        if fallback_level in {"grammar_transfer"}:
+            return "grammar_transfer"
         if fallback_level in {"phrase_override", "runtime", "function_map", "reading_fallback", "ambiguous", "unresolved"}:
             return "lexical_decode"
         return "rbmt"
@@ -458,7 +462,13 @@ class RBMTTranslator:
         if heading_override:
             return heading_override
 
-        # NEW: Rewrite the Chinese structural pattern BEFORE any engine processing
+        grammar_traces: list[dict] = []
+        if self._should_apply_grammar_transfer(sentence, phrase_override_keys):
+            transfer_result = self.grammar_transfer.rewrite_source(sentence)
+            sentence = transfer_result.text
+            grammar_traces.extend(transfer_result.traces)
+
+        # Rewrite Chinese structural patterns before lexical processing.
         sentence = rewrite_chinese_structure(sentence)
 
         locked_entities = self._get_locked_entities(config)
@@ -475,7 +485,7 @@ class RBMTTranslator:
 
         result_parts: list[str] = []
         draft_parts: list[str] = []
-        traces: list[dict] = []
+        traces: list[dict] = list(grammar_traces)
         i = 0
         while i < len(sentence):
             entity_override = self._match_locked_entity(locked_by_start, i)
@@ -741,6 +751,15 @@ class RBMTTranslator:
         payload["target"] = target
         payload["length"] = len(best_key)
         return payload
+
+    @staticmethod
+    def _should_apply_grammar_transfer(sentence: str, phrase_override_keys: list[str] | None) -> bool:
+        # Keep long regression phrase overrides authoritative; they already encode
+        # reviewed Vietnamese wording for a full construction.
+        for key in phrase_override_keys or []:
+            if len(key) >= 5 and key in sentence:
+                return False
+        return True
 
     def _match_phrase_override(
         self,

@@ -1,0 +1,1457 @@
+
+# GRAMMAR_TRANSFER_PLAN_v15_DEEP_COMPLETION
+
+**Repo:** `converter-drduc`  
+**Kế thừa:** `GRAMMAR_TRANSFER_PLAN_v14_MERGED_v12_v13_FULL.md`  
+**Phạm vi phân tích:** v7 → v14 + phân tích cấu trúc tiếng Trung chưa được đề cập  
+**Ngày:** 2026-04-25  
+**Phiên bản:** v15.0 — Deep Gap Analysis + Structural Completion
+
+-----
+
+## PHẦN 0 — Bản đồ tổng thể v14 và những gì v15 bổ sung
+
+### 0.1 Những gì v14 đã cover tốt
+
+```
+PART A — Core grammar (DE/ASP/BEI/BA/DIR/SVC/TC)         ✅ Đầy đủ
+PART B — Logic/clause (B1–B27, 27 nhóm)                   ✅ Đầy đủ
+PART C — Complement (resultative/potential/degree)         ✅ Đầy đủ
+PART D — Classical (所/之/以/为)                           ✅ Cơ bản
+PART E — Long nominal chain                                ✅ Có framework
+PART F — Number (F1–F13)                                   ✅ Đầy đủ
+PART G — Entity recognition (G1–G6)                        ✅ Đầy đủ
+PART II — Discourse markers (事实上/换言之...)              ✅ v13 có
+PART II — Concession nâng cao (任凭/便是/光是)             ✅ v13 có
+```
+
+### 0.2 Những gì v14 CHƯA cover hoặc cover chưa sâu
+
+```
+GAP-01: Copula 是 — phức tạp hơn nhiều so với đề cập
+GAP-02: 有 existential/possessive — thiếu pattern đầy đủ
+GAP-03: 了解/明白/知道 cognitive verb frames — thiếu
+GAP-04: Pivot sentence (兼语句) — thiếu hoàn toàn
+GAP-05: Attributive clause với 而/并/且 — thiếu
+GAP-06: Verb-object idiom (VO idioms) — thiếu guard
+GAP-07: Negation scope — chưa đủ phức tạp
+GAP-08: Quantifier float (数量词游移) — thiếu
+GAP-09: Coverb/serial prep chain — thiếu
+GAP-10: Register mixing trong một câu — thiếu
+GAP-11: Ellipsis/pro-drop xử lý — thiếu
+GAP-12: Abstract/philosophy nominalization — thiếu
+GAP-13: 而 conjunction — thiếu hoàn toàn
+GAP-14: Degree adverb interaction với comparison — thiếu
+GAP-15: Multi-subject / double subject — thiếu
+GAP-16: Conditional + result embedded — thiếu
+GAP-17: Sentence-final modal tonal variants — thiếu
+GAP-18: Number in combat/action idiom — thiếu guard
+GAP-19: Classical 乃/固/盖/岂/夫 sentence openers — thiếu
+GAP-20: Adversative/unexpected result 竟然/居然/偏偏 — thiếu
+GAP-21: Aspect + negation interaction — chưa đầy đủ
+GAP-22: Reduplication adverb (AABB/ABB/AAB) — chưa đủ
+GAP-23: Classifier + demonstrative interaction — thiếu
+GAP-24: Time expression reorder — thiếu
+GAP-25: Entity possession chain — thiếu rule rõ ràng
+```
+
+-----
+
+## PHẦN 1 — Phân tích 25 GAP Chi tiết
+
+### GAP-01: Copula `是` — Phân loại đầy đủ
+
+v14 đề cập `是...的` cleft nhưng thiếu các dùng pháp khác của `是`.
+
+#### 1.1 Nhận diện/định nghĩa (predicative)
+
+```
+他是林动         → hắn là Lâm Động
+这里是危险地带   → đây là vùng nguy hiểm
+```
+
+Rule: `S 是 N` → `S là N`
+
+#### 1.2 Xác nhận/nhấn mạnh
+
+```
+就是他           → chính là hắn
+正是如此         → chính là như vậy
+还真是           → thật sự là
+确实是           → quả thật là
+```
+
+Rule: adv + `是` → adv_vi + `là`
+
+Mapping:
+
+```
+就是   → chính là / đúng là
+正是   → chính là
+确实是 → quả thật là
+还真是 → thật sự là
+的确是 → đúng là
+竟然是 → hóa ra là / lại chính là
+```
+
+#### 1.3 Adversative `是...但/却` (acknowledge-concede)
+
+```
+这是真的，但我不接受   → đây là thật, nhưng ta không chấp nhận
+他是强了，但还不够     → hắn đúng là mạnh hơn, nhưng vẫn chưa đủ
+```
+
+Rule: `S 是 ADJ/真的, 但` → `S đúng là/thật sự ADJ, nhưng`
+
+#### 1.4 `是否` yes/no interrogative
+
+```
+是否可以进入？   → liệu có thể vào không?
+他是否知道       → liệu hắn có biết không
+```
+
+Rule: `是否 + V/ADJ` → `liệu có + V/ADJ + không` hoặc `có + V/ADJ + hay không`
+
+#### 1.5 Copula trong extended predicate
+
+```
+他是一名修炼者   → hắn là một tu luyện giả
+这是我见过的最强战士 → đây là chiến sĩ mạnh nhất ta từng gặp
+```
+
+Rule: `S 是 NUM + CLS + N` → `S là một + CLS_vi + N_vi`
+
+-----
+
+### GAP-02: `有` — Ba dùng pháp phân biệt rõ
+
+v14 đề cập existential sentence một phần (mục H trong v7). Cần bổ sung đầy đủ.
+
+#### 2.1 Existential (tồn tại)
+
+```
+山顶有人         → trên đỉnh núi có người
+林中有灵气        → trong rừng có linh khí
+```
+
+Rule: `LOC + 有 + NP` → `ở/trong LOC + có + NP`
+
+#### 2.2 Possessive (sở hữu)
+
+```
+他有一件法宝     → hắn có một pháp bảo
+我有一个问题     → tôi có một câu hỏi
+```
+
+Rule: `S + 有 + NP` → `S + có + NP`
+
+#### 2.3 Approximation `有 + NUM` (estimation)
+
+```
+有三百人         → có đến khoảng ba trăm người
+有五六米高       → cao chừng năm sáu mét
+有十年了         → đã được khoảng mười năm rồi
+```
+
+Rule: `有 + NUM/approx` → `có đến/chừng + NUM`
+
+#### 2.4 `没有/没` — negation of 有
+
+```
+没有人知道       → không có ai biết
+他没有法宝       → hắn không có pháp bảo
+从未有过         → chưa từng có
+```
+
+Rule: `没有 + NP` → `không có + NP`  
+Rule: `从未有过` → `chưa từng có`
+
+#### 2.5 Negative existential `没有 + N + V + 过` (experience)
+
+```
+没有人见过如此              → chưa ai từng thấy như vậy
+没有任何修炼者能做到这件事  → chưa có tu luyện giả nào có thể làm được điều này
+```
+
+-----
+
+### GAP-03: Cognitive Verb Frames
+
+Tiếng Trung có các động từ nhận thức với frame đặc trưng:
+
+```
+他知道她不会来   → hắn biết nàng sẽ không đến
+他明白了         → hắn đã hiểu ra
+他发现他错了     → hắn phát hiện ra mình đã sai
+他觉得很奇怪     → hắn cảm thấy rất kỳ lạ
+```
+
+Vấn đề: các verbs này thường kéo theo embedded clause → cần identify embedded clause boundary để tránh sai aspect/passive.
+
+**Pattern:**
+
+```
+COGNITIVE_V + [embedded clause]
+```
+
+**Guard list:**
+
+```python
+COGNITIVE_VERB_GUARD = {
+    "知道", "明白", "了解", "理解", "发现", "意识到",
+    "觉得", "感到", "感觉", "认为", "以为", "以为",
+    "希望", "想", "想到", "担心", "害怕", "相信",
+    "怀疑", "怀疑", "猜测", "判断", "确认"
+}
+```
+
+Rule: Nếu cognitive verb xuất hiện, embedded clause sau nó KHÔNG chịu passive/disposal transfer độc lập.
+
+-----
+
+### GAP-04: Pivot Sentence (兼语句)
+
+Đây là cấu trúc HOÀN TOÀN bị bỏ qua trong v14.
+
+**Định nghĩa:** Câu mà O của V1 đồng thời là S của V2.
+
+```
+他叫我离开
+S   V1  O=S'  V2
+→ Hắn bảo tôi rời đi
+   S   V1  O'  V2
+```
+
+**Các V1 pivot thường gặp:**
+
+```
+叫/让/使/令/命令 → bảo/khiến/ra lệnh
+请               → mời/nhờ
+劝               → khuyên
+帮/帮助          → giúp
+派               → phái/cử
+允许/许可        → cho phép
+禁止/阻止        → cấm/ngăn
+教               → dạy
+派遣             → phái đi
+```
+
+**Examples:**
+
+```
+老师叫我回答问题    → thầy gọi tôi trả lời câu hỏi
+他请我喝茶          → hắn mời tôi uống trà
+他们派人追来        → họ phái người đến truy đuổi
+她劝他不要去        → nàng khuyên hắn đừng đi
+他帮我解决了问题    → hắn giúp tôi giải quyết vấn đề
+他命令士兵前进      → hắn ra lệnh cho binh lính tiến lên
+```
+
+**Rule:**
+
+```
+S + V1_pivot + O + V2 [+ O2?]
+→ S + V1_vi + O + V2_vi [+ O2?]
+```
+
+Phân biệt với causative `让/叫` trong passive context (v14 PART A3).
+
+**Pivot verb → VI mapping:**
+
+```python
+PIVOT_VERB_MAP = {
+    "叫": "gọi/bảo",      # causative=bảo, literal=gọi
+    "让": "để/bảo",
+    "使": "khiến",
+    "令": "khiến/ra lệnh cho",
+    "命令": "ra lệnh cho",
+    "请": "mời/nhờ",
+    "劝": "khuyên",
+    "帮": "giúp",
+    "帮助": "giúp",
+    "派": "cử/phái",
+    "派遣": "phái đi",
+    "允许": "cho phép",
+    "禁止": "cấm",
+    "阻止": "ngăn",
+    "教": "dạy",
+    "逼": "ép/bắt buộc",
+    "逼迫": "ép buộc",
+    "劝说": "thuyết phục",
+    "鼓励": "khuyến khích",
+}
+```
+
+-----
+
+### GAP-05: `而` conjunction — 4 loại chưa được phân biệt
+
+`而` trong v14 gần như không được đề cập nhưng rất phổ biến trong văn xuôi.
+
+#### 5.1 Sequential `而` (then/and then)
+
+```
+他转身而去       → hắn quay người rời đi
+登高而望         → leo cao rồi nhìn xuống
+```
+
+Rule: `V1 + 而 + V2` → `V1 + rồi + V2` hoặc merged `V1 V2`
+
+#### 5.2 Adversative `而` (but/yet)
+
+```
+他强而无用       → hắn mạnh nhưng vô dụng
+大而无当         → to lớn nhưng vô dụng
+```
+
+Rule: `ADJ1 + 而 + ADJ2_negative` → `ADJ1 nhưng ADJ2`
+
+#### 5.3 Manner `而` (by way of)
+
+```
+挺身而出         → đứng ra phía trước
+挥手而去         → vẫy tay rồi rời đi
+一笑而过         → cười một cái rồi bỏ qua
+```
+
+Rule: Thường là thành ngữ/idiom → guard bằng Trie trước
+
+#### 5.4 Progressive/additive `而` (furthermore)
+
+```
+弱小而又渺小     → nhỏ bé lại còn yếu ớt
+聪明而有力量     → thông minh lại có sức mạnh
+```
+
+Rule: `ADJ1 + 而 + (又) + ADJ2` → `ADJ1_vi mà lại ADJ2_vi`
+
+**Data file cần tạo:** `conjunction_er_map.json`
+
+-----
+
+### GAP-06: Verb-Object Idiom Guard
+
+Nhiều VO compound là idiom không được tách:
+
+```
+打招呼    → chào hỏi (không phải "đánh + chiêu hô")
+放松      → thư giãn (không phải "thả + lỏng")
+生气      → tức giận
+破例      → phá lệ
+尽力      → cố hết sức
+出力      → bỏ sức ra
+```
+
+**Vấn đề với grammar rules:** DE inversion, BA, BEI có thể tách các VO idiom này.
+
+**Guard mechanism:**
+
+```python
+VO_IDIOM_GUARD = {
+    "打招呼", "放松", "生气", "破例", "出力", "尽力",
+    "大笑", "苦笑", "冷笑", "微笑",  # manner+laugh
+    "低头", "抬头", "回头", "点头", "摇头",  # head movement
+    "出手", "出击", "出招", "出剑",  # combat initiation
+    "运气", "运功", "运力",  # cultivation
+    # ... 200+ entries
+}
+```
+
+Rule: Nếu span là VO idiom trong guard list → treat as single lexical unit, không tách.
+
+-----
+
+### GAP-07: Negation Scope — Phức tạp hơn v14
+
+v14 có `没有任何`, `全都不`, nhưng chưa cover:
+
+#### 7.1 Double negation → affirmation
+
+```
+没有什么不可能   → không có gì là không thể / tất cả đều có thể
+无不 + V        → đều + V (không ai không V)
+莫不 + V        → không ai mà không V
+```
+
+Rule:
+
+```
+没有 + N + 不 + V → tất cả N đều V
+无不 + V → đều + V
+```
+
+#### 7.2 Negative extent `一点也不 / 一丝也不`
+
+```
+一点也不强      → không hề mạnh chút nào
+丝毫不差        → không sai một chút nào
+```
+
+Rule: `一点/丝毫 + 也/都 + 不 + V/ADJ` → `không hề + V/ADJ + chút nào`
+
+#### 7.3 Negative rhetorical `哪里 + V (negative)`
+
+```
+哪里知道他会来  → nào ngờ hắn lại đến
+哪能这么简单    → sao có thể đơn giản thế được
+```
+
+Rule: `哪里/哪能 + V` → `nào ngờ/sao có thể + V`
+
+#### 7.4 `并不 / 并非` — emphatic negation
+
+```
+并不是那么简单  → không hề đơn giản như vậy
+并非如此        → không phải như vậy / chẳng phải như vậy
+```
+
+Rule: `并不/并非 + P` → `không hề + P` (stronger than plain 不)
+
+-----
+
+### GAP-08: Quantifier Float (数量词游移)
+
+```
+他们三个都来了   → cả ba người họ đều đến
+这些书我买了五本 → trong số những cuốn sách này tôi đã mua năm cuốn
+那些人死了一大半 → trong số những người đó đã chết đi quá nửa
+```
+
+**Vấn đề:** Quantifier có thể xuất hiện ở vị trí khác với danh từ nó bổ nghĩa.
+
+**Rule:**
+
+```
+NP + V + NUM + CLS → V + NUM + CLS + NP_vi
+hoặc: giữ nguyên thứ tự khi tự nhiên
+```
+
+**Phổ biến trong xianxia:**
+
+```
+强者死了无数     → vô số kẻ mạnh đã chết
+弟子倒下了一批   → một đợt đệ tử ngã xuống
+```
+
+-----
+
+### GAP-09: Coverb/Serial Prep Chain
+
+```
+他从北方向南走来    → hắn từ phương Bắc đi về phía Nam đến
+她在月光下向他微笑  → nàng dưới ánh trăng mỉm cười với hắn
+```
+
+**Vấn đề:** Nhiều giới từ chồng nhau trước V → thứ tự trong VI khác ZH.
+
+**ZH order:** [FROM] [TO/AT] [DIRECTION] V  
+**VI order:** V [từ FROM] [về phía/đến TO]
+
+**Coverb map:**
+
+```python
+COVERB_MAP = {
+    "从": "từ",
+    "向": "về phía/đến",
+    "朝": "về phía",
+    "往": "đến/về phía",
+    "对": "với/đối với",
+    "给": "cho",
+    "在": "ở/tại",
+    "到": "đến",
+    "经过": "qua",
+    "沿着": "dọc theo",
+    "围绕": "xung quanh",
+}
+```
+
+**Algorithm:**
+
+```
+1. Detect coverb chain trước V
+2. Nếu có FROM (从) + TO (向/往) → "từ FROM đến TO + V"
+3. Nếu chỉ có AT (在) → giữ AT sau hoặc trước tùy V
+```
+
+-----
+
+### GAP-10: Register Mixing trong một câu
+
+Nhiều câu trong xianxia mix văn ngôn và hiện đại:
+
+```
+吾乃天道具现，汝等凡人，焉能与吾抗衡？
+(văn ngôn) ta là hiện thân Thiên Đạo, lũ phàm nhân các ngươi, sao có thể chống lại ta?
+```
+
+**Detect indicators:**
+
+```python
+CLASSICAL_PRONOUNS = {"吾", "汝", "余", "尔", "彼", "尔等", "汝等", "吾等"}
+CLASSICAL_MODALS = {"焉", "岂", "何", "曷", "盍"}
+CLASSICAL_COPULA = {"乃", "曰", "是以", "故"}
+CLASSICAL_PARTICLES = {"兮", "矣", "乎", "哉", "耳", "焉"}
+```
+
+Rule: Nếu câu có ≥ 2 classical indicators → apply classical register toàn câu
+Nếu chỉ có 1 → apply locally
+
+**Classical pronoun map:**
+
+```python
+CLASSICAL_PRONOUN_VI = {
+    "吾": "ta/tôi",
+    "汝": "ngươi",
+    "余": "ta",
+    "尔": "ngươi",
+    "彼": "hắn/người kia",
+    "尔等": "các ngươi",
+    "汝等": "các ngươi",
+    "吾等": "chúng ta",
+}
+```
+
+-----
+
+### GAP-11: Ellipsis và Pro-drop
+
+Tiếng Trung thường bỏ chủ ngữ/tân ngữ trong chain:
+
+```
+他进来了，看了看，走了出去
+→ hắn tiến vào, nhìn một cái, rồi bước ra đi
+(shared subject: 他)
+```
+
+**Vấn đề:** Khi clause segmenter tách, subject bị mất.
+
+**Rule:** Với chain clauses phân tách bởi `，` không có connector logic, nếu không có explicit subject → inherit subject từ clause trước.
+
+**Không apply khi:**
+
+- Câu có explicit subject mới
+- Câu có discourse marker mới (虽然/但是)
+- Câu là quoted speech
+
+-----
+
+### GAP-12: Abstract/Philosophy Nominalization
+
+Xianxia và Hồng Hoang lịch có nhiều:
+
+```
+圣位之下皆蝼蚁         → dưới Thánh Vị đều là sâu kiến
+天道即为规则            → Thiên Đạo chính là quy tắc
+大道三千，各有归处       → ba nghìn đại đạo, mỗi thứ đều có chỗ về
+```
+
+**Vấn đề:** Những câu này có cấu trúc danh ngữ phức tạp, không phải SVO đơn giản.
+
+**Pattern: `N/NP 即为/乃是 N/NP`**
+
+```
+X 即为 Y    → X chính là Y
+X 乃是 Y    → X chính là Y (cổ)
+X 即 Y      → X tức là Y / X chính là Y
+```
+
+**Pattern: `N 之/的 N，各/皆/都 VP`**
+
+```
+大道三千，各有归处
+→ ba nghìn đại đạo, mỗi thứ đều có chỗ về
+```
+
+Rule: `NUM + N, 各/皆/都 + VP` → `NUM + N, mỗi/đều + VP`
+
+-----
+
+### GAP-13: `而` — Thêm vào rule_conjunction_er.py (bổ sung GAP-05)
+
+Bổ sung các dạng idiom `而` chưa được xử lý:
+
+```
+一而再，再而三    → lần này đến lần khác / hết lần này đến lần khác
+知而不行          → biết mà không làm
+言而有信          → nói phải giữ lời
+```
+
+Rule: Idiom `而` → guard bằng Trie phrase
+
+-----
+
+### GAP-14: Degree Adverb Interaction với Comparison
+
+v14 có comparison `比/更/最` và degree complement `得`. Chưa có interaction:
+
+```
+他比我更快得多    → hắn nhanh hơn tôi nhiều
+他比我强很多      → hắn mạnh hơn tôi rất nhiều
+他比谁都强        → hắn mạnh hơn tất cả mọi người
+这比任何时候都危险 → điều này nguy hiểm hơn bất cứ lúc nào
+```
+
+**Rule bổ sung cho comparison:**
+
+```
+A + 比 + B + ADJ + 得多 → A ADJ_vi hơn B nhiều
+A + 比 + B + 更 + ADJ + 得多 → A càng ADJ_vi hơn B
+A + 比 + 谁/任何人 + 都 + ADJ → A ADJ_vi hơn tất cả
+A + 比 + 任何时候 + 都 + ADJ → A ADJ_vi hơn bất cứ lúc nào
+```
+
+-----
+
+### GAP-15: Multi-subject / Double Subject
+
+```
+这件事，他心里清楚    → chuyện này, hắn hiểu rõ trong lòng
+那个地方，我去过      → nơi đó, tôi từng đến
+林动，他的修为很高    → Lâm Động, tu vi của hắn rất cao
+```
+
+**Vấn đề:** Câu double subject (TOPIC + SUBJECT) khác topic-comment thông thường ở chỗ SUBJECT trong comment có pronoun reference trở lại TOPIC.
+
+**Rule:**
+
+```
+TOPIC + ，+ [pronoun/N ref to TOPIC] + VP
+→ TOPIC + ，+ VP (với pronoun/N được resolve về TOPIC)
+```
+
+**Phân biệt:**
+
+```
+那本书，我看了           → topic-comment (TOPIC = object of 看)
+那本书，他很喜欢         → topic-comment (TOPIC = object of 喜欢)
+林动，他的修为很高       → double subject (林动 = antecedent của 他)
+```
+
+-----
+
+### GAP-16: Embedded Conditional
+
+```
+如果你能突破的话，到时候我们就可以离开了
+→ nếu ngươi có thể đột phá, thì lúc đó chúng ta có thể rời đi rồi
+```
+
+**Vấn đề:** `到时候` (at that time) refers back to conditional → cần xử lý temporal reference.
+
+**Pattern:**
+
+```
+如果 + C1 + 的话，+ 到时候/那时候 + C2 + 了
+→ nếu + C1, thì lúc đó + C2 + rồi
+```
+
+**Embedded concession:**
+
+```
+哪怕他明知道会失败，也要去试试，因为不试怎么知道？
+→ dù hắn biết rõ sẽ thất bại, hắn vẫn phải thử, vì không thử sao biết được?
+```
+
+-----
+
+### GAP-17: Sentence-Final Modal Tonal Variants
+
+v14 có `吗/呢/吧/啊`. Chưa có:
+
+```
+嘛    → mà / thôi mà (softener/obviousness)
+喽    → rồi đó / thế đấy (completion with attitude)
+呗    → thế thôi / vậy thôi (resignation)
+哦    → à / ồ (mild surprise/acknowledgment)
+哟    → ơi / ào (surprise/exclamation)
+咦    → ủa / ơ (surprise)
+哎    → ôi / a (sigh/call)
+哼    → hừ / hắng giọng (disdain/contempt)
+哇    → ồ / oa (admiration/surprise)
+嗯    → ừ / hm (affirmation/contemplation)
+```
+
+**Data file cần tạo:** `sentence_final_particle_extended.json`
+
+-----
+
+### GAP-18: Number trong Combat/Action Idiom — Guard
+
+v14 bảo vệ số trong entity nhưng chưa bảo vệ số trong combat idiom:
+
+```
+一刀两断    → đứt đôi một nhát (không phải "một dao hai đứt")
+三连击      → đòn ba liên hoàn
+一击毙命    → một đòn giết chết / nhất kích tất mệnh
+七伤拳      → Thất Thương Quyền (không phải "7 thương quyền")
+千刀万剐    → nghìn dao vạn nhát / lăng trì xử tử
+```
+
+**Guard list cần thêm:**
+
+```python
+COMBAT_NUMBER_IDIOM_GUARD = {
+    "一刀两断", "三连击", "一击毙命", "七伤拳", "千刀万剐",
+    "一箭双雕", "万箭齐发", "三步并作两步", "一掌拍出",
+    "千锤百炼", "百步穿杨", "一剑封喉", "万剑归宗",
+}
+```
+
+-----
+
+### GAP-19: Classical Sentence Openers
+
+Hồng Hoang lịch thường dùng:
+
+```
+乃知         → mới biết rằng / nhận ra rằng
+固然         → tất nhiên là / đương nhiên
+盖           → vì rằng / nguyên do là (classical reason opener)
+岂知         → nào ngờ / ai ngờ được
+夫           → (classical topic marker, không dịch)
+且说         → hãy nói về / còn về
+```
+
+**Mapping:**
+
+```python
+CLASSICAL_OPENER_MAP = {
+    "乃知": "mới nhận ra rằng",
+    "固然": "tất nhiên",
+    "盖因": "nguyên nhân là",
+    "岂知": "nào ngờ",
+    "夫": "",          # classical topic marker → xóa hoặc dấu phẩy
+    "且说": "còn về",
+    "话说": "nói về",
+    "却说": "còn về phía",
+    "欲知后事": "muốn biết chuyện về sau",
+    "正是": "chính là / đúng vậy",
+}
+```
+
+-----
+
+### GAP-20: Adversative/Unexpected Result
+
+```
+竟然/竟/居然 + V    → hóa ra / thật ra / bất ngờ
+偏偏 + V           → lại / đúng lúc / ngược lại
+偏偏不 + V         → cứ không chịu / nhất định không
+```
+
+**Examples:**
+
+```
+他竟然还活着         → hắn hóa ra vẫn còn sống
+他居然是内奸         → hắn bất ngờ thay lại là nội gián
+偏偏这时候下雨了     → đúng lúc này lại đổ mưa
+他偏偏不走           → hắn cứ nhất định không chịu đi
+```
+
+**Mapping:**
+
+```python
+ADVERSATIVE_MARKER_MAP = {
+    "竟然": "hóa ra / bất ngờ thay",
+    "竟": "hóa ra / bất ngờ",
+    "居然": "bất ngờ thay / ai ngờ",
+    "偏偏": "lại / đúng lúc đó",
+    "偏": "lại / cứ",
+    "偏偏不": "cứ nhất định không",
+    "没想到": "không ngờ rằng",
+    "想不到": "không ngờ",
+}
+```
+
+-----
+
+### GAP-21: Aspect + Negation Interaction
+
+v14 có `没 + V + 过 → chưa từng`. Chưa cover:
+
+```
+还没有 + V + 呢    → vẫn chưa V đó (mild complaint/assertion)
+还没 + V           → vẫn chưa V
+尚未 + V           → vẫn chưa / chưa từng
+从未 + V           → chưa từng (stronger than 没)
+从来没有 + V + 过  → chưa bao giờ V
+压根就没 + V       → hoàn toàn không hề V
+根本没有           → hoàn toàn không có
+```
+
+**Mapping:**
+
+```python
+NEGATION_ASPECT_MAP = {
+    "还没有": "vẫn chưa",
+    "还没": "vẫn chưa",
+    "尚未": "vẫn chưa",
+    "从未": "chưa từng / chưa bao giờ",
+    "从来没有": "chưa bao giờ",
+    "压根就没": "hoàn toàn không hề",
+    "根本没有": "hoàn toàn không có",
+    "绝对没有": "tuyệt đối không có",
+}
+```
+
+-----
+
+### GAP-22: Reduplication đầy đủ (AABB / ABB / AAB / A里AB)
+
+v14 đề cập VV/V一V. Chưa cover:
+
+#### 22.1 AABB (adjective reduplication)
+
+```
+干干净净   → sạch sẽ tinh tươm
+高高兴兴   → vui vẻ hớn hở
+清清楚楚   → rõ ràng rành mạch
+结结实实   → chắc chắn vững chắc
+```
+
+Rule: AABB adjective → tìm trong Trie; nếu không có → adjective + adjective (reduplicate meaning)
+
+#### 22.2 ABB (verb/adjective + reduplication suffix)
+
+```
+红彤彤   → đỏ rực / đỏ ối
+白茫茫   → trắng xóa / trắng mênh mông
+黑漆漆   → tối đen / đen kịt
+亮晶晶   → sáng lấp lánh
+软绵绵   → mềm mại
+```
+
+Rule: Lookup trong `abb_reduplication_map.json`
+
+#### 22.3 A里AB (pejorative reduplication)
+
+```
+糊里糊涂   → lơ mơ / không rõ ràng
+迷里迷糊   → mơ màng
+马里马虎   → cẩu thả / qua loa
+```
+
+Rule: Pejorative reduplication → tìm trong Trie / idiom guard
+
+-----
+
+### GAP-23: Classifier + Demonstrative Interaction
+
+```
+这三位长老    → ba vị trưởng lão này
+那两枚丹药    → hai viên đan dược kia
+这样一个人    → một người như vậy
+```
+
+**ZH order:** DET + NUM + CLS + N  
+**VI order:** NUM + CLS + N + DET
+
+**Rule:**
+
+```
+这/那 + NUM + CLS + N → NUM + CLS_vi + N_vi + này/đó/kia
+```
+
+**Demonstrative map:**
+
+```python
+DET_VI_MAP = {
+    "这": "này",
+    "那": "đó/kia",
+    "这些": "những...này",
+    "那些": "những...đó/kia",
+    "此": "này (classical)",
+    "彼": "kia/đó (classical)",
+}
+```
+
+-----
+
+### GAP-24: Time Expression Reorder
+
+ZH đặt time trước VP; VI thường giống nhưng có ngoại lệ:
+
+```
+他明天会来        → ngày mai hắn sẽ đến (time giữ đầu OK)
+他来了三天了      → hắn đã đến được ba ngày rồi (time CUỐI → đảo)
+他等了足足三个小时 → hắn đợi suốt ba tiếng đồng hồ (intensifier + time)
+```
+
+**Pattern: V + 了 + DURATION + 了 → đã V + được/suốt + DURATION + rồi**
+
+```
+他修炼了百年了    → hắn đã tu luyện được trăm năm rồi
+她等了三天了      → nàng đã đợi được ba ngày rồi
+```
+
+**Rule:**
+
+```
+V + 了 + NUM + TIME_UNIT + 了[final]
+→ đã + V + được + NUM + TIME_UNIT + rồi
+```
+
+-----
+
+### GAP-25: Entity Possession Chain
+
+```
+林家的大长老的弟子    → đệ tử của Đại trưởng lão Lâm gia
+道宗的掌门的法宝      → pháp bảo của chưởng môn Đạo Tông
+```
+
+**Vấn đề:** Chuỗi sở hữu lồng nhau với entity.
+
+**Rule:**
+
+```
+ENTITY1 + 的 + ROLE + 的 + N
+→ N của ROLE của ENTITY1
+(VI đảo ngược thứ tự)
+```
+
+**Example:**
+
+```
+道宗的掌门的法宝
+→ pháp bảo của chưởng môn Đạo Tông
+(không phải "pháp bảo của chưởng môn của Đạo Tông")
+```
+
+Khi entity đứng trước role, merge: `ROLE của ENTITY` → `ROLE + ENTITY` (xianxia: chưởng môn Đạo Tông)
+
+-----
+
+## PHẦN 2 — Cấu trúc Số Còn Thiếu
+
+### 2.1 Số âm, số dưới 0
+
+```
+零下三十度    → âm 30 độ / -30°C
+负数          → số âm
+负五楼        → tầng âm 5 / tầng B5
+```
+
+**Rule:**
+
+```
+零下 + NUM + 度 → âm NUM độ
+负 + NUM       → âm NUM
+地下 + NUM + 层 → tầng hầm NUM / tầng B-NUM
+```
+
+### 2.2 Số có chữ số đơn vị kết hợp
+
+```
+三十七万五千八百二十一人
+→ 375.821 người
+```
+
+**Vietnamese large number:**
+
+```
+万 = 10.000 (vạn)
+亿 = 100.000.000 (ức)
+
+Policy:
+- Số < 100.000: spell hoặc digit tùy context
+- Số ≥ 100.000: digit với dấu chấm phân cách
+- Số có 万: có thể giữ "vạn" trong xianxia (ba vạn linh thạch)
+```
+
+### 2.3 Percent > 100%
+
+```
+百分之一百二十    → 120%
+超过百分之百      → vượt quá 100%
+百分之两百        → 200%
+```
+
+**Rule:**
+
+```
+百分之 + NUM (where NUM > 100)
+→ NUM% (không convert về fraction)
+```
+
+### 2.4 Approximate Percent
+
+```
+百分之七八十    → khoảng 70–80%
+百分之八九十    → khoảng 80–90%
+```
+
+**Rule:**
+
+```
+百分之 + paired_digits (e.g., 七八, 八九)
+→ khoảng paired_percent_range%
+```
+
+### 2.5 `成` ratio đầy đủ
+
+```
+九成    → 90% / chín phần mười / chín thành
+九成以上→ trên 90%
+七八成  → khoảng 70–80%
+```
+
+**Mapping:**
+
+```python
+CHENG_MAP = {
+    "一成": "10%",
+    "二成": "20%",
+    "三成": "30%",
+    "四成": "40%",
+    "五成": "50%",
+    "六成": "60%",
+    "七成": "70%",
+    "八成": "80%",
+    "九成": "90%",
+    "十成": "100%",
+}
+```
+
+**Context policy:**
+
+```
+- Confidence/probability: narrative → "chín phần mười" / technical → "90%"
+- After 把握/胜算: spell form preferred
+```
+
+### 2.6 Floor/Building Number
+
+```
+三四栋三四十层楼的大楼    → ba bốn tòa nhà cao ba bốn mươi tầng
+第五层                     → tầng năm / tầng thứ năm
+负一层                     → tầng hầm một / tầng B1
+地下三层                   → ba tầng hầm / tầng B3
+```
+
+**Rule:**
+
+```
+第 + NUM + 层 → tầng thứ NUM
+NUM + 层楼   → NUM tầng (height attribute)
+负/地下 + NUM + 层 → tầng hầm NUM / tầng B-NUM
+```
+
+### 2.7 Generation/Wave Number
+
+```
+第五代主战斗机        → máy bay chiến đấu chủ lực thế hệ thứ năm
+第一波               → đợt đầu tiên / làn sóng đầu
+第二批               → đợt thứ hai
+```
+
+**Rule:**
+
+```
+第 + NUM + 代 → thế hệ thứ NUM
+第 + NUM + 波 → làn sóng/đợt thứ NUM
+第 + NUM + 批 → đợt thứ NUM / lô thứ NUM
+```
+
+### 2.8 Ranking Position
+
+```
+第九千七百一十一位低等地精族
+→ tộc Địa Tinh cấp thấp xếp thứ 9.711
+```
+
+**Rule:**
+
+```
+第 + NUM + 位 → vị thứ/xếp thứ NUM
+```
+
+### 2.9 Score/Stat Numbers
+
+Trong game/system context:
+
+```
+防御值：1200          → Phòng thủ: 1.200
+攻击力提升了300点      → Sức tấn công tăng thêm 300 điểm
+生命值恢复至上限       → Máu hồi phục về mức tối đa
+```
+
+**Rule:** System stat numbers → Arabic digits, đơn vị giữ nguyên nghĩa.
+
+-----
+
+## PHẦN 3 — Bổ sung Data Files Mới
+
+```
+data/grammar/
+├── copula_shi_patterns.json          # GAP-01: 是 phân loại
+├── you_existential_patterns.json     # GAP-02: 有 phân loại
+├── pivot_verb_map.json               # GAP-04: 兼语句
+├── conjunction_er_map.json           # GAP-05, GAP-13: 而
+├── vo_idiom_guard.txt                # GAP-06: VO idiom guard (200+)
+├── double_negation_map.json          # GAP-07: double negation
+├── quantifier_float_patterns.json    # GAP-08: quantifier float
+├── coverb_map.json                   # GAP-09: serial prep
+├── classical_pronoun_map.json        # GAP-10: 吾/汝/余
+├── classical_opener_map.json         # GAP-19: 乃/固/盖/夫
+├── adversative_marker_map.json       # GAP-20: 竟然/居然/偏偏
+├── negation_aspect_extended.json     # GAP-21: 还没/尚未/从未
+├── abb_reduplication_map.json        # GAP-22: ABB patterns
+├── demonstrative_map.json            # GAP-23: 这/那 + classifier
+├── sentence_final_particle_ext.json  # GAP-17: 嘛/喽/呗/哦...
+├── combat_number_idiom_guard.txt     # GAP-18: 七伤拳/一刀两断
+├── cheng_ratio_map.json              # Số 2.5: 成
+├── floor_building_patterns.json      # Số 2.6: tầng/lầu
+└── er_conjunction_idiom_guard.txt    # GAP-13: 而 idiom guard
+```
+
+-----
+
+## PHẦN 4 — Rule mới cần tạo (v15)
+
+### Rule mới Priority Map
+
+```
+Priority  Rule                           File
+────────  ─────────────────────────────  ──────────────────────────────────────
+2         Combat number idiom guard      combat_number_idiom_guard.py (extend)
+4         VO idiom guard                 vo_idiom_guard.py
+6         Classical opener map           rule_classical_opener.py
+8         Discourse markers (extend)     rule_discourse_marker.py (extend v14)
+11        Pivot sentence (兼语句)        rule_pivot_sentence.py
+13        Double negation                rule_double_negation.py
+15        而 conjunction                 rule_conjunction_er.py
+17        Adversative marker             rule_adversative_marker.py
+19        Multi-subject/double subject   rule_double_subject.py
+21        Classical 是 patterns          rule_copula_shi.py
+23        有 existential/possessive      rule_you_existential.py
+25        Negation scope (extend)        rule_negation_scope.py (extend)
+35        DE + entity possession chain   rule_de_inversion.py (extend)
+43        Quantifier float               rule_quantifier_float.py
+47        Aspect + negation (extend)     rule_aspect.py (extend)
+53        Coverb serial prep chain       rule_coverb_chain.py
+56        Time expression reorder        rule_time_reorder.py
+63        AABB/ABB/A里AB reduplication   rule_reduplication.py (extend)
+67        Demonstrative + classifier     rule_dem_classifier.py
+69        Cognitive verb frame guard     cognitive_verb_guard.py
+```
+
+-----
+
+## PHẦN 5 — Sprint Triển khai v15
+
+### Sprint V15-A — Lexical Guard Extensions (1 tuần)
+
+```
+V15-A.1  vo_idiom_guard.txt: 200+ VO idioms
+V15-A.2  combat_number_idiom_guard.txt: 50+ idioms
+V15-A.3  er_conjunction_idiom_guard.txt: 30+ 而 idioms
+V15-A.4  Classical opener map: 20 entries
+V15-A.5  Adversative marker map: 15 entries
+V15-A.6  Negation aspect extended map: 20 entries
+V15-A.7  Classical pronoun map
+V15-A.8  Sentence-final particle extended: 15 entries
+V15-A.9  Tests: 80 lexical guard tests
+```
+
+**Acceptance:**
+
+```
+七伤拳, 一刀两断, 千刀万剐: không bị number-convert sai
+打招呼, 放松, 生气: không bị BA/BEI tách
+```
+
+### Sprint V15-B — Grammar Rule Extensions (2 tuần)
+
+```
+V15-B.1  rule_copula_shi.py: 5 patterns của 是
+V15-B.2  rule_you_existential.py: 4 patterns của 有
+V15-B.3  rule_pivot_sentence.py: 兼语句 với 15+ pivot verbs
+V15-B.4  rule_conjunction_er.py: 4 loại 而
+V15-B.5  rule_adversative_marker.py: 竟然/居然/偏偏
+V15-B.6  rule_double_negation.py: 无不/一点也不
+V15-B.7  rule_classical_opener.py: 乃知/固然/盖因/岂知/夫
+V15-B.8  rule_cognitive_verb_guard.py: embedded clause protection
+V15-B.9  Tests: 120 grammar tests
+```
+
+### Sprint V15-C — Advanced Structural Rules (2 tuần)
+
+```
+V15-C.1  rule_coverb_chain.py: serial prep (从...向...V)
+V15-C.2  rule_time_reorder.py: V了DURATION了
+V15-C.3  rule_quantifier_float.py: 数量词游移
+V15-C.4  rule_double_subject.py: topic + subject coreference
+V15-C.5  rule_dem_classifier.py: 这/那 + NUM + CLS + N
+V15-C.6  rule_reduplication.py extend: AABB/ABB/A里AB
+V15-C.7  rule_de_inversion.py extend: entity possession chain
+V15-C.8  Tests: 100 structural tests
+```
+
+### Sprint V15-D — Number System Completion (1 tuần)
+
+```
+V15-D.1  Negative number: 零下/负
+V15-D.2  Large number spelling: 万/亿 policy
+V15-D.3  Percent >100% và approximate percent
+V15-D.4  成 ratio: đầy đủ 一成→十成
+V15-D.5  Floor/building: 第N层/负N层/地下N层
+V15-D.6  Generation/wave: 第N代/第N波/第N批
+V15-D.7  Ranking position: 第N位
+V15-D.8  Score/stat: game resource digits
+V15-D.9  Tests: 80 number tests
+```
+
+### Sprint V15-E — Corpus Calibration (1 tuần)
+
+```
+V15-E.1  Build v15 test corpus: 50 câu GAP-covering
+V15-E.2  Regression: toàn bộ v14 tests pass
+V15-E.3  Run accuracy per construction type
+V15-E.4  Fix top 5 error patterns
+V15-E.5  Performance: toàn pipeline ≤ 140ms/câu
+V15-E.6  Documentation: known limitations v15
+```
+
+-----
+
+## PHẦN 6 — Test Corpus bổ sung v15 (50 câu)
+
+```python
+V15_TEST_CORPUS = [
+
+    # GAP-01: 是 patterns
+    ("他就是那个传说中的人",   "hắn chính là người trong truyền thuyết đó",   "copula_shi_emphasis"),
+    ("这是真的，但我不接受",   "đây là thật, nhưng ta không chấp nhận",       "shi_adversative"),
+    ("是否可以进入此地",       "liệu có thể vào đây không",                   "shi_fou_query"),
+
+    # GAP-02: 有 patterns
+    ("山顶上站着一名白衣老者", "trên đỉnh núi đứng một lão giả áo trắng",    "you_existential_stand"),
+    ("他有足足三件法宝",       "hắn có đến tận ba pháp bảo",                  "you_estimation"),
+    ("从未有人做到过这件事",   "chưa từng có ai làm được chuyện này",          "you_negative_experiential"),
+
+    # GAP-04: Pivot sentence
+    ("老者命令他站在原地",     "lão giả ra lệnh cho hắn đứng yên tại chỗ",   "pivot_mingling"),
+    ("他请林动进屋喝茶",       "hắn mời Lâm Động vào nhà uống trà",           "pivot_qing"),
+    ("他劝师弟不要冲动",       "hắn khuyên sư đệ đừng bốc đồng",             "pivot_quan"),
+
+    # GAP-05: 而 conjunction
+    ("他转身而去",             "hắn quay người rời đi",                       "er_sequential"),
+    ("强而无用",               "mạnh nhưng vô dụng",                          "er_adversative"),
+    ("一而再再而三地出现",     "hết lần này đến lần khác xuất hiện",          "er_idiom"),
+
+    # GAP-07: Double negation
+    ("没有什么不可能",         "không có gì là không thể",                    "double_neg_affirmation"),
+    ("一点也不害怕",           "không hề sợ chút nào",                        "negation_extent"),
+    ("哪里知道他竟然回来了",   "nào ngờ hắn lại quay trở về",                 "neg_rhetorical"),
+
+    # GAP-10: Classical register
+    ("吾乃天道具现",           "ta chính là hiện thân Thiên Đạo",             "classical_pronoun_wu"),
+    ("汝等凡人焉能与吾抗衡",   "lũ phàm nhân các ngươi sao có thể chống lại ta", "classical_multi"),
+
+    # GAP-15: Double subject
+    ("林动，他的修为实在太高了","Lâm Động, tu vi của hắn thật sự quá cao",    "double_subject"),
+
+    # GAP-19: Classical openers
+    ("岂知他早已离开",         "nào ngờ hắn đã rời đi từ lâu",               "classical_qizhi"),
+    ("固然他很强，但也有弱点", "tất nhiên hắn rất mạnh, nhưng cũng có điểm yếu","classical_guran"),
+
+    # GAP-20: Adversative
+    ("他居然还活着",           "hắn bất ngờ thay vẫn còn sống",               "adversative_juran"),
+    ("偏偏这时候来了麻烦",     "đúng lúc này lại có chuyện rắc rối đến",      "adversative_pianpian"),
+
+    # GAP-21: Negation aspect extended
+    ("他尚未突破到元丹境",     "hắn vẫn chưa đột phá đến Nguyên Đan cảnh",   "negation_shangwei"),
+    ("从未有人达到过如此境界", "chưa từng có ai đạt đến cảnh giới như vậy",   "negation_congwei"),
+    ("压根就没有机会",         "hoàn toàn không có cơ hội nào",               "negation_yagen"),
+
+    # GAP-22: Reduplication
+    ("他干干净净地站在那里",   "hắn đứng đó sạch sẽ tinh tươm",              "redup_AABB"),
+    ("天空红彤彤的",           "bầu trời đỏ rực",                             "redup_ABB"),
+
+    # GAP-23: Demonstrative + classifier
+    ("那三位长老都来了",       "ba vị trưởng lão đó đều đến rồi",            "dem_classifier"),
+    ("这两枚丹药价值连城",     "hai viên đan dược này giá trị vô song",       "dem_pill_classifier"),
+
+    # GAP-24: Time expression reorder
+    ("他修炼了整整百年了",     "hắn đã tu luyện suốt tròn trăm năm rồi",     "time_duration_final"),
+    ("她在这里等了三天了",     "nàng đã đợi ở đây được ba ngày rồi",         "time_duration_le_le"),
+
+    # Number: 2.1 Negative
+    ("零下二十度的严寒",       "cái lạnh âm 20 độ",                           "negative_temperature"),
+    ("地下五层",               "tầng hầm năm / tầng B5",                      "basement_floor"),
+
+    # Number: 2.3 Percent >100
+    ("效率提升了百分之一百五十","hiệu suất tăng lên 150%",                    "percent_over_100"),
+
+    # Number: 2.4 Approx percent
+    ("百分之七八十的人都不知道","khoảng 70–80% người không biết",             "approx_percent"),
+
+    # Number: 2.5 成
+    ("有九成把握",             "có đến 90% nắm chắc / chín phần nắm chắc",   "cheng_ratio"),
+    ("七八成的可能性",         "khoảng 70–80% khả năng",                      "approx_cheng"),
+
+    # Number: 2.6 Floor
+    ("三四栋三四十层的高楼",   "ba bốn tòa nhà cao ba bốn mươi tầng",        "floor_approx"),
+    ("第七层传送阵",           "trận truyền tống tầng thứ bảy",               "ordinal_floor_entity"),
+
+    # Number: 2.7 Generation
+    ("第三代弟子里最强的一人",  "người mạnh nhất trong số đệ tử thế hệ thứ ba", "generation_ordinal"),
+
+    # Combat number idiom guard
+    ("他的七伤拳威力无穷",     "Thất Thương Quyền của hắn uy lực vô cùng",   "combat_idiom_protected"),
+    ("一刀两断了所有联系",     "cắt đứt hoàn toàn mọi liên hệ",              "yi_dao_idiom"),
+
+    # Pivot + entity
+    ("师父命令众弟子退出道宗大殿","sư phụ ra lệnh cho toàn bộ đệ tử rời khỏi đại điện Đạo Tông", "pivot_entity"),
+
+    # Classical function word extended
+    ("圣位之下皆蝼蚁",         "dưới Thánh Vị đều là sâu kiến",               "zhi_xia_classical"),
+    ("以身化道，归于虚无",     "lấy thân hóa đạo, quy về hư vô",             "yi_body_dao"),
+    ("名为主神空间的地方",     "nơi gọi là Chủ Thần Không Gian",             "mingwei_entity"),
+
+    # Coverb chain
+    ("他从北方向南奔来",       "hắn từ phương Bắc chạy xuống hướng Nam",     "coverb_from_to"),
+    ("她对着他轻轻摇头",       "nàng nhẹ nhàng lắc đầu với hắn",             "coverb_dui"),
+]
+```
+
+-----
+
+## PHẦN 7 — Acceptance Criteria v15
+
+```
+Baseline:
+✓ 98 tests cũ pass khi flag off
+✓ v14 corpus regression: 100% pass
+
+Grammar v15 mới:
+✓ Pivot sentence accuracy ≥ 88%
+✓ 而 conjunction accuracy ≥ 85%
+✓ Adversative marker accuracy ≥ 90%
+✓ Classical opener accuracy ≥ 88%
+✓ Double subject accuracy ≥ 85%
+✓ 是 copula patterns accuracy ≥ 88%
+✓ 有 existential patterns accuracy ≥ 90%
+
+Guard quality:
+✓ VO idiom false-split rate ≤ 1%
+✓ Combat number idiom false-conversion rate ≤ 1%
+✓ Cognitive verb embedded clause intact rate ≥ 95%
+
+Number v15:
+✓ Negative number accuracy ≥ 98%
+✓ Percent >100% accuracy ≥ 98%
+✓ 成 ratio accuracy ≥ 95%
+✓ Floor/building accuracy ≥ 95%
+✓ Generation/wave accuracy ≥ 95%
+
+Performance:
+✓ Toàn pipeline ≤ 140ms/câu average
+✓ Zero crash trên 2,000 câu xianxia + Hồng Hoang mixed
+
+Integration:
+✓ 50-câu v15 corpus: ≥ 84% pass rate
+✓ Total accumulated corpus (v7–v15): ≥ 80% pass rate
+```
+
+-----
+
+## PHẦN 8 — Master Checklist v15
+
+### Data files mới (V15-A)
+
+- [ ] vo_idiom_guard.txt (200+ entries)
+- [ ] combat_number_idiom_guard.txt (50+ entries)
+- [ ] er_conjunction_idiom_guard.txt (30+ entries)
+- [ ] classical_opener_map.json (20 entries)
+- [ ] adversative_marker_map.json (15 entries)
+- [ ] negation_aspect_extended.json (20 entries)
+- [ ] classical_pronoun_map.json
+- [ ] sentence_final_particle_ext.json (15 entries)
+- [ ] copula_shi_patterns.json
+- [ ] you_existential_patterns.json
+- [ ] pivot_verb_map.json (15+ verbs)
+- [ ] conjunction_er_map.json
+- [ ] double_negation_map.json
+- [ ] coverb_map.json
+- [ ] abb_reduplication_map.json
+- [ ] demonstrative_map.json
+- [ ] cheng_ratio_map.json (10 entries)
+- [ ] floor_building_patterns.json
+- [ ] combat_number_idiom_guard.txt
+
+### Rules mới (V15-B)
+
+- [ ] rule_copula_shi.py (5 patterns)
+- [ ] rule_you_existential.py (5 patterns)
+- [ ] rule_pivot_sentence.py (15+ pivot verbs)
+- [ ] rule_conjunction_er.py (4 patterns)
+- [ ] rule_adversative_marker.py
+- [ ] rule_double_negation.py
+- [ ] rule_classical_opener.py
+- [ ] cognitive_verb_guard.py (embedded clause protection)
+
+### Rules nâng cao (V15-C)
+
+- [ ] rule_coverb_chain.py
+- [ ] rule_time_reorder.py (V了DUR了 pattern)
+- [ ] rule_quantifier_float.py
+- [ ] rule_double_subject.py
+- [ ] rule_dem_classifier.py
+- [ ] rule_reduplication.py extend (AABB/ABB/A里AB)
+- [ ] rule_de_inversion.py extend (entity possession chain)
+- [ ] rule_negation_scope.py extend
+
+### Number completion (V15-D)
+
+- [ ] Negative number: 零下/负
+- [ ] Large number: 万/亿 policy
+- [ ] Percent >100%
+- [ ] Approximate percent
+- [ ] 成 ratio complete
+- [ ] Floor/building number
+- [ ] Generation/wave number
+- [ ] Ranking position
+- [ ] Score/stat digits
+
+### Tests
+
+- [ ] 80 lexical guard tests (V15-A)
+- [ ] 120 grammar rule tests (V15-B)
+- [ ] 100 advanced structural tests (V15-C)
+- [ ] 80 number tests (V15-D)
+- [ ] 50 corpus integration tests (V15-E)
+- [ ] Regression: toàn bộ v14 tests
+
+-----
+
+## PHẦN 9 — Known Limitations v15
+
+```text
+1. Ellipsis/pro-drop (GAP-11): Detect subject sharing qua chain clauses — 
+   MVP chỉ handle cùng câu, chưa cross-sentence.
+
+2. Register mixing (GAP-10): Câu có ≥3 classical indicators 
+   → xác định tốt; 1-2 indicators → có thể nhầm.
+
+3. Abstract nominalization (GAP-12): Câu triết học dài nhiều tầng 
+   → shallow parser thiếu depth → fallback lexical order.
+
+4. VO idiom guard: Chỉ cover 200+ entries phổ biến; 
+   các idiom hiếm hơn vẫn có thể bị tách sai.
+
+5. 而 conjunction disambiguation: Manual labeling khó; 
+   các trường hợp ambiguous → fallback sequential rule.
+
+6. Quantifier float trong câu dài: Chỉ handle simple patterns; 
+   embedded float → fallback.
+
+7. Pivot sentence chains dài (A让B让C做D): 
+   Chỉ handle 1 pivot level; deeper chains → fallback.
+```
+
+-----
+
+*v15.0 — 25 GAP phân tích + 19 rules mới/mở rộng + 19 data files mới + 380 tests bổ sung*  
+*Tổng accumulated tests: ~1.100 | Rules: 50+ | Thời gian: 7 tuần triển khai*
