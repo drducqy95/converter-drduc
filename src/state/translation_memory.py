@@ -369,13 +369,44 @@ class TranslationMemory:
     ) -> FuzzyMatchResult | None:
         best: FuzzyMatchResult | None = None
         for row in rows:
-            score = SequenceMatcher(a=source_text, b=row["source_text"]).ratio()
+            score = self.similarity(source_text, row["source_text"])
             if score < threshold:
                 continue
             candidate = FuzzyMatchResult(score=score, **self._entry_kwargs(row))
             if best is None or candidate.score > best.score:
                 best = candidate
         return best
+
+    @classmethod
+    def similarity(cls, left: str, right: str) -> float:
+        if cls._contains_cjk(left) or cls._contains_cjk(right):
+            return max(cls.cjk_similarity(left, right), SequenceMatcher(a=left, b=right).ratio())
+        return SequenceMatcher(a=left, b=right).ratio()
+
+    @staticmethod
+    def cjk_similarity(left: str, right: str, n: int = 2) -> float:
+        def normalize(value: str) -> str:
+            return "".join(str(value or "").split())
+
+        def ngrams(value: str) -> set[str]:
+            if len(value) < n:
+                return {value} if value else set()
+            return {value[idx:idx + n] for idx in range(len(value) - n + 1)}
+
+        left_norm = normalize(left)
+        right_norm = normalize(right)
+        if not left_norm or not right_norm:
+            return 1.0 if left_norm == right_norm else 0.0
+
+        left_ngrams = ngrams(left_norm)
+        right_ngrams = ngrams(right_norm)
+        if not left_ngrams or not right_ngrams:
+            return 0.0
+        return len(left_ngrams & right_ngrams) / len(left_ngrams | right_ngrams)
+
+    @staticmethod
+    def _contains_cjk(value: str) -> bool:
+        return any("\u4e00" <= ch <= "\u9fff" for ch in str(value or ""))
 
     def _migrate_legacy_tm_entries(self):
         legacy = self.conn.execute(

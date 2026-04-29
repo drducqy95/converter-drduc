@@ -7,6 +7,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 
 
+CONTEXT_SCORE_THRESHOLDS = {
+    "dialogue": 0.45,
+    "inner_monologue": 1.01,
+    "narrative": 1.01,
+}
+
 EMOTION_MARKERS = {
     "anger": (
         ("怒吼", 0.7),
@@ -62,11 +68,59 @@ class EmotionPrediction:
     evidence: list[str]
 
 
+class SentenceContextClassifier:
+    """Classify source sentence context before applying dialogue emotion rules."""
+
+    QUOTE_MARKERS = ("“", "”", '"', "「", "」", "『", "』", "'", "‘", "’")
+    SPEECH_MARKERS = (
+        "说道",
+        "问道",
+        "喊道",
+        "叫道",
+        "笑道",
+        "怒道",
+        "喝道",
+        "答道",
+        "低声道",
+        "喃喃道",
+    )
+    INNER_MONOLOGUE_MARKERS = (
+        "他的心里",
+        "她的心里",
+        "心里",
+        "内心",
+        "心中",
+        "脑海中",
+        "脑海",
+        "暗想",
+        "心道",
+        "心中想",
+        "想到",
+        "想着",
+    )
+
+    def classify(self, sentence: str) -> str:
+        text = str(sentence or "")
+        if not text.strip():
+            return "narrative"
+
+        has_speech = any(marker in text for marker in self.SPEECH_MARKERS)
+        has_quote = any(marker in text for marker in self.QUOTE_MARKERS)
+        has_inner = any(marker in text for marker in self.INNER_MONOLOGUE_MARKERS)
+
+        if has_speech or has_quote:
+            return "dialogue"
+        if has_inner:
+            return "inner_monologue"
+        return "narrative"
+
+
 class EmotionDetector:
     """Score simple emotions from lexical and punctuation cues."""
 
-    def detect(self, text: str) -> list[EmotionPrediction]:
+    def detect(self, text: str, *, context_type: str | None = None) -> list[EmotionPrediction]:
         normalized = str(text or "")
+        threshold = CONTEXT_SCORE_THRESHOLDS.get(context_type or "", 0.0)
         predictions: list[EmotionPrediction] = []
         for label, markers in EMOTION_MARKERS.items():
             evidence: list[str] = []
@@ -80,7 +134,7 @@ class EmotionDetector:
                     score += 0.08
                 elif label in {"fear", "joy"}:
                     score += 0.05
-            if evidence:
+            if evidence and score >= threshold:
                 predictions.append(
                     EmotionPrediction(
                         label=label,
@@ -92,5 +146,5 @@ class EmotionDetector:
             predictions.append(EmotionPrediction(label="neutral", score=0.5, evidence=[]))
         return sorted(predictions, key=lambda item: item.score, reverse=True)
 
-    def detect_label(self, text: str) -> str:
-        return self.detect(text)[0].label
+    def detect_label(self, text: str, *, context_type: str | None = None) -> str:
+        return self.detect(text, context_type=context_type)[0].label

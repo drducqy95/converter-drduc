@@ -133,6 +133,29 @@ FALSE_NAME_START_BIGRAMS = {
     "\u5728\u4e8e",
 }
 COMMON_NON_PERSON_NAME_TERMS = {
+    "\u4ed6\u4eec",
+    "\u5979\u4eec",
+    "\u6211\u4eec",
+    "\u4f60\u4eec",
+    "\u5927\u5bb6",
+    "\u4e00\u822c\u4eba",
+    "\u8fd9\u4e9b\u4eba",
+    "\u90a3\u4e9b\u4eba",
+    "\u5929\u4e0b\u4eba",
+    "\u4f17\u4eba",
+    "\u4e16\u4eba",
+    "\u5e38\u4eba",
+    "\u666e\u901a\u4eba",
+    "\u51e1\u4eba",
+    "\u8def\u4eba",
+    "\u4fee\u70bc\u8005",
+    "\u6b66\u8005",
+    "\u9053\u58eb",
+    "\u548c\u5c1a",
+    "\u4fa0\u5ba2",
+    "\u6ca1\u6709\u4eba",
+    "\u4efb\u4f55\u4eba",
+    "\u6bcf\u4e2a\u4eba",
     "\u5929\u5730",
     "\u4e16\u754c",
     "\u65f6\u95f4",
@@ -429,6 +452,8 @@ class EntityScanner:
 
     def _is_entity_candidate(self, source: str, category: str, priority: int) -> bool:
         if len(source) < 2:
+            return False
+        if self._looks_like_common_non_person_phrase(source):
             return False
         if "names" in category or priority >= 4:
             return True

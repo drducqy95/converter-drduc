@@ -14,7 +14,7 @@ from src.core.trace import make_trace_id
 from src.core.luat_nhan_engine import LuatNhanEngine
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.core.trie_engine import TrieEngine
-from src.eapee.emotion_detector import EmotionDetector
+from src.eapee.emotion_detector import EmotionDetector, SentenceContextClassifier
 from src.eapee.expression_bank import ExpressionBank
 from src.eapee.pronoun_resolver import PronounResolver
 from src.engine.context_manager import ContextManager
@@ -26,8 +26,6 @@ from src.engine.sentence_segmenter import SentenceSegmenter
 from src.engine.style_profiles import build_rewrite_patterns, resolve_style_selection
 from src.engine.structure_preserver import StructurePreserver
 from src.engine.traditional_to_simplified import TraditionalToSimplifiedConverter
-from src.eapee.pronoun_resolver import PronounResolver
-from src.eapee.emotion_detector import EmotionDetector
 from src.grammar.transfer_engine import GrammarTransferEngine
 from src.engine.zh_structure_rewriter import rewrite_chinese_structure
 from src.engine.vi_grammar_rewriter import rewrite_vietnamese_grammar
@@ -282,6 +280,7 @@ class RBMTTranslator:
         self.context = ContextManager()
         self.cultural_origin = CulturalOriginDetector()
         self.emotion_detector = EmotionDetector()
+        self.sentence_context_classifier = SentenceContextClassifier()
         self.expression_bank = ExpressionBank()
         self.pronoun_resolver = PronounResolver()
         self.grammar_transfer = GrammarTransferEngine()
@@ -484,11 +483,17 @@ class RBMTTranslator:
         sentence = rewrite_chinese_structure(sentence)
 
         locked_entities = self._get_locked_entities(config)
+        sentence_context = self.sentence_context_classifier.classify(sentence)
         dialogue_context = self.pronoun_resolver.detect_dialogue_context(
             sentence,
             active_entities=[item["source"] for item in locked_entities],
+            context_type=sentence_context,
         )
-        emotion = self.emotion_detector.detect_label(sentence)
+        emotion = (
+            self.emotion_detector.detect_label(sentence, context_type=sentence_context)
+            if sentence_context == "dialogue"
+            else None
+        )
         entity_pairs = [(item["source"], item["target"]) for item in locked_entities]
         self.luat_nhan.set_entity_pairs(entity_pairs)
         sentence = self.luat_nhan.apply_with_source_entities(sentence)

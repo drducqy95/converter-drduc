@@ -1362,7 +1362,7 @@ jobs:
       - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
-      - run: pip install -r requirements.txt
+      - run: python -m pip install -e ".[dev]"
       - run: python -m pytest
       - run: python scripts/run_regression_gate.py
 ```

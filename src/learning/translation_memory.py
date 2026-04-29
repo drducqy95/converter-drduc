@@ -47,7 +47,29 @@ class TranslationMemory:
         return sorted(results, key=lambda item: item["similarity"], reverse=True)
 
     def calculate_similarity(self, left: str, right: str) -> float:
+        if self._contains_cjk(left) or self._contains_cjk(right):
+            return max(self.cjk_similarity(left, right), SequenceMatcher(None, left, right).ratio())
         return SequenceMatcher(None, left, right).ratio()
+
+    @staticmethod
+    def cjk_similarity(left: str, right: str, n: int = 2) -> float:
+        left_norm = "".join(str(left or "").split())
+        right_norm = "".join(str(right or "").split())
+        if not left_norm or not right_norm:
+            return 1.0 if left_norm == right_norm else 0.0
+
+        def ngrams(value: str) -> set[str]:
+            if len(value) < n:
+                return {value}
+            return {value[idx:idx + n] for idx in range(len(value) - n + 1)}
+
+        left_ngrams = ngrams(left_norm)
+        right_ngrams = ngrams(right_norm)
+        return len(left_ngrams & right_ngrams) / len(left_ngrams | right_ngrams)
+
+    @staticmethod
+    def _contains_cjk(value: str) -> bool:
+        return any("\u4e00" <= ch <= "\u9fff" for ch in str(value or ""))
 
     def levenshtein_distance(self, left: str, right: str) -> int:
         if left == right:

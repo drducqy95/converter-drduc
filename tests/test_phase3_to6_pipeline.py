@@ -30,6 +30,7 @@ def test_project_manager_and_translation_memory(tmp_path):
     tm.store("林动突破", "Lâm Động đột phá", confidence=0.95, source="test")
     assert tm.exact_match("林动突破").target_text == "Lâm Động đột phá"
     assert tm.fuzzy_match("林动 đột phá", threshold=0.2) is not None
+    assert TranslationMemory.cjk_similarity("林动突破境界", "林动已经突破境界") >= 0.5
     tm.close()
 
 

@@ -37,4 +37,4 @@ npm run dev:demo
 - **Address in use (Port 9721)**: If `npm run dev:bridge` fails because the bridge port is taken, a previous Python process might still be running.
   - Windows: `Stop-Process -Name python` (WARNING: kills all Python processes)
 - **CORS Errors**: The bridge backend is hardcoded to allow `*`. Ensure you are hitting `localhost:9721`.
-- **Missing Python deps**: Ensure you have installed the root project dependencies from the main `requirements.txt`.
+- **Missing Python deps**: from the repository root, run `python -m pip install -e ".[dev]"`.

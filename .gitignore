@@ -2,13 +2,16 @@
 __pycache__/
 .pytest_cache/
 *.pyc
+*.pyo
 .DS_Store
 workspace_projects/
 artifacts/
 .brain/
 node_modules/
+desktop/node_modules/
 dist/
 build/
+desktop/dist/
 target/
 bin/
 obj/
@@ -18,4 +21,20 @@ out/
 _compiled/
 data/dictionaries/_compiled/
 *.db
+*.sqlite
 *.cache
+
+# Diagnostic, generated, and local state output
+*.jsonl
+all_global_errors*
+cedict_seeding_debug.txt
+diagnose_results*.json
+pos_*.json
+trie_verification.json
+project_progress.json
+session.json
+
+# Large local media captures
+*.mp4
+*.avi
+*.mkv

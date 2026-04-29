@@ -10,7 +10,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.core.trie_engine import TrieEngine
-from src.eapee.emotion_detector import EmotionDetector
+from src.eapee.emotion_detector import EmotionDetector, SentenceContextClassifier
+from src.eapee.pronoun_resolver import PronounResolver
 from src.engine.rbmt_translator import RBMTTranslator
 from src.engine.sentence_segmenter import SentenceSegmenter
 from src.pipeline.chapter_splitter import ChapterSplitter
@@ -351,6 +352,43 @@ def test_rbmt_translator_style_profile_controls_sentence_naturalization():
 def test_emotion_detector_does_not_treat_xihao_as_joy():
     detector = EmotionDetector()
     assert detector.detect_label("喜好杀人的恶鬼！") != "joy"
+
+
+def test_emotion_detector_uses_context_to_avoid_narrative_false_positive():
+    classifier = SentenceContextClassifier()
+    detector = EmotionDetector()
+    source = "\u4ed6\u5185\u5fc3\u5145\u6ee1\u6050\u60e7\uff0c\u4f46\u9762\u4e0a\u5374\u662f\u5e73\u9759\u7684\u3002"
+
+    context_type = classifier.classify(source)
+    assert context_type == "inner_monologue"
+    assert detector.detect_label(source, context_type=context_type) == "neutral"
+
+
+def test_pronoun_resolver_tracks_implicit_alternating_dialogue_speakers():
+    resolver = PronounResolver()
+    active_entities = ["\u6797\u52a8", "\u8427\u708e"]
+
+    first = resolver.detect_dialogue_context(
+        "\u6797\u52a8\u5bf9\u8427\u708e\u8bf4\u9053\uff1a\u201c\u4f60\u6765\u3002\u201d",
+        active_entities=active_entities,
+        context_type="dialogue",
+    )
+    second = resolver.detect_dialogue_context(
+        "\u201c\u597d\u3002\u201d",
+        active_entities=active_entities,
+        context_type="dialogue",
+    )
+
+    assert first["speaker"] == "\u6797\u52a8"
+    assert first["listener"] == "\u8427\u708e"
+    assert second["speaker"] == "\u8427\u708e"
+    assert second["listener"] == "\u6797\u52a8"
+
+
+def test_entity_scanner_common_non_name_blacklist_covers_pronouns_and_common_people_terms():
+    assert EntityScanner._looks_like_common_non_person_phrase("\u4ed6\u4eec")
+    assert EntityScanner._looks_like_common_non_person_phrase("\u5929\u4e0b\u4eba")
+    assert EntityScanner._looks_like_common_non_person_phrase("\u4fee\u70bc\u8005")
 
 
 def test_emotion_checker_skips_dialogue_to_narration_transition():

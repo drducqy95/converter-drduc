@@ -7,21 +7,20 @@ Non-LLM translation workspace focused on `ZH -> VI` with a baseline `EN -> VI` p
 - Production core: Python.
 - Primary execution plan: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`.
 - Current baseline: Phase 00-08 implemented and tested; v23.0 core hardening foundations are in place for TM governance, trace, segment typing, protected spans, noise safety, grammar relation detection, and a conservative grammar transfer pack.
+- Python setup: `python -m pip install -e ".[dev]"`
 - Test command: `python -m pytest`
 - Desktop shell build: `cd desktop && npm run build`
 
 ## Production Boundary
 
-The repo currently contains two different implementation layers:
+The authoritative runtime is Python under `src/`. Historical JavaScript design material is archived under `docs/archive/`; new execution work should follow the Python plan and SQLite-backed dictionary pipeline.
 
-- Python under `src/core/`, `src/engine/`, and related scripts is the production path.
-- JavaScript modules under `src/preprocessor/`, `src/parser/`, `src/rules/`, and `src/learning/` are prototype/reference material and are not the authoritative runtime.
-
-This boundary is intentional. New execution work should follow the Python plan and SQLite-backed dictionary pipeline.
+Runner scripts are under `scripts/runners/`, development utilities under `scripts/dev/`, and migration utilities under `scripts/migration/`.
 
 ## Implemented Baseline
 
 - `scripts/migrate_qt_to_md.py`: migrate Quick Translator dictionaries into Markdown-based sources.
+- `scripts/runners/`: local pipeline, translation, and coach-feedback entry points.
 - `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into SQLite.
 - `src/core/trie_engine.py`: runtime Trie lookup with priority handling.
 - `src/core/luat_nhan_engine.py`: grammar/disambiguation rule loading and application.
@@ -39,17 +38,19 @@ This boundary is intentional. New execution work should follow the Python plan a
 
 ## Verification
 
-- `python -m pytest` -> `156 passed`
+- `python -m pytest` -> `170 passed`
 - `cd desktop && npm run build` -> Vite production build succeeds
 - Native Tauri packaging has not been validated in this environment because Rust tooling is not installed
 
 ## Project References
 
 - Master plan: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`
+- Current consolidated plan: `plans/main_plan.md`
 - V23 hardening plan: `plans/CONVERTER_DRDUC_V23_CORE_HARDENING_PLAN.md`
 - Architecture status: `docs/ARCHITECTURE_STATUS.md`
-- Progress tracker: `project_progress.json`
+- Local progress/state artifacts: `artifacts/state/` (ignored by git)
 - Desktop scaffold notes: `desktop/README.md`
+- Name dictionaries: `name_project/`
 
 ## Principles
 

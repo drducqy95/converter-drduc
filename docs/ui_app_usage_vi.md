@@ -79,7 +79,7 @@ Tại ô:
 Nhập đường dẫn file nguồn thật, ví dụ:
 
 ```text
-D:\Converter by DrDuc\Name project\ChinaWebNovel\Phan_Nhan_Tu_Tien.md
+D:\Converter by DrDuc\name_project\ChinaWebNovel\Phan_Nhan_Tu_Tien.md
 ```
 
 Nhấn:

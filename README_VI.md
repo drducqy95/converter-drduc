@@ -8,6 +8,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 - Kế hoạch thực thi chính: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`.
 - Phase 00-08 đã có artifact chạy được và test.
 - v23.0 đã có nền tảng hardening cho TM governance, trace, segment typing, protected span, noise filter, grammar relation detection và grammar transfer pack thận trọng.
+- Cài dependency Python: `python -m pip install -e ".[dev]"`
 - Lệnh test chuẩn: `python -m pytest`
 
 ## Những Gì Đang Chạy Được
@@ -25,18 +26,21 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 
 ## Ranh Giới Production
 
-- Python trong `src/core/`, `src/engine/`, `src/pipeline/`, `src/state/`, `src/qa/`, `src/eapee/`, `src/en_vi/`, `src/ui/` là đường chạy production.
-- JavaScript trong `src/preprocessor/`, `src/parser/`, `src/rules/`, `src/learning/` vẫn được giữ như prototype/reference, không phải core authoritative.
+- Python trong `src/` là đường chạy production.
+- Tài liệu/prototype JavaScript cũ đã được archive dưới `docs/archive/`; không mở rộng runtime mới theo hướng JS.
+- Runner nằm trong `scripts/runners/`, utility dev trong `scripts/dev/`, utility migration trong `scripts/migration/`.
 
 ## Kiểm Chứng Gần Nhất
 
-- `python -m pytest`: `156 passed`
-- `desktop/npm run build`: build web shell thành công
+- `python -m pytest`: `170 passed`
+- `cd desktop && npm run build`: build web shell thành công
 
 ## Tài Liệu Chính
 
 - Master plan: `plans/260414-1038-drduc-translator/master_plan_detailed_vi.md`
+- Current consolidated plan: `plans/main_plan.md`
 - V23 hardening plan: `plans/CONVERTER_DRDUC_V23_CORE_HARDENING_PLAN.md`
 - Architecture status: `docs/ARCHITECTURE_STATUS.md`
-- Tracker: `project_progress.json`
+- Local tracker/state artifacts: `artifacts/state/` (git ignore)
 - Desktop scaffold: `desktop/README.md`
+- Name dictionaries: `name_project/`

@@ -2,19 +2,19 @@
 description: Làm việc với NotebookLM (Nghiên cứu, thêm tài liệu, truy vấn) qua CLI
 ---
 
-# Quy trình làm việc với NotebookLM qua CLI
+# Quy trình làm việc với NotebookLM qua CLI (Global)
 
-Workflow này hướng dẫn Agent các lệnh CLI (`nlm`) để nghiên cứu, thêm dữ liệu và tương tác với NotebookLM.
+Workflow này hướng dẫn Agent các lệnh CLI (`nlm`) để nghiên cứu, cung cấp ngữ cảnh dữ liệu và tương tác với dịch vụ NotebookLM của Google.
 
 ### 1. Kiểm tra trạng thái đăng nhập
 ```bash
 // turbo
 nlm login --check
 ```
-*Ghi chú: Nếu hệ thống báo mất kết nối hoặc cookies hết hạn, người dùng cần chạy `nlm login` trong terminal cá nhân để đăng nhập lại thông qua trình duyệt.*
+*Ghi chú: Nếu hệ thống báo mất kết nối, tài khoản sai lệch hoặc cookies hết hạn, người dùng hoặc Agent cần báo để chạy `nlm login` hoặc `nlm login switch <profile>`.*
 
 ### 2. Quản lý Notebook
-Bạn có thể liệt kê, tạo mới và thiết lập alias để không phải gõ ID dài dòng:
+Quản lý Workspace phân tích trên NotebookLM.
 
 - **Liệt kê Notebook:**  
   `nlm notebook list`
@@ -22,57 +22,56 @@ Bạn có thể liệt kê, tạo mới và thiết lập alias để không ph�
 - **Tạo Notebook mới:**  
   `nlm notebook create "Tên Project/Nghiên cứu"`
 
-- **Tạo Alias (Khuyên dùng):**  
+- **Tạo Alias (Xác định ID cho dự án hiện tại):**  
   ```bash
-  nlm alias set nblm <notebook-id>
+  nlm alias set current_nblm <notebook-id>
   ```
-  *(Từ giờ về sau, có thể dùng chữ `nblm` thay cho `<notebook-id>`)*
+  *(Dùng biến alias như current_nblm thay cho UUID quá phức tạp)*
 
 ### 3. Thu thập dữ liệu (Thêm Sources)
-Đẩy tài liệu, trang web vào Notebook để phân tích:
+Đẩy tài liệu vào NotebookLM để chuẩn bị phân tích hoặc làm base knowledge:
 
-- **Thêm từ URL / Website / YouTube:**  
-  `nlm source add nblm --url "https://ví dụ.com/bài-viết"`
+- **Thêm URL web bài viết / YouTube:**  
+  `nlm source add current_nblm --url "https://ví dụ.com/bài-viết"`
 
-- **Thêm đoạn văn bản (Text):**  
-  `nlm source add nblm --text "Nội dung văn bản dài..." --title "Tiêu đề tài liệu"`
+- **Thêm văn bản tự do (Text / Markdown content):**  
+  `nlm source add current_nblm --text "Nội dung phân tích..." --title "Tiêu đề tài liệu"`
 
 - **Thêm Google Drive (Docs, Slides, Sheets, PDF):**  
-  `nlm source add nblm --drive <google-drive-doc-id>`
+  `nlm source add current_nblm --drive <google-drive-doc-id>`
 
-### 4. Tính năng Deep Research (Tìm kiếm & tự động tổng hợp Web)
-Sử dụng NotebookLM để tự động lên mạng cào dữ liệu và tổng hợp thành các sources hữu ích:
+### 4. Deep Research (Tính năng nghiên cứu)
+Sử dụng NotebookLM để Agent cào nội dung xung quanh web và kéo về sổ tay:
 
-- **Kích hoạt Deep Research (Mất 3-5 phút):**  
-  `nlm research start "Câu truy vấn nghiên cứu chi tiết" --notebook-id nblm --mode deep`
+- **Bắt đầu nghiên cứu (thường tốn 3-5 phút cho mode deep):**  
+  `nlm research start "Câu hỏi nghiên cứu" --notebook-id current_nblm --mode deep`
 
-- **Kiểm tra tiến độ:**  
-  `nlm research status nblm`
-  *(Nên chờ tới lúc hoàn thành rồi mới import)*
+- **Kiểm tra tiến độ nghiên cứu:**  
+  `nlm research status current_nblm`
 
-- **Đưa nội dung kiếm được vào Notebook:**  
-  `nlm research import nblm <task-id>`
+- **Tiến hành đưa nội dung về Notebook:**  
+  `nlm research import current_nblm <task-id>`
 
-### 5. Truy vấn / Hỏi đáp (QA)
-Sau khi có dữ liệu, hãy đặt câu hỏi để AI phân tích và trả về thông tin kèm theo trích dẫn.
+### 5. Khai thác dữ liệu / Truy vấn (QA)
+Sau khi có sources, sử dụng NotebookLM như một cỗ máy QA engine có trích dẫn tài liệu tham khảo:
 
-- **Thực hiện câu hỏi One-shot:**
+- **Thực hiện truy vấn một lần (One-shot):**
   ```bash
-  nlm notebook query nblm "Hãy tóm tắt phương pháp chính được nhắc đến trong các tài liệu?"
+  nlm notebook query current_nblm "Toàn bộ thông tin trọng tâm nằm ở những góc độ nào?"
   ```
-  *(Tuyệt đối KHÔNG chạy lệnh `nlm chat start` vì nó sẽ mở màn hình trả lời REPL không tự động hóa được)*
+  *(Lưu ý: KHÔNG chạy `nlm chat start` trong môi trường tự động Agent vì nó sẽ bị mắc kẹt tại REPL Shell)*
 
-### 6. Sinh nội dung Studio
-Bạn có thể ra lệnh cho NotebookLM xuất file Audio (Podcast), Báo cáo (Report), v.v.
+### 6. Tổng hợp Studio (Audio, Báo cáo)
+Agent có thể tạo nội dung chuyên sâu từ NotebookLM như tạo Podcast 2 Host, Tài liệu hướng dẫn.
 
-- **Tạo Podcast Tổng hợp Âm thanh (Audio Overview):**
-  `nlm audio create nblm --language vi --confirm`
+- **Tạo Podcast (Audio Overview) bằng tiếng Việt:**
+  `nlm audio create current_nblm --language vi --confirm`
   
-- **Tạo Study Guide (Tài liệu báo cáo):**
-  `nlm report create nblm --format "Study Guide" --confirm`
+- **Tạo Study Guide (Tài liệu nghiên cứu):**
+  `nlm report create current_nblm --format "Study Guide" --confirm`
   
-- **Kiểm tra trạng thái tạo nội dung:**
-  `nlm studio status nblm`
+- **Kiểm tra trạng thái tạo (Status):**
+  `nlm studio status current_nblm`
   
-- **Tải tệp nội dung:**
-  `nlm download audio nblm --output podcast.mp3`
+- **Tải tệp nội dung đã hoàn thành:**
+  `nlm download audio current_nblm --output podcast_final.mp3`
