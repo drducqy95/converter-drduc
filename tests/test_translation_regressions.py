@@ -364,6 +364,14 @@ def test_emotion_detector_uses_context_to_avoid_narrative_false_positive():
     assert detector.detect_label(source, context_type=context_type) == "neutral"
 
 
+def test_emotion_detector_respects_negation_scope():
+    detector = EmotionDetector()
+
+    assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u6211\u6ca1\u6709\u6124\u6012\u3002\u201d", context_type="dialogue") == "neutral"
+    assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u6211\u4e0d\u5bb3\u6015\uff01\u201d", context_type="dialogue") == "neutral"
+    assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u6211\u5e76\u975e\u4e0d\u6068\u4f60\uff01\u201d", context_type="dialogue") == "anger"
+
+
 def test_pronoun_resolver_tracks_implicit_alternating_dialogue_speakers():
     resolver = PronounResolver()
     active_entities = ["\u6797\u52a8", "\u8427\u708e"]

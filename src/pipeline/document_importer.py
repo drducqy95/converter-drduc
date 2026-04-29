@@ -13,6 +13,7 @@ from pathlib import Path
 
 
 SUPPORTED_ENCODINGS = ("utf-8", "utf-8-sig", "utf-16", "gb18030", "gbk", "big5")
+DEFAULT_MAX_INPUT_BYTES = 100 * 1024 * 1024
 
 
 @dataclass(slots=True)
@@ -25,11 +26,23 @@ class ImportedDocument:
     notes: list[str]
 
 
+class ImportValidationError(ValueError):
+    """Structured validation error for malformed or unsafe source documents."""
+
+    def __init__(self, message: str, *, details: dict | None = None):
+        super().__init__(message)
+        self.details = details or {}
+
+
 class DocumentImporter:
     """Import TXT/MD/HTML/DOCX/PDF into normalized text."""
 
+    def __init__(self, *, max_file_size_bytes: int = DEFAULT_MAX_INPUT_BYTES):
+        self.max_file_size_bytes = max_file_size_bytes
+
     def import_file(self, filepath: str | Path, output_dir: str | Path | None = None) -> ImportedDocument:
         path = Path(filepath)
+        self._validate_source_path(path)
         suffix = path.suffix.lower()
 
         if suffix in {".txt", ".md", ".markdown"}:
@@ -50,6 +63,7 @@ class DocumentImporter:
         else:
             raise ValueError(f"Unsupported input format: {suffix}")
 
+        self._validate_text(raw_text, source_path=path)
         normalized = self._normalize_text(raw_text)
         notes = []
         if raw_text != normalized:
@@ -87,6 +101,46 @@ class DocumentImporter:
             except UnicodeDecodeError:
                 continue
         return content.decode("utf-8", errors="replace"), "utf-8-replace"
+
+    def _validate_source_path(self, path: Path):
+        if not path.exists():
+            raise ImportValidationError(
+                f"Source file does not exist: {path}",
+                details={"path": str(path), "reason": "missing"},
+            )
+        if not path.is_file():
+            raise ImportValidationError(
+                f"Source path is not a file: {path}",
+                details={"path": str(path), "reason": "not_file"},
+            )
+        size = path.stat().st_size
+        if size > self.max_file_size_bytes:
+            raise ImportValidationError(
+                f"Source file is too large: {size} bytes",
+                details={
+                    "path": str(path),
+                    "reason": "file_too_large",
+                    "size_bytes": size,
+                    "max_bytes": self.max_file_size_bytes,
+                },
+            )
+
+    def _validate_text(self, text: str, *, source_path: Path):
+        if "\x00" in text:
+            raise ImportValidationError(
+                f"Source text contains NULL characters: {source_path}",
+                details={"path": str(source_path), "reason": "null_character"},
+            )
+        replacement_count = text.count("\ufffd")
+        if replacement_count > max(20, len(text) // 100):
+            raise ImportValidationError(
+                f"Source text appears to have invalid encoding: {source_path}",
+                details={
+                    "path": str(source_path),
+                    "reason": "invalid_encoding",
+                    "replacement_chars": replacement_count,
+                },
+            )
 
     def _read_docx(self, path: Path) -> str:
         with zipfile.ZipFile(path) as archive:

@@ -20,6 +20,20 @@ def test_en_vi_translator_phrase_first_and_rules():
     assert translator.translate("will walk").text == "sẽ đi bộ"
 
 
+def test_en_vi_translator_handles_passive_and_phrasal_verbs():
+    translator = EnglishVietnameseTranslator()
+
+    passive = translator.translate("the book was written by him")
+    assert passive.text == "cuốn sách đã được viết bởi anh ấy"
+    assert any(item["reason"] == "passive_voice" for item in passive.trace)
+
+    phrasal = translator.translate("will give up")
+    assert phrasal.text == "sẽ từ bỏ"
+    assert any(item["reason"] == "phrasal_verb" for item in phrasal.trace)
+
+    assert translator.translate("look into the book").text == "điều tra cuốn sách"
+
+
 def test_sidecar_bridge_project_workflow_and_candidate_review(tmp_path):
     create_response = handle_request(CommandRequest(
         command="create_project",

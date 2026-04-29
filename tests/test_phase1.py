@@ -432,6 +432,64 @@ last_compiled: "2026-01-01"
         assert stats["grammar_patterns"] == 1
         assert (compiled_dir / "trie_cache.db").exists()
 
+    def test_source_manifest_marks_cache_stale_after_source_change(self, tmp_path):
+        """Compiled SQLite metadata should identify stale Markdown sources."""
+        vp_dir = tmp_path / "global" / "vietphrase"
+        vp_dir.mkdir(parents=True)
+        compiled_dir = tmp_path / "_compiled"
+        source_file = vp_dir / "_bulk_test.md"
+        source_file.write_text("""---
+type: bulk_dictionary
+source_language: zh
+target_language: vi
+priority: 2
+category: vietphrase
+entries_count: 1
+compiled_from: test
+last_compiled: "2026-01-01"
+---
+
+| source | target |
+| --- | --- |
+| 修为 | tu vi |
+""", encoding="utf-8")
+
+        compiler = DictionaryCompiler(str(tmp_path), str(compiled_dir))
+        stats = compiler.compile()
+
+        assert stats["source_files_hashed"] == 1
+        assert stats["source_manifest_hash"]
+        assert compiler.source_cache_status()["stale"] is False
+
+        conn = sqlite3.connect(str(compiled_dir / "trie_cache.db"))
+        c = conn.cursor()
+        c.execute("SELECT value FROM metadata WHERE key = 'source_manifest_json'")
+        manifest = json.loads(c.fetchone()[0])
+        conn.close()
+        assert "global/vietphrase/_bulk_test.md" in manifest
+
+        source_file.write_text("""---
+type: bulk_dictionary
+source_language: zh
+target_language: vi
+priority: 2
+category: vietphrase
+entries_count: 2
+compiled_from: test
+last_compiled: "2026-01-01"
+---
+
+| source | target |
+| --- | --- |
+| 修为 | tu vi |
+| 突破 | đột phá |
+""", encoding="utf-8")
+
+        status = compiler.source_cache_status()
+        assert status["stale"] is True
+        assert status["reason"] == "source_changed"
+        assert status["changed_files"] == ["global/vietphrase/_bulk_test.md"]
+
     def test_priority_merge(self, tmp_path):
         """Higher priority should override lower."""
         vp_dir = tmp_path / "global" / "vietphrase"

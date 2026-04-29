@@ -73,6 +73,42 @@ def test_tm_lookup_prefers_approved_before_machine(tmp_path):
         tm.close()
 
 
+def test_tm_tracks_last_accessed_and_evicts_machine_lru(tmp_path):
+    tm = TranslationMemory(tmp_path / "tm.sqlite")
+    try:
+        tm.store_machine("甲", "Machine A", quality_score=0.50)
+        tm.store_machine("乙", "Machine B", quality_score=0.50)
+        tm.store_machine("丙", "Machine C", quality_score=0.50)
+        assert tm.machine_suggestion("乙").target_text == "Machine B"
+
+        removed = tm.evict_machine_entries(2)
+        assert removed == 1
+        assert not tm.exists_in_machine("甲")
+        assert tm.exists_in_machine("乙")
+        assert tm.exists_in_machine("丙")
+
+        row = tm.conn.execute(
+            "SELECT hit_count, last_accessed FROM tm_machine WHERE source_text = ?",
+            ("乙",),
+        ).fetchone()
+        assert row["hit_count"] == 1
+        assert row["last_accessed"]
+    finally:
+        tm.close()
+
+
+def test_tm_auto_evicts_machine_entries_when_capacity_is_configured(tmp_path):
+    tm = TranslationMemory(tmp_path / "tm.sqlite", max_machine_entries=1)
+    try:
+        tm.store_machine("甲", "Machine A")
+        tm.store_machine("乙", "Machine B")
+        count = tm.conn.execute("SELECT COUNT(*) AS count FROM tm_machine").fetchone()["count"]
+        assert count == 1
+        assert tm.exists_in_machine("乙")
+    finally:
+        tm.close()
+
+
 def test_segment_classifier_required_cases():
     classifier = SegmentClassifier()
     cases = [
@@ -142,4 +178,3 @@ def test_relation_detector_marker_map():
     relation_types = {item.relation_type for item in relations}
     assert RelationType.CONDITION in relation_types
     assert RelationType.CONCESSION in relation_types
-

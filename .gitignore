@@ -23,6 +23,8 @@ data/dictionaries/_compiled/
 *.db
 *.sqlite
 *.cache
+.coverage
+coverage.xml
 
 # Diagnostic, generated, and local state output
 *.jsonl

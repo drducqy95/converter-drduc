@@ -1,0 +1,1001 @@
+candidate_id,pattern_text,pattern_type,frequency,chapter_count,confidence,guessed_category,suggested_regex,status
+
+unknown_9006b2972bb9,甚至,marker,313805,6438,0.96,,甚至,review
+
+unknown_4b4879ae223e,毕竟,marker,183154,5012,0.96,reasoning,毕竟,review
+
+unknown_3f812cadda0e,甚至,clause_anomaly,171827,6329,0.96,,甚至,review
+
+unknown_b44bc1aecbae,对于,marker,143729,4718,0.96,,对于,review
+
+unknown_2c984e1ad27e,竟然,marker,138973,4778,0.96,surprise,竟然,review
+
+unknown_1a4e0ed15409,至于,marker,136474,4876,0.96,,至于,review
+
+unknown_fbb1f79f649c,竟然,clause_anomaly,86292,4568,0.96,surprise,竟然,review
+
+unknown_a405ad6d00cc,毕竟,clause_anomaly,80985,4830,0.96,reasoning,毕竟,review
+
+unknown_fc54698627be,越...越,paired_marker,80073,5487,0.96,progressive_comparison,越(?P<a>.+?)越(?P<b>.+),review
+
+unknown_b51de0d913a5,对于,clause_anomaly,75773,4597,0.96,,对于,review
+
+unknown_ea0deeee6f5f,反而,marker,71259,4697,0.96,contrast,反而,review
+
+unknown_b762a4403719,并非,marker,65044,4636,0.96,,并非,review
+
+unknown_a93d4c14bde4,至于,clause_anomaly,63788,4692,0.96,,至于,review
+
+unknown_14f6733147c9,竟是,marker,60712,4209,0.96,,竟是,review
+
+unknown_4a159069f22f,只不过,marker,53579,3724,0.96,minimizing,只不过,review
+
+unknown_dc400838270f,否则,marker,47660,4305,0.96,condition,否则,review
+
+unknown_90ada0fab7c4,反而,clause_anomaly,36268,4358,0.96,contrast,反而,review
+
+unknown_86a78feca54c,不过是,marker,34442,3728,0.96,minimizing,不过是,review
+
+unknown_9724559bd88c,并非,clause_anomaly,33076,4316,0.96,,并非,review
+
+unknown_5df735e4eeb7,倒也,marker,32483,3711,0.96,,倒也,review
+
+unknown_b15a47439a82,终究,marker,31456,3751,0.96,conclusion,终究,review
+
+unknown_d4e67ff09480,关于,marker,30094,3896,0.96,,关于,review
+
+unknown_fa654550899f,否则,clause_anomaly,29292,3906,0.96,condition,否则,review
+
+unknown_d3a5420b65e1,何况,marker,27680,3554,0.96,addition,何况,review
+
+unknown_9c7ef68921f8,由于,marker,27022,2816,0.96,,由于,review
+
+unknown_ae4fa72d2f68,乃至,marker,25694,3214,0.96,,乃至,review
+
+unknown_953b50643067,未必,marker,24606,3450,0.96,,未必,review
+
+unknown_b113cab7d833,竟是,clause_anomaly,23735,3428,0.96,,竟是,review
+
+unknown_38bd2a77e88e,只不过,clause_anomaly,23314,3224,0.96,minimizing,只不过,review
+
+unknown_46424c166330,与其,marker,23101,3537,0.96,,与其,review
+
+unknown_d11827d96b36,关于,clause_anomaly,21132,3671,0.96,,关于,review
+
+unknown_cb35f3f3d5aa,反倒,marker,21132,3059,0.96,,反倒,review
+
+unknown_d48ac6b9b181,更何况,marker,19385,3140,0.96,addition,更何况,review
+
+unknown_1805abb58be3,偏偏,marker,18502,3302,0.96,counter_expectation,偏偏,review
+
+unknown_5e338ff783a2,不过是,clause_anomaly,16524,3048,0.96,minimizing,不过是,review
+
+unknown_9426672a35e4,终究,clause_anomaly,16432,3315,0.96,conclusion,终究,review
+
+unknown_3ec477f8bd01,倒也,clause_anomaly,15625,3237,0.96,,倒也,review
+
+unknown_4887ea00d7df,未必,clause_anomaly,14880,3035,0.96,,未必,review
+
+unknown_d944ab66cf7e,莫非,marker,14465,2442,0.96,rhetorical_question,莫非,review
+
+unknown_9c93a56ceb5a,由于,clause_anomaly,14167,2583,0.96,,由于,review
+
+unknown_30c68014e218,与其,clause_anomaly,13397,3209,0.96,,与其,review
+
+unknown_e0e80e26dbc0,乃至,clause_anomaly,12526,2726,0.96,,乃至,review
+
+unknown_7bec30182eec,不是...而是,paired_marker,12342,4050,0.96,contrast_correction,不是(?P<a>.+?)而是(?P<b>.+),review
+
+unknown_88478724f2c9,并非...而是,paired_marker,11209,3273,0.96,contrast_correction,并非(?P<a>.+?)而是(?P<b>.+),review
+
+unknown_cb4b74d2c4f1,反倒,clause_anomaly,11038,2802,0.96,,反倒,review
+
+unknown_8c4f50f63092,更何况...何况,frame_template,10674,3038,0.96,addition,更何况(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_b7878b20f18f,莫非,clause_anomaly,10381,2236,0.96,rhetorical_question,莫非,review
+
+unknown_ad2a9922bcad,毕竟...竟是,frame_template,10142,3241,0.96,reasoning,毕竟(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_d426db6c8e4d,更何况 / 何况,clause_anomaly,9975,2691,0.96,addition,更何况(?P<a>.+?)何况,review
+
+unknown_d838173e9a2f,既...又,paired_marker,9697,3342,0.96,parallel_attribute,既(?P<a>.+?)又(?P<b>.+),review
+
+unknown_6a6bde3b7405,毕竟 / 竟是,clause_anomaly,9690,2859,0.96,reasoning,毕竟(?P<a>.+?)竟是,review
+
+unknown_593bd90a4732,偏偏,clause_anomaly,9253,2914,0.96,counter_expectation,偏偏,review
+
+unknown_ea435be5542b,哪怕...也,paired_marker,8795,3399,0.96,concession,哪怕(?P<a>.+?)也(?P<b>.+),review
+
+unknown_5aef92e65e35,再怎么,marker,8683,2534,0.96,,再怎么,review
+
+unknown_19893080246a,索性,marker,8333,2138,0.96,decision,索性,review
+
+unknown_6f0c1abd9c05,即便...也,paired_marker,7612,2582,0.96,concession,即便(?P<a>.+?)也(?P<b>.+),review
+
+unknown_49439bd89de2,难不成,marker,6915,2011,0.96,rhetorical_question,难不成,review
+
+unknown_fbb6bee93f16,倘若,marker,6557,2103,0.96,,倘若,review
+
+unknown_2ca2047a62de,不管...都,paired_marker,6358,2741,0.96,regardless,不管(?P<a>.+?)都(?P<b>.+),review
+
+unknown_6c5b0eb69a6c,甚至...至于,frame_template,6327,2264,0.96,,甚至(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_8457cb6fcff0,免得,marker,6267,1749,0.96,precaution,免得,review
+
+unknown_b9f8295dd81f,只不过 / 不过是,clause_anomaly,5597,1847,0.96,minimizing,只不过(?P<a>.+?)不过是,review
+
+unknown_6a1574e333b3,无论...都,paired_marker,5553,2297,0.96,regardless,无论(?P<a>.+?)都(?P<b>.+),review
+
+unknown_34a205e9d4ae,甚至 / 至于,clause_anomaly,5363,1842,0.96,,甚至(?P<a>.+?)至于,review
+
+unknown_1930ab89c46a,以免,marker,5253,1860,0.96,precaution,以免,review
+
+unknown_a43431948735,换句话说,marker,5030,1898,0.96,definition,换句话说,review
+
+unknown_bd9aa146580c,只不过...不过是,frame_template,4890,2149,0.96,minimizing,只不过(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_71a362c35b83,何况,clause_anomaly,4406,1862,0.96,addition,何况,review
+
+unknown_a4b7ec996431,难不成,clause_anomaly,4395,1692,0.96,rhetorical_question,难不成,review
+
+unknown_1493241df7bd,免得,clause_anomaly,4314,1515,0.96,precaution,免得,review
+
+unknown_de653a7be5a7,即使...也,paired_marker,4215,2245,0.96,concession,即使(?P<a>.+?)也(?P<b>.+),review
+
+unknown_d39090072285,索性,clause_anomaly,4052,1777,0.96,decision,索性,review
+
+unknown_c6098c563082,说到底,marker,4046,1293,0.96,summary,说到底,review
+
+unknown_3fb4ed1d2872,再怎么,clause_anomaly,3949,1746,0.96,,再怎么,review
+
+unknown_891f20c18ded,不仅...还,paired_marker,3887,2163,0.96,additive,不仅(?P<a>.+?)还(?P<b>.+),review
+
+unknown_f7fb1771c0c5,倘若,clause_anomaly,3822,1703,0.96,,倘若,review
+
+unknown_a4364c0f2c6f,与其...不如,paired_marker,3210,1819,0.96,preference,与其(?P<a>.+?)不如(?P<b>.+),review
+
+unknown_126dc37159fb,以免,clause_anomaly,3035,1462,0.96,precaution,以免,review
+
+unknown_095af13015c4,乃至...至于,frame_template,2934,1272,0.96,,乃至(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_64494e869114,乃至 / 至于,clause_anomaly,2828,1022,0.96,,乃至(?P<a>.+?)至于,review
+
+unknown_b7afb68baaea,何尝,marker,2828,1137,0.96,,何尝,review
+
+unknown_059aae460a02,再怎么...也,paired_marker,2599,1646,0.96,concession_limit,再怎么(?P<a>.+?)也(?P<b>.+),review
+
+unknown_3b9c234aa68e,换句话说,clause_anomaly,2003,1213,0.96,definition,换句话说,review
+
+unknown_cbc6ca9d9358,说到底,clause_anomaly,1898,909,0.96,summary,说到底,review
+
+unknown_44500ea867e4,对于...甚至,frame_template,1842,1305,0.96,,对于(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_2a6fd6fba545,宁可,marker,1693,756,0.96,preference,宁可,review
+
+unknown_c6482840f3cd,何尝,clause_anomaly,1563,828,0.96,,何尝,review
+
+unknown_17813d00e888,对于 / 甚至,clause_anomaly,1453,992,0.96,,对于(?P<a>.+?)甚至,review
+
+unknown_ce0a41a3068a,毕竟...甚至,frame_template,1441,1100,0.96,reasoning,毕竟(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_e719a5b5a291,对于...毕竟,frame_template,1268,984,0.96,reasoning,对于(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_f1aaad2bcc53,毕竟 / 甚至,clause_anomaly,1180,808,0.96,reasoning,毕竟(?P<a>.+?)甚至,review
+
+unknown_53ed6ece449a,毕竟...对于,frame_template,1139,899,0.96,reasoning,毕竟(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_94ac507fc7e8,至于...甚至,frame_template,1082,846,0.96,,至于(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_679dd0a51db3,甚至...毕竟,frame_template,1046,842,0.96,reasoning,甚至(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_54db3ba36536,宁可,clause_anomaly,1043,566,0.96,preference,宁可,review
+
+unknown_eb63f082af4c,甚至...对于,frame_template,916,745,0.96,,甚至(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_a0ace2d82044,毕竟 / 对于,clause_anomaly,909,645,0.96,reasoning,毕竟(?P<a>.+?)对于,review
+
+unknown_76569c0745d5,甚至 / 毕竟,clause_anomaly,858,582,0.96,reasoning,甚至(?P<a>.+?)毕竟,review
+
+unknown_c3ccb522a45f,至于 / 甚至,clause_anomaly,855,592,0.96,,至于(?P<a>.+?)甚至,review
+
+unknown_062d2c2dcd5f,竟然...甚至,frame_template,847,668,0.96,surprise,竟然(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_c78898eddf05,对于 / 毕竟,clause_anomaly,842,660,0.96,reasoning,对于(?P<a>.+?)毕竟,review
+
+unknown_2768c9e737ed,至于...毕竟,frame_template,799,671,0.96,reasoning,至于(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_9806fd3803bb,甚至 / 对于,clause_anomaly,741,539,0.96,,甚至(?P<a>.+?)对于,review
+
+unknown_6e70dc7b3024,竟然 / 甚至,clause_anomaly,721,520,0.96,surprise,竟然(?P<a>.+?)甚至,review
+
+unknown_a7273dbedbd8,至于 / 毕竟,clause_anomaly,650,447,0.96,reasoning,至于(?P<a>.+?)毕竟,review
+
+unknown_8721eff2bf20,甚至...乃至,frame_template,624,505,0.96,,甚至(?P<a>.+?)乃至(?P<b>.+),review
+
+unknown_df19f4fce8e5,甚至...反而,frame_template,606,531,0.96,contrast,甚至(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_5885c5935b41,甚至...竟然,frame_template,538,439,0.96,surprise,甚至(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_2e35474b86d1,宁愿...也不,paired_marker,536,454,0.96,preference,宁愿(?P<a>.+?)也不(?P<b>.+),review
+
+unknown_ba3ba6f53b37,甚至 / 反而,clause_anomaly,534,409,0.96,contrast,甚至(?P<a>.+?)反而,review
+
+unknown_27a9c4ad14f7,甚至 / 乃至,clause_anomaly,526,337,0.96,,甚至(?P<a>.+?)乃至,review
+
+unknown_710aacb2450b,并非...甚至,frame_template,524,453,0.96,,并非(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_c2003431ce8f,对于...反而,frame_template,516,427,0.96,contrast,对于(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_cdc7aa95a8d5,倒也...毕竟,frame_template,511,456,0.96,reasoning,倒也(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_dd4e9e505eec,反而...甚至,frame_template,509,447,0.96,contrast,反而(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_4da5ff797764,不但...而且,paired_marker,504,439,0.96,additive,不但(?P<a>.+?)而且(?P<b>.+),review
+
+unknown_644210a4e2eb,并非 / 甚至,clause_anomaly,475,354,0.96,,并非(?P<a>.+?)甚至,review
+
+unknown_e289e256803b,对于 / 反而,clause_anomaly,461,342,0.96,contrast,对于(?P<a>.+?)反而,review
+
+unknown_c96cef87c736,甚至 / 竟然,clause_anomaly,454,329,0.96,surprise,甚至(?P<a>.+?)竟然,review
+
+unknown_5ad287b9158d,毕竟...至于,frame_template,448,399,0.96,reasoning,毕竟(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_6a92936108b5,反而 / 甚至,clause_anomaly,441,334,0.96,contrast,反而(?P<a>.+?)甚至,review
+
+unknown_e4bf1f56d449,对于...至于,frame_template,431,361,0.96,,对于(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_6bdb5efec6ca,至于...对于,frame_template,425,377,0.96,,至于(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_fe9ec21632a5,毕竟...并非,frame_template,421,379,0.96,reasoning,毕竟(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_0288e4e44c92,倒也 / 毕竟,clause_anomaly,403,315,0.96,reasoning,倒也(?P<a>.+?)毕竟,review
+
+unknown_a393880ac818,只不过...甚至,frame_template,384,326,0.96,minimizing,只不过(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_6b3538d89fec,否则 / 至于,clause_anomaly,370,213,0.96,condition,否则(?P<a>.+?)至于,review
+
+unknown_e17e26a767c8,甚至...未必,frame_template,367,296,0.96,,甚至(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_0ed89dfa1d2f,毕竟 / 至于,clause_anomaly,355,249,0.96,reasoning,毕竟(?P<a>.+?)至于,review
+
+unknown_df6d1c96bbb3,甚至 / 未必,clause_anomaly,350,234,0.96,,甚至(?P<a>.+?)未必,review
+
+unknown_94144208e424,毕竟...再怎么,frame_template,332,290,0.96,reasoning,毕竟(?P<a>.+?)再怎么(?P<b>.+),review
+
+unknown_c46c4bdedc73,否则...至于,frame_template,328,298,0.96,condition,否则(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_7de9ca86587f,乃至...甚至,frame_template,321,249,0.96,,乃至(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_f5fc37a6ab5b,毕竟 / 并非,clause_anomaly,321,256,0.96,reasoning,毕竟(?P<a>.+?)并非,review
+
+unknown_3e6cdd5c82b8,宁可...也不,paired_marker,309,278,0.96,preference,宁可(?P<a>.+?)也不(?P<b>.+),review
+
+unknown_cf0884e5bfe8,甚至...竟是,frame_template,308,265,0.96,,甚至(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_1c0c4ee557c7,至于 / 对于,clause_anomaly,302,237,0.96,,至于(?P<a>.+?)对于,review
+
+unknown_0c04a500227f,否则 / 甚至,clause_anomaly,290,185,0.96,condition,否则(?P<a>.+?)甚至,review
+
+unknown_e899116a092b,竟然...反而,frame_template,288,253,0.96,surprise,竟然(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_95df27073ae9,甚至...只不过,frame_template,287,257,0.96,minimizing,甚至(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_5bba99c4cd8e,至于...反而,frame_template,285,256,0.96,contrast,至于(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_cae7076bacc8,对于...竟然,frame_template,284,254,0.96,surprise,对于(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_d1a7a317171d,只不过...毕竟,frame_template,283,260,0.96,reasoning,只不过(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_9f69bc554f8c,不过是...甚至,frame_template,281,240,0.96,minimizing,不过是(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_0e77c88e8a94,关于...甚至,frame_template,281,255,0.96,,关于(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_9d960912807b,关于 / 甚至,clause_anomaly,273,200,0.96,,关于(?P<a>.+?)甚至,review
+
+unknown_a1c1efd73c69,只不过...对于,frame_template,269,243,0.96,minimizing,只不过(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_7d9ab61ca0d8,对于 / 至于,clause_anomaly,267,194,0.96,,对于(?P<a>.+?)至于,review
+
+unknown_849faca20f46,由于...甚至,frame_template,267,245,0.96,,由于(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_6735e6fef63a,甚至...并非,frame_template,262,243,0.96,,甚至(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_23e12fcac39a,竟是...甚至,frame_template,262,238,0.96,,竟是(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_508437afc73b,对于...并非,frame_template,258,239,0.96,,对于(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_773727db427a,至于...竟是,frame_template,258,234,0.96,,至于(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_0fedf87afca0,并非...反而,frame_template,253,242,0.96,contrast,并非(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_42c1eb881228,毕竟...终究,frame_template,253,237,0.96,reasoning,毕竟(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_9d615f8ca390,至于 / 反而,clause_anomaly,252,185,0.96,contrast,至于(?P<a>.+?)反而,review
+
+unknown_d5dceafbd12f,竟是...竟然,frame_template,251,220,0.96,surprise,竟是(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_f96c5b913231,甚至 / 竟是,clause_anomaly,250,161,0.96,,甚至(?P<a>.+?)竟是,review
+
+unknown_4895fc278aac,竟然 / 反而,clause_anomaly,250,192,0.96,surprise,竟然(?P<a>.+?)反而,review
+
+unknown_50c132603f91,毕竟 / 再怎么,clause_anomaly,249,192,0.96,reasoning,毕竟(?P<a>.+?)再怎么,review
+
+unknown_a79386af074b,否则...甚至,frame_template,247,229,0.96,condition,否则(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_64bb3748b6fb,甚至...与其,frame_template,241,222,0.96,,甚至(?P<a>.+?)与其(?P<b>.+),review
+
+unknown_4f11a20a3167,由于 / 甚至,clause_anomaly,241,201,0.96,,由于(?P<a>.+?)甚至,review
+
+unknown_07a3954e0589,竟是 / 竟然,clause_anomaly,241,154,0.96,surprise,竟是(?P<a>.+?)竟然,review
+
+unknown_4b02503a43b7,只不过 / 甚至,clause_anomaly,240,195,0.96,minimizing,只不过(?P<a>.+?)甚至,review
+
+unknown_d70f4667451c,对于 / 竟然,clause_anomaly,240,191,0.96,surprise,对于(?P<a>.+?)竟然,review
+
+unknown_8f2f477a374a,甚至 / 并非,clause_anomaly,237,167,0.96,,甚至(?P<a>.+?)并非,review
+
+unknown_d205fce888da,对于 / 并非,clause_anomaly,234,177,0.96,,对于(?P<a>.+?)并非,review
+
+unknown_fa2ac1dcf929,乃至 / 甚至,clause_anomaly,233,152,0.96,,乃至(?P<a>.+?)甚至,review
+
+unknown_8c635cb4ab92,并非 / 反而,clause_anomaly,232,197,0.96,contrast,并非(?P<a>.+?)反而,review
+
+unknown_2cdc0ad8b438,竟然 / 竟是,clause_anomaly,232,156,0.96,surprise,竟然(?P<a>.+?)竟是,review
+
+unknown_1f86cb780d75,倒也 / 至于,clause_anomaly,230,155,0.96,,倒也(?P<a>.+?)至于,review
+
+unknown_1dab69e1b1e4,毕竟...不过是,frame_template,229,197,0.96,reasoning,毕竟(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_151cbc582257,甚至 / 与其,clause_anomaly,228,161,0.96,,甚至(?P<a>.+?)与其,review
+
+unknown_8269e6fd4a36,对于...倒也,frame_template,226,209,0.96,,对于(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_7a9bc5ced769,毕竟...反而,frame_template,222,209,0.96,contrast,毕竟(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_967affccc796,倒也...至于,frame_template,221,195,0.96,,倒也(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_77a7f0677b54,毕竟...何况,frame_template,221,209,0.96,reasoning,毕竟(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_78cf75714075,对于...竟是,frame_template,219,195,0.96,,对于(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_21ac15a164aa,至于...并非,frame_template,219,208,0.96,,至于(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_2d7a3907a04e,只不过...并非,frame_template,215,203,0.96,minimizing,只不过(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_53104b4810e3,竟然...竟是,frame_template,215,190,0.96,surprise,竟然(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_bb1deba7d91e,并非...毕竟,frame_template,211,206,0.96,reasoning,并非(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_63f1f029c0e4,只不过 / 对于,clause_anomaly,209,163,0.96,minimizing,只不过(?P<a>.+?)对于,review
+
+unknown_a6b553b62325,甚至 / 否则,clause_anomaly,209,137,0.96,condition,甚至(?P<a>.+?)否则,review
+
+unknown_8e7373d814cb,甚至...否则,frame_template,207,190,0.96,condition,甚至(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_8277cc6cd60c,至于 / 竟是,clause_anomaly,205,141,0.96,,至于(?P<a>.+?)竟是,review
+
+unknown_49f27c290bf3,甚至 / 关于,clause_anomaly,203,137,0.96,,甚至(?P<a>.+?)关于,review
+
+unknown_888cbc6e40b1,至于 / 倒也,clause_anomaly,203,151,0.96,,至于(?P<a>.+?)倒也,review
+
+unknown_b7ec6224f4a8,至于...倒也,frame_template,198,189,0.96,,至于(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_bb138aed1f7e,至于...竟然,frame_template,198,174,0.96,surprise,至于(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_889bafa52646,至于...不过是,frame_template,197,169,0.96,minimizing,至于(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_ca33a5bd5f60,对于...乃至,frame_template,195,146,0.96,,对于(?P<a>.+?)乃至(?P<b>.+),review
+
+unknown_a86c7d107ddd,反而...毕竟,frame_template,191,182,0.96,contrast,反而(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_e052d97642f5,与其...甚至,frame_template,190,177,0.96,,与其(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_c0d70928c943,甚至...关于,frame_template,189,176,0.96,,甚至(?P<a>.+?)关于(?P<b>.+),review
+
+unknown_7f85d056d938,至于 / 并非,clause_anomaly,187,145,0.96,,至于(?P<a>.+?)并非,review
+
+unknown_fa3404009515,并非...对于,frame_template,185,172,0.96,,并非(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_beadcb9e4771,只不过 / 并非,clause_anomaly,183,148,0.96,minimizing,只不过(?P<a>.+?)并非,review
+
+unknown_4b1014bd3286,毕竟 / 终究,clause_anomaly,183,146,0.96,reasoning,毕竟(?P<a>.+?)终究,review
+
+unknown_dec1e401b0d5,毕竟...只不过,frame_template,183,153,0.96,reasoning,毕竟(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_69197995cc69,甚至...不过是,frame_template,183,159,0.96,minimizing,甚至(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_73c3bd378353,何况...甚至,frame_template,182,158,0.96,addition,何况(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_cc756709192d,对于 / 倒也,clause_anomaly,182,148,0.96,,对于(?P<a>.+?)倒也,review
+
+unknown_3c858e043441,至于...只不过,frame_template,182,164,0.96,minimizing,至于(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_8a225654e049,未必 / 甚至,clause_anomaly,180,117,0.96,,未必(?P<a>.+?)甚至,review
+
+unknown_b94fe454d7f2,倒也...并非,frame_template,177,170,0.96,,倒也(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_c10ebc20f4ec,毕竟...未必,frame_template,177,161,0.96,reasoning,毕竟(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_ec15bd44d11e,对于...只不过,frame_template,176,164,0.96,minimizing,对于(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_2f82bbd057df,毕竟...否则,frame_template,173,167,0.96,reasoning,毕竟(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_390c630d8899,竟然 / 对于,clause_anomaly,173,117,0.96,surprise,竟然(?P<a>.+?)对于,review
+
+unknown_cb795cb2ef9a,并非 / 对于,clause_anomaly,171,131,0.96,,并非(?P<a>.+?)对于,review
+
+unknown_bfdcdf8197d9,只不过 / 毕竟,clause_anomaly,170,129,0.96,reasoning,只不过(?P<a>.+?)毕竟,review
+
+unknown_50267fcdee43,竟是...对于,frame_template,170,159,0.96,,竟是(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_68c125ec893f,毕竟 / 未必,clause_anomaly,167,119,0.96,reasoning,毕竟(?P<a>.+?)未必,review
+
+unknown_7171f196e969,至于 / 否则,clause_anomaly,167,104,0.96,condition,至于(?P<a>.+?)否则,review
+
+unknown_7c9bf75a5d1f,毕竟 / 反而,clause_anomaly,166,139,0.96,contrast,毕竟(?P<a>.+?)反而,review
+
+unknown_b6e27005f615,毕竟...竟然,frame_template,166,157,0.96,surprise,毕竟(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_8fa641b21087,由于...对于,frame_template,165,154,0.96,,由于(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_dc0354ba75bb,竟然...至于,frame_template,163,145,0.96,surprise,竟然(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_833fc50db622,对于...不过是,frame_template,162,147,0.96,minimizing,对于(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_691eeb259034,并非...只不过,frame_template,161,151,0.96,minimizing,并非(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_a1c2b0df50ad,不过是 / 甚至,clause_anomaly,160,110,0.96,minimizing,不过是(?P<a>.+?)甚至,review
+
+unknown_f75aa678d65e,未必...甚至,frame_template,160,145,0.96,,未必(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_9926db3e4f63,竟是 / 甚至,clause_anomaly,160,117,0.96,,竟是(?P<a>.+?)甚至,review
+
+unknown_4b5b6ff086fe,倒也 / 并非,clause_anomaly,158,115,0.96,,倒也(?P<a>.+?)并非,review
+
+unknown_89293af5f9a2,毕竟...与其,frame_template,158,148,0.96,reasoning,毕竟(?P<a>.+?)与其(?P<b>.+),review
+
+unknown_f4512d13c579,毕竟 / 否则,clause_anomaly,157,112,0.96,reasoning,毕竟(?P<a>.+?)否则,review
+
+unknown_c9ba51fa6b5c,偏偏...甚至,frame_template,155,139,0.96,counter_expectation,偏偏(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_8511a309346e,只不过...至于,frame_template,155,148,0.96,minimizing,只不过(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_382d675bea17,并非 / 毕竟,clause_anomaly,155,122,0.96,reasoning,并非(?P<a>.+?)毕竟,review
+
+unknown_9af92171d0f7,竟然...对于,frame_template,155,146,0.96,surprise,竟然(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_7308d021720d,毕竟...倒也,frame_template,154,149,0.96,reasoning,毕竟(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_4f12ff810da7,至于 / 竟然,clause_anomaly,154,110,0.96,surprise,至于(?P<a>.+?)竟然,review
+
+unknown_e1a4ee36ee73,与其 / 甚至,clause_anomaly,153,124,0.96,,与其(?P<a>.+?)甚至,review
+
+unknown_de97236c666c,至于...否则,frame_template,153,140,0.96,condition,至于(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_69c22e6c5b14,更何况...甚至,frame_template,150,129,0.96,addition,更何况(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_36406a9b51ba,偏偏 / 甚至,clause_anomaly,149,111,0.96,counter_expectation,偏偏(?P<a>.+?)甚至,review
+
+unknown_b9763d66deb7,只不过...反而,frame_template,148,134,0.96,contrast,只不过(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_040320eeb372,至于 / 不过是,clause_anomaly,148,95,0.96,minimizing,至于(?P<a>.+?)不过是,review
+
+unknown_12fa51c7bb92,对于 / 不过是,clause_anomaly,147,95,0.96,minimizing,对于(?P<a>.+?)不过是,review
+
+unknown_4b93cfa53ccf,更何况 / 何况 / 甚至,clause_anomaly,146,104,0.96,addition,更何况(?P<a>.+?)何况(?P<a>.+?)甚至,review
+
+unknown_311014c3ff44,反倒...甚至,frame_template,145,136,0.96,,反倒(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_6b030ca5761e,竟是...毕竟,frame_template,145,141,0.96,reasoning,竟是(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_405791afab2a,由于 / 对于,clause_anomaly,144,120,0.96,,由于(?P<a>.+?)对于,review
+
+unknown_972f40296f0a,毕竟...更何况,frame_template,143,138,0.96,reasoning,毕竟(?P<a>.+?)更何况(?P<b>.+),review
+
+unknown_295f13683181,只不过...竟然,frame_template,142,129,0.96,surprise,只不过(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_186888b616ce,对于...反倒,frame_template,142,131,0.96,,对于(?P<a>.+?)反倒(?P<b>.+),review
+
+unknown_e7a4ce17b9ab,反而 / 毕竟,clause_anomaly,141,111,0.96,contrast,反而(?P<a>.+?)毕竟,review
+
+unknown_8b3a3d60075c,只不过...由于,frame_template,141,131,0.96,minimizing,只不过(?P<a>.+?)由于(?P<b>.+),review
+
+unknown_0b68e7481d65,不过是 / 至于,clause_anomaly,140,79,0.96,minimizing,不过是(?P<a>.+?)至于,review
+
+unknown_5e5aff3c8d9c,竟然 / 莫非,clause_anomaly,140,77,0.96,surprise,竟然(?P<a>.+?)莫非,review
+
+unknown_ec3c234141c0,反倒 / 甚至,clause_anomaly,138,109,0.96,,反倒(?P<a>.+?)甚至,review
+
+unknown_ab048043b0bb,甚至 / 只不过,clause_anomaly,138,110,0.96,minimizing,甚至(?P<a>.+?)只不过,review
+
+unknown_4def3d26ebf2,毕竟 / 不过是,clause_anomaly,136,99,0.96,reasoning,毕竟(?P<a>.+?)不过是,review
+
+unknown_585d3c3e3e44,竟然...毕竟,frame_template,134,127,0.96,surprise,竟然(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_b0370283b881,再怎么...终究,frame_template,131,111,0.96,conclusion,再怎么(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_9bcd7570dbd4,至于...乃至,frame_template,131,109,0.96,,至于(?P<a>.+?)乃至(?P<b>.+),review
+
+unknown_e31ef903d335,并非...至于,frame_template,130,123,0.96,,并非(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_3eb0edfc96c1,不过是...至于,frame_template,127,117,0.96,minimizing,不过是(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_e4b78e15339d,对于 / 反倒,clause_anomaly,126,98,0.96,,对于(?P<a>.+?)反倒,review
+
+unknown_881c0e9f13fe,毕竟 / 与其,clause_anomaly,126,93,0.96,reasoning,毕竟(?P<a>.+?)与其,review
+
+unknown_6ddfa99ac9b3,甚至...反倒,frame_template,124,117,0.96,,甚至(?P<a>.+?)反倒(?P<b>.+),review
+
+unknown_57e4ced03945,只不过 / 至于,clause_anomaly,123,89,0.96,minimizing,只不过(?P<a>.+?)至于,review
+
+unknown_b4a40b0069d0,至于...反倒,frame_template,122,115,0.96,,至于(?P<a>.+?)反倒(?P<b>.+),review
+
+unknown_86448edf11d5,何况...对于,frame_template,121,113,0.96,addition,何况(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_63a5a2fa594f,只不过 / 竟然,clause_anomaly,121,93,0.96,surprise,只不过(?P<a>.+?)竟然,review
+
+unknown_0af4a2dd0f52,只不过 / 反而,clause_anomaly,118,94,0.96,contrast,只不过(?P<a>.+?)反而,review
+
+unknown_333894d0dfde,对于...否则,frame_template,117,108,0.96,condition,对于(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_599c8cdca562,甚至...由于,frame_template,117,112,0.96,,甚至(?P<a>.+?)由于(?P<b>.+),review
+
+unknown_8a6efe170c72,对于 / 乃至,clause_anomaly,116,84,0.96,,对于(?P<a>.+?)乃至,review
+
+unknown_bc6ff6c1a0af,竟然 / 毕竟,clause_anomaly,116,91,0.96,surprise,竟然(?P<a>.+?)毕竟,review
+
+unknown_eb8ad62d8388,关于...毕竟,frame_template,115,107,0.96,reasoning,关于(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_3ff22530a1d9,对于 / 竟是,clause_anomaly,115,91,0.96,,对于(?P<a>.+?)竟是,review
+
+unknown_a8aad90792e4,反而...对于,frame_template,114,104,0.96,contrast,反而(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_1abadc659dc0,竟然 / 否则,clause_anomaly,114,71,0.96,surprise,竟然(?P<a>.+?)否则,review
+
+unknown_187bee4928e6,说到底...不过是,frame_template,114,79,0.96,summary,说到底(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_279be072c991,对于...终究,frame_template,112,106,0.96,conclusion,对于(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_cec5923e2207,并非...否则,frame_template,112,111,0.96,condition,并非(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_96e513bde3f0,不过是...对于,frame_template,110,97,0.96,minimizing,不过是(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_1deb097b696d,并非 / 至于,clause_anomaly,110,74,0.96,,并非(?P<a>.+?)至于,review
+
+unknown_ad3c7b52dd1e,终究...甚至,frame_template,110,107,0.96,conclusion,终究(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_8fd5ea414556,对于 / 否则,clause_anomaly,109,76,0.96,condition,对于(?P<a>.+?)否则,review
+
+unknown_c9d2766bb9ca,毕竟 / 更何况 / 何况,clause_anomaly,109,84,0.96,reasoning,毕竟(?P<a>.+?)更何况(?P<a>.+?)何况,review
+
+unknown_e9fe372fb354,甚至 / 反倒,clause_anomaly,109,81,0.96,,甚至(?P<a>.+?)反倒,review
+
+unknown_fd2c2a439fe6,反而 / 对于,clause_anomaly,108,81,0.96,contrast,反而(?P<a>.+?)对于,review
+
+unknown_4f753d04eb4c,只不过...竟是,frame_template,108,100,0.96,minimizing,只不过(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_5a4a1dac33bf,对于...与其,frame_template,108,102,0.96,,对于(?P<a>.+?)与其(?P<b>.+),review
+
+unknown_ef33edc5ea95,并非 / 只不过,clause_anomaly,108,75,0.96,minimizing,并非(?P<a>.+?)只不过,review
+
+unknown_ef7eae5f1ab7,只不过 / 由于,clause_anomaly,106,79,0.96,minimizing,只不过(?P<a>.+?)由于,review
+
+unknown_59d57c871b39,毕竟 / 竟然,clause_anomaly,106,89,0.96,surprise,毕竟(?P<a>.+?)竟然,review
+
+unknown_db17ac39834e,由于...至于,frame_template,106,99,0.96,,由于(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_ff119b372e96,甚至...偏偏,frame_template,105,96,0.96,counter_expectation,甚至(?P<a>.+?)偏偏(?P<b>.+),review
+
+unknown_7ccf8cb7677f,不过是...竟然,frame_template,104,93,0.96,surprise,不过是(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_998731f07f9d,否则...毕竟,frame_template,104,96,0.96,reasoning,否则(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_662430fa2cf4,并非 / 否则,clause_anomaly,102,78,0.96,condition,并非(?P<a>.+?)否则,review
+
+unknown_3b6f26eb35e2,并非...不过是,frame_template,102,94,0.96,minimizing,并非(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_8a60049e0d30,毕竟...关于,frame_template,102,94,0.96,reasoning,毕竟(?P<a>.+?)关于(?P<b>.+),review
+
+unknown_6be3fc3b7c2a,至于 / 反倒,clause_anomaly,102,85,0.96,,至于(?P<a>.+?)反倒,review
+
+unknown_dbe9448bab26,终究 / 甚至,clause_anomaly,101,72,0.96,conclusion,终究(?P<a>.+?)甚至,review
+
+unknown_b17b83424839,不过是 / 竟然,clause_anomaly,100,66,0.96,surprise,不过是(?P<a>.+?)竟然,review
+
+unknown_e0b47ba4c6ed,再怎么 / 终究,clause_anomaly,100,78,0.96,conclusion,再怎么(?P<a>.+?)终究,review
+
+unknown_a7bb716c599d,对于 / 只不过,clause_anomaly,100,82,0.96,minimizing,对于(?P<a>.+?)只不过,review
+
+unknown_2a392babc024,毕竟...乃至,frame_template,100,89,0.96,reasoning,毕竟(?P<a>.+?)乃至(?P<b>.+),review
+
+unknown_815133cec087,毕竟 / 倒也,clause_anomaly,98,78,0.96,reasoning,毕竟(?P<a>.+?)倒也,review
+
+unknown_d0f6ad2e4eec,毕竟 / 竟是 / 对于,clause_anomaly,98,79,0.96,reasoning,毕竟(?P<a>.+?)竟是(?P<a>.+?)对于,review
+
+unknown_ba838e0e71f0,甚至 / 偏偏,clause_anomaly,98,81,0.96,counter_expectation,甚至(?P<a>.+?)偏偏,review
+
+unknown_e0387ef0be58,关于...对于,frame_template,97,85,0.96,,关于(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_1c2d69ec0bc3,毕竟 / 只不过,clause_anomaly,97,67,0.96,reasoning,毕竟(?P<a>.+?)只不过,review
+
+unknown_36be9c2a92ba,至于...关于,frame_template,97,86,0.96,,至于(?P<a>.+?)关于(?P<b>.+),review
+
+unknown_e2eac24e44d3,甚至 / 不过是,clause_anomaly,96,68,0.96,minimizing,甚至(?P<a>.+?)不过是,review
+
+unknown_d19a7a72fae3,至于...由于,frame_template,96,87,0.96,,至于(?P<a>.+?)由于(?P<b>.+),review
+
+unknown_7f44bcd0f875,倒也 / 未必,clause_anomaly,95,51,0.96,,倒也(?P<a>.+?)未必,review
+
+unknown_c7f25ecc2f45,倒也 / 甚至,clause_anomaly,95,68,0.96,,倒也(?P<a>.+?)甚至,review
+
+unknown_1a4533622352,关于 / 对于,clause_anomaly,95,68,0.96,,关于(?P<a>.+?)对于,review
+
+unknown_24ad5d8d4eb1,反而...竟然,frame_template,95,88,0.96,surprise,反而(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_cf7d4574f890,竟然 / 至于,clause_anomaly,95,68,0.96,surprise,竟然(?P<a>.+?)至于,review
+
+unknown_ad981b7596f7,何况...并非,frame_template,94,91,0.96,addition,何况(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_fc56d556e979,再怎么 / 至于,clause_anomaly,94,70,0.96,,再怎么(?P<a>.+?)至于,review
+
+unknown_27a78c5f9037,毕竟 / 关于,clause_anomaly,94,65,0.96,reasoning,毕竟(?P<a>.+?)关于,review
+
+unknown_bfcd0f3ab75e,甚至 / 由于,clause_anomaly,94,68,0.96,,甚至(?P<a>.+?)由于,review
+
+unknown_56bbc5be76f6,由于 / 至于,clause_anomaly,94,80,0.96,,由于(?P<a>.+?)至于,review
+
+unknown_3f5d5095e3d3,对于 / 终究,clause_anomaly,93,70,0.96,conclusion,对于(?P<a>.+?)终究,review
+
+unknown_12d20cb0c0fd,毕竟 / 竟是 / 甚至,clause_anomaly,93,70,0.96,reasoning,毕竟(?P<a>.+?)竟是(?P<a>.+?)甚至,review
+
+unknown_e33f4bfd13f5,至于 / 只不过,clause_anomaly,93,70,0.96,minimizing,至于(?P<a>.+?)只不过,review
+
+unknown_be3f2f78bb38,何况...未必,frame_template,92,87,0.96,addition,何况(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_5616b6125b0b,反而...至于,frame_template,92,88,0.96,contrast,反而(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_9bd147bde810,否则 / 反而,clause_anomaly,92,59,0.96,contrast,否则(?P<a>.+?)反而,review
+
+unknown_f54f003cdc26,对于 / 与其,clause_anomaly,91,75,0.96,,对于(?P<a>.+?)与其,review
+
+unknown_92d0d97556da,未必...毕竟,frame_template,91,80,0.96,reasoning,未必(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_0efcdc16f5a6,由于...反而,frame_template,91,84,0.96,contrast,由于(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_371b43cb206c,关于 / 毕竟,clause_anomaly,90,66,0.96,reasoning,关于(?P<a>.+?)毕竟,review
+
+unknown_4b6c30108513,再怎么...至于,frame_template,90,84,0.96,,再怎么(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_3c778beaaaf1,对于...何况,frame_template,90,86,0.96,addition,对于(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_4173efacfb59,竟是...至于,frame_template,90,88,0.96,,竟是(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_db904fb23554,至于...与其,frame_template,90,88,0.96,,至于(?P<a>.+?)与其(?P<b>.+),review
+
+unknown_ce975f3065ec,否则 / 毕竟,clause_anomaly,89,58,0.96,reasoning,否则(?P<a>.+?)毕竟,review
+
+unknown_95fd9260f907,竟然...莫非,frame_template,89,82,0.96,surprise,竟然(?P<a>.+?)莫非(?P<b>.+),review
+
+unknown_46374e14c4ce,至于...未必,frame_template,89,82,0.96,,至于(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_95d6afac4dee,对于 / 未必,clause_anomaly,88,58,0.96,,对于(?P<a>.+?)未必,review
+
+unknown_c2c814516506,终究 / 不过是,clause_anomaly,88,54,0.96,conclusion,终究(?P<a>.+?)不过是,review
+
+unknown_dc935a01fd11,毕竟...反倒,frame_template,87,84,0.96,reasoning,毕竟(?P<a>.+?)反倒(?P<b>.+),review
+
+unknown_3cde0d274945,未必 / 毕竟,clause_anomaly,86,56,0.96,reasoning,未必(?P<a>.+?)毕竟,review
+
+unknown_3d21cbf28a3d,倒也...反而,frame_template,85,82,0.96,contrast,倒也(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_dd5466ff9a58,否则...反而,frame_template,85,84,0.96,contrast,否则(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_8eef9a337077,甚至 / 乃至 / 至于,clause_anomaly,85,63,0.96,,甚至(?P<a>.+?)乃至(?P<a>.+?)至于,review
+
+unknown_2723d6d14fe2,甚至...终究,frame_template,85,81,0.96,conclusion,甚至(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_7ec523dc79d0,至于 / 关于,clause_anomaly,85,58,0.96,,至于(?P<a>.+?)关于,review
+
+unknown_90ac3fe1e057,倒也...甚至,frame_template,84,81,0.96,,倒也(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_9eb97d0df69a,否则 / 未必,clause_anomaly,84,48,0.96,condition,否则(?P<a>.+?)未必,review
+
+unknown_40122704ea9c,由于...竟然,frame_template,84,80,0.96,surprise,由于(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_44274dcaf70a,竟是...反而,frame_template,84,80,0.96,contrast,竟是(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_0ddf6618f2d4,反而 / 至于,clause_anomaly,83,57,0.96,contrast,反而(?P<a>.+?)至于,review
+
+unknown_3fcf9aa5b426,未必 / 反而,clause_anomaly,83,55,0.96,contrast,未必(?P<a>.+?)反而,review
+
+unknown_f4293536a96b,对于...关于,frame_template,82,79,0.96,,对于(?P<a>.+?)关于(?P<b>.+),review
+
+unknown_5a8ef82851bd,倒也...未必,frame_template,81,76,0.96,,倒也(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_fbdf2b438ceb,关于...至于,frame_template,81,80,0.96,,关于(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_f21cacc139de,竟然...只不过,frame_template,81,76,0.96,surprise,竟然(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_44ce09646054,终究 / 至于,clause_anomaly,81,54,0.96,conclusion,终究(?P<a>.+?)至于,review
+
+unknown_759c19ddbfd7,说到底 / 不过是,clause_anomaly,81,47,0.96,summary,说到底(?P<a>.+?)不过是,review
+
+unknown_5d410e9e3d45,倒也...竟然,frame_template,80,75,0.96,surprise,倒也(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_f4de8ed5f094,对于 / 毕竟 / 竟是,clause_anomaly,80,68,0.96,reasoning,对于(?P<a>.+?)毕竟(?P<a>.+?)竟是,review
+
+unknown_9590d465405b,乃至...对于,frame_template,79,69,0.96,,乃至(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_74dd057f5d5d,倒也 / 竟然,clause_anomaly,79,56,0.96,surprise,倒也(?P<a>.+?)竟然,review
+
+unknown_176d3116e7d7,只不过 / 不过是 / 甚至,clause_anomaly,79,52,0.96,minimizing,只不过(?P<a>.+?)不过是(?P<a>.+?)甚至,review
+
+unknown_f2a05f5343d7,毕竟 / 反倒,clause_anomaly,79,62,0.96,reasoning,毕竟(?P<a>.+?)反倒,review
+
+unknown_88c77806309b,竟然...否则,frame_template,79,75,0.96,surprise,竟然(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_a61983bb4a93,倒也 / 反而,clause_anomaly,78,68,0.96,contrast,倒也(?P<a>.+?)反而,review
+
+unknown_a383cd2f3c3b,偏偏...竟然,frame_template,78,70,0.96,counter_expectation,偏偏(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_a7c59967a2c1,对于...未必,frame_template,78,68,0.96,,对于(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_255ee4571d9e,终究...至于,frame_template,78,74,0.96,conclusion,终究(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_886751d43b43,至于 / 与其,clause_anomaly,78,62,0.96,,至于(?P<a>.+?)与其,review
+
+unknown_4bcbc13a48b0,更何况 / 何况 / 对于,clause_anomaly,77,56,0.96,addition,更何况(?P<a>.+?)何况(?P<a>.+?)对于,review
+
+unknown_25d53cb478f3,至于 / 乃至,clause_anomaly,77,54,0.96,,至于(?P<a>.+?)乃至,review
+
+unknown_5a6d6b6b8e76,与其...毕竟,frame_template,76,76,0.96,reasoning,与其(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_eff221cd739d,倒也 / 只不过,clause_anomaly,76,53,0.96,minimizing,倒也(?P<a>.+?)只不过,review
+
+unknown_19feffbcacdf,反而 / 竟然,clause_anomaly,76,61,0.96,surprise,反而(?P<a>.+?)竟然,review
+
+unknown_2577e28aba7b,更何况...对于,frame_template,76,69,0.96,addition,更何况(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_ed8bca6e1d0f,甚至...何况,frame_template,75,71,0.96,addition,甚至(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_0d24f9d0de91,竟然...并非,frame_template,75,72,0.96,surprise,竟然(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_fc5a71f876c6,终究...不过是,frame_template,75,69,0.96,conclusion,终究(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_f7943ae92e27,至于 / 由于,clause_anomaly,75,56,0.96,,至于(?P<a>.+?)由于,review
+
+unknown_ebaceecf3715,至于...何况,frame_template,75,73,0.96,addition,至于(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_66b62398b823,倒也...只不过,frame_template,74,72,0.96,minimizing,倒也(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_a920b055e4c5,偏偏...反而,frame_template,74,70,0.96,counter_expectation,偏偏(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_12e690a58643,对于 / 关于,clause_anomaly,74,61,0.96,,对于(?P<a>.+?)关于,review
+
+unknown_7ddcf936881a,关于 / 至于,clause_anomaly,73,46,0.96,,关于(?P<a>.+?)至于,review
+
+unknown_0e6eb1718498,未必...反而,frame_template,73,69,0.96,contrast,未必(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_f90577b5eb94,甚至 / 终究,clause_anomaly,73,52,0.96,conclusion,甚至(?P<a>.+?)终究,review
+
+unknown_86c00990ae05,倒也 / 对于,clause_anomaly,72,49,0.96,,倒也(?P<a>.+?)对于,review
+
+unknown_314e3982c14d,倒也...对于,frame_template,72,69,0.96,,倒也(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_2201688a7a8f,反倒...反而,frame_template,72,68,0.96,contrast,反倒(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_f525ae2be270,毕竟 / 乃至,clause_anomaly,72,58,0.96,reasoning,毕竟(?P<a>.+?)乃至,review
+
+unknown_985a1c064eb0,由于 / 反而,clause_anomaly,72,63,0.96,contrast,由于(?P<a>.+?)反而,review
+
+unknown_370c9c6e1a68,至于 / 终究,clause_anomaly,72,47,0.96,conclusion,至于(?P<a>.+?)终究,review
+
+unknown_548181e72b69,何况...不过是,frame_template,71,65,0.96,addition,何况(?P<a>.+?)不过是(?P<b>.+),review
+
+unknown_81feb767fccf,倘若...甚至,frame_template,71,70,0.96,,倘若(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_d1118ebc821e,反倒 / 反而,clause_anomaly,71,52,0.96,contrast,反倒(?P<a>.+?)反而,review
+
+unknown_0a053453b677,终究 / 对于,clause_anomaly,71,52,0.96,conclusion,终究(?P<a>.+?)对于,review
+
+unknown_2f253c261f74,倒也 / 否则,clause_anomaly,70,48,0.96,condition,倒也(?P<a>.+?)否则,review
+
+unknown_550a68aedf59,反倒...对于,frame_template,69,67,0.96,,反倒(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_d2ababcdb604,并非...乃至,frame_template,69,67,0.96,,并非(?P<a>.+?)乃至(?P<b>.+),review
+
+unknown_8ce8f77895b0,竟然 / 并非,clause_anomaly,69,49,0.96,surprise,竟然(?P<a>.+?)并非,review
+
+unknown_7b9203b0a346,与其 / 毕竟,clause_anomaly,68,45,0.96,reasoning,与其(?P<a>.+?)毕竟,review
+
+unknown_4e254772fb61,何况...毕竟,frame_template,68,67,0.96,reasoning,何况(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_b1e0cb851011,反倒...毕竟,frame_template,68,64,0.96,reasoning,反倒(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_3d04057ba306,否则...未必,frame_template,68,59,0.96,condition,否则(?P<a>.+?)未必(?P<b>.+),review
+
+unknown_54960e583152,终究...对于,frame_template,68,67,0.96,conclusion,终究(?P<a>.+?)对于(?P<b>.+),review
+
+unknown_7f08bb18e5b2,至于 / 未必,clause_anomaly,68,46,0.96,,至于(?P<a>.+?)未必,review
+
+unknown_72a566b1e777,倘若 / 甚至,clause_anomaly,67,51,0.96,,倘若(?P<a>.+?)甚至,review
+
+unknown_167092b1d1da,毕竟...说到底,frame_template,67,44,0.96,reasoning,毕竟(?P<a>.+?)说到底(?P<b>.+),review
+
+unknown_5a80d74e6aa8,不过是 / 对于,clause_anomaly,66,42,0.96,minimizing,不过是(?P<a>.+?)对于,review
+
+unknown_cbc89e89a566,毕竟 / 何况,clause_anomaly,66,50,0.96,reasoning,毕竟(?P<a>.+?)何况,review
+
+unknown_3329af09d86a,不过是...毕竟,frame_template,65,62,0.96,reasoning,不过是(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_49009ddea807,只不过 / 否则,clause_anomaly,65,48,0.96,minimizing,只不过(?P<a>.+?)否则,review
+
+unknown_6a94fab7f1a1,并非...竟然,frame_template,65,65,0.96,surprise,并非(?P<a>.+?)竟然(?P<b>.+),review
+
+unknown_8bb96ab5e6a2,甚至 / 只不过 / 不过是,clause_anomaly,65,43,0.96,minimizing,甚至(?P<a>.+?)只不过(?P<a>.+?)不过是,review
+
+unknown_ec919cd74bcf,由于 / 竟然,clause_anomaly,65,61,0.96,surprise,由于(?P<a>.+?)竟然,review
+
+unknown_4901a0ceb954,不过是...只不过,frame_template,64,55,0.96,minimizing,不过是(?P<a>.+?)只不过(?P<b>.+),review
+
+unknown_f2fca0762aed,倒也...否则,frame_template,64,64,0.96,condition,倒也(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_74f2b0ea6fac,竟是...倒也,frame_template,64,63,0.96,,竟是(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_abcf89455c51,竟然 / 倒也,clause_anomaly,64,42,0.96,surprise,竟然(?P<a>.+?)倒也,review
+
+unknown_d4c39f1949f6,至于...终究,frame_template,64,62,0.96,conclusion,至于(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_fb61278faa9c,只不过...否则,frame_template,63,63,0.96,minimizing,只不过(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_655e52f57535,对于...更何况,frame_template,63,61,0.96,addition,对于(?P<a>.+?)更何况(?P<b>.+),review
+
+unknown_f064baa00271,甚至 / 更何况 / 何况,clause_anomaly,63,45,0.96,addition,甚至(?P<a>.+?)更何况(?P<a>.+?)何况,review
+
+unknown_ab6595e56461,终究 / 并非,clause_anomaly,63,45,0.96,conclusion,终究(?P<a>.+?)并非,review
+
+unknown_2b09b6e69a7e,不过是...并非,frame_template,62,59,0.96,minimizing,不过是(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_2532e089e945,毕竟 / 只不过 / 不过是,clause_anomaly,62,36,0.96,reasoning,毕竟(?P<a>.+?)只不过(?P<a>.+?)不过是,review
+
+unknown_c32d3b5151d7,只不过...终究,frame_template,61,58,0.96,conclusion,只不过(?P<a>.+?)终究(?P<b>.+),review
+
+unknown_ed17fcb8ac13,偏偏 / 竟然,clause_anomaly,60,42,0.96,counter_expectation,偏偏(?P<a>.+?)竟然,review
+
+unknown_e001f97db73d,反倒 / 对于,clause_anomaly,60,48,0.96,,反倒(?P<a>.+?)对于,review
+
+unknown_fa9387c88be1,只不过...倒也,frame_template,60,58,0.96,minimizing,只不过(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_d2dc101eee85,并非 / 不过是,clause_anomaly,60,35,0.96,minimizing,并非(?P<a>.+?)不过是,review
+
+unknown_b9f4565aab59,竟然...倒也,frame_template,60,55,0.96,surprise,竟然(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_ae425a8e461c,只不过 / 终究,clause_anomaly,59,42,0.96,conclusion,只不过(?P<a>.+?)终究,review
+
+unknown_5cc962098235,由于...毕竟,frame_template,59,59,0.96,reasoning,由于(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_ccd98438c656,竟然 / 反倒,clause_anomaly,59,44,0.96,surprise,竟然(?P<a>.+?)反倒,review
+
+unknown_827fdb5b8206,终究...并非,frame_template,59,58,0.96,conclusion,终究(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_7d0e76685fa1,并非 / 乃至,clause_anomaly,58,48,0.96,,并非(?P<a>.+?)乃至,review
+
+unknown_d0e557cae559,并非 / 未必,clause_anomaly,58,35,0.96,,并非(?P<a>.+?)未必,review
+
+unknown_1ca333b1431d,甚至...更何况,frame_template,58,56,0.96,addition,甚至(?P<a>.+?)更何况(?P<b>.+),review
+
+unknown_edf2da1fd66f,竟然...反倒,frame_template,58,57,0.96,surprise,竟然(?P<a>.+?)反倒(?P<b>.+),review
+
+unknown_578df5b0f258,并非...与其,frame_template,57,55,0.96,,并非(?P<a>.+?)与其(?P<b>.+),review
+
+unknown_7759cf6e92cf,由于 / 并非,clause_anomaly,57,44,0.96,,由于(?P<a>.+?)并非,review
+
+unknown_0f81840e7840,终究 / 否则,clause_anomaly,57,36,0.96,conclusion,终究(?P<a>.+?)否则,review
+
+unknown_8f6e2eb8221f,对于 / 乃至 / 至于,clause_anomaly,56,38,0.96,,对于(?P<a>.+?)乃至(?P<a>.+?)至于,review
+
+unknown_fa74c8a86bc5,对于 / 只不过 / 不过是,clause_anomaly,56,36,0.96,minimizing,对于(?P<a>.+?)只不过(?P<a>.+?)不过是,review
+
+unknown_31aa819b5ab3,对于 / 更何况 / 何况,clause_anomaly,56,42,0.96,addition,对于(?P<a>.+?)更何况(?P<a>.+?)何况,review
+
+unknown_6ed06622c0a8,未必...何况,frame_template,56,53,0.96,addition,未必(?P<a>.+?)何况(?P<b>.+),review
+
+unknown_5853e7f92ef6,竟然 / 只不过,clause_anomaly,56,49,0.96,surprise,竟然(?P<a>.+?)只不过,review
+
+unknown_38f85752ad34,终究...毕竟,frame_template,56,56,0.96,reasoning,终究(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_9c42aae2e307,至于 / 更何况 / 何况,clause_anomaly,56,36,0.96,addition,至于(?P<a>.+?)更何况(?P<a>.+?)何况,review
+
+unknown_34895ce0bee6,不过是...反而,frame_template,55,51,0.96,contrast,不过是(?P<a>.+?)反而(?P<b>.+),review
+
+unknown_d1ee8b44f0ad,再怎么 / 甚至,clause_anomaly,55,38,0.96,,再怎么(?P<a>.+?)甚至,review
+
+unknown_f8e643affcc9,换句话说...甚至,frame_template,55,50,0.96,definition,换句话说(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_d900d89c0dd6,毕竟...偏偏,frame_template,55,53,0.96,counter_expectation,毕竟(?P<a>.+?)偏偏(?P<b>.+),review
+
+unknown_c5d36ce54c8f,至于 / 毕竟 / 竟是,clause_anomaly,55,43,0.96,reasoning,至于(?P<a>.+?)毕竟(?P<a>.+?)竟是,review
+
+unknown_14086c04d57f,莫非 / 否则,clause_anomaly,55,30,0.96,rhetorical_question,莫非(?P<a>.+?)否则,review
+
+unknown_565ef4e31bba,再怎么...甚至,frame_template,54,48,0.96,,再怎么(?P<a>.+?)甚至(?P<b>.+),review
+
+unknown_19e883a78ec7,只不过 / 竟是,clause_anomaly,54,41,0.96,minimizing,只不过(?P<a>.+?)竟是,review
+
+unknown_59e04a63a3ef,甚至 / 至于 / 对于,clause_anomaly,54,45,0.96,,甚至(?P<a>.+?)至于(?P<a>.+?)对于,review
+
+unknown_6cb6d931e91d,由于...并非,frame_template,54,51,0.96,,由于(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_feee31ec2629,终究 / 毕竟,clause_anomaly,54,40,0.96,reasoning,终究(?P<a>.+?)毕竟,review
+
+unknown_18c2059af2bd,乃至 / 对于,clause_anomaly,53,35,0.96,,乃至(?P<a>.+?)对于,review
+
+unknown_38608a3a3137,何况...至于,frame_template,53,52,0.96,addition,何况(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_26991aae73a6,偏偏 / 反而,clause_anomaly,53,46,0.96,counter_expectation,偏偏(?P<a>.+?)反而,review
+
+unknown_06500fcef087,并非 / 与其,clause_anomaly,53,44,0.96,,并非(?P<a>.+?)与其,review
+
+unknown_83d00ca263d9,并非...竟是,frame_template,53,53,0.96,,并非(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_0c374114c9d8,更何况 / 何况 / 未必,clause_anomaly,53,35,0.96,addition,更何况(?P<a>.+?)何况(?P<a>.+?)未必,review
+
+unknown_3e010721ad7a,毕竟 / 竟是 / 倒也,clause_anomaly,53,40,0.96,reasoning,毕竟(?P<a>.+?)竟是(?P<a>.+?)倒也,review
+
+unknown_159b98359a67,甚至 / 毕竟 / 竟是,clause_anomaly,53,42,0.96,reasoning,甚至(?P<a>.+?)毕竟(?P<a>.+?)竟是,review
+
+unknown_08878ebb4e9d,竟是 / 毕竟,clause_anomaly,53,44,0.96,reasoning,竟是(?P<a>.+?)毕竟,review
+
+unknown_e8ebbef76c1f,竟然 / 难不成,clause_anomaly,53,34,0.96,surprise,竟然(?P<a>.+?)难不成,review
+
+unknown_c11ffa9edad5,不过是 / 毕竟,clause_anomaly,52,31,0.96,reasoning,不过是(?P<a>.+?)毕竟,review
+
+unknown_ac54ba4ba02d,由于 / 毕竟,clause_anomaly,52,44,0.96,reasoning,由于(?P<a>.+?)毕竟,review
+
+unknown_45820a90893d,何况 / 未必,clause_anomaly,51,31,0.96,addition,何况(?P<a>.+?)未必,review
+
+unknown_da0fa498f0e3,反而 / 否则,clause_anomaly,51,35,0.96,contrast,反而(?P<a>.+?)否则,review
+
+unknown_d3b858bfb744,反而...竟是,frame_template,51,48,0.96,contrast,反而(?P<a>.+?)竟是(?P<b>.+),review
+
+unknown_b4cb729602d2,毕竟 / 竟是 / 至于,clause_anomaly,51,35,0.96,reasoning,毕竟(?P<a>.+?)竟是(?P<a>.+?)至于,review
+
+unknown_64e883c41c34,毕竟...由于,frame_template,51,51,0.96,reasoning,毕竟(?P<a>.+?)由于(?P<b>.+),review
+
+unknown_ba1716ac117a,竟是 / 对于,clause_anomaly,51,37,0.96,,竟是(?P<a>.+?)对于,review
+
+unknown_3d7980560596,与其...并非,frame_template,50,47,0.96,,与其(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_b43916c7d671,乃至 / 至于 / 甚至,clause_anomaly,50,31,0.96,,乃至(?P<a>.+?)至于(?P<a>.+?)甚至,review
+
+unknown_7692dd631c36,关于...并非,frame_template,50,46,0.96,,关于(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_4d3db6292681,并非 / 竟然,clause_anomaly,50,43,0.96,surprise,并非(?P<a>.+?)竟然,review
+
+unknown_4397369c9354,毕竟 / 偏偏,clause_anomaly,50,40,0.96,counter_expectation,毕竟(?P<a>.+?)偏偏,review
+
+unknown_3ffff13b02ff,毕竟 / 说到底,clause_anomaly,50,30,0.96,reasoning,毕竟(?P<a>.+?)说到底,review
+
+unknown_71bab6578164,竟是...并非,frame_template,50,48,0.96,,竟是(?P<a>.+?)并非(?P<b>.+),review
+
+unknown_a49736a58baf,终究...否则,frame_template,50,50,0.96,conclusion,终究(?P<a>.+?)否则(?P<b>.+),review
+
+unknown_765aea55d444,不过是 / 并非,clause_anomaly,49,31,0.96,minimizing,不过是(?P<a>.+?)并非,review
+
+unknown_48a8dee6d58c,关于 / 竟然,clause_anomaly,49,36,0.96,surprise,关于(?P<a>.+?)竟然,review
+
+unknown_cba7e5d873a2,对于 / 甚至 / 至于,clause_anomaly,49,43,0.96,,对于(?P<a>.+?)甚至(?P<a>.+?)至于,review
+
+unknown_939c9b8a247b,甚至...倒也,frame_template,49,49,0.96,,甚至(?P<a>.+?)倒也(?P<b>.+),review
+
+unknown_2710d62ef942,竟是 / 反而,clause_anomaly,49,40,0.96,contrast,竟是(?P<a>.+?)反而,review
+
+unknown_c5d3a4bd5710,不过是 / 否则,clause_anomaly,48,28,0.96,minimizing,不过是(?P<a>.+?)否则,review
+
+unknown_471ba289a552,与其...至于,frame_template,48,46,0.96,,与其(?P<a>.+?)至于(?P<b>.+),review
+
+unknown_1e71652ad050,何况 / 并非,clause_anomaly,48,35,0.96,addition,何况(?P<a>.+?)并非,review
+
+unknown_3f96cb3e0e2a,再怎么...毕竟,frame_template,48,42,0.96,reasoning,再怎么(?P<a>.+?)毕竟(?P<b>.+),review
+
+unknown_eb18786e813d,反而...否则,frame_template,48,47,0.96,contrast,反而(?P<a>.+?)否则(?P<b>.+),review

@@ -11,6 +11,7 @@ Supports:
 Compiles all entries into a unified SQLite database with priority levels.
 """
 
+import hashlib
 import os
 import re
 import sqlite3
@@ -464,6 +465,9 @@ class DictionaryCompiler:
         
         # Phase 1: Scan all dictionary files
         scan_dirs = self._get_scan_dirs(project_name)
+        source_manifest = self._build_source_manifest(scan_dirs)
+        stats["source_files_hashed"] = len(source_manifest)
+        stats["source_manifest_hash"] = self._source_manifest_hash(source_manifest)
         
         for scan_dir, default_priority in scan_dirs:
             if not scan_dir.exists():
@@ -521,7 +525,15 @@ class DictionaryCompiler:
         stats["entries_unique"] = len(entries)
         
         # Phase 2: Write to SQLite
-        stats["entry_readings"] = self._write_sqlite(entries, grammar_patterns, reference_entries, normalization_rules, audit_events, reading_seed_entries)
+        stats["entry_readings"] = self._write_sqlite(
+            entries,
+            grammar_patterns,
+            reference_entries,
+            normalization_rules,
+            audit_events,
+            reading_seed_entries,
+            source_manifest,
+        )
         
         # Phase 3: Build lookup index
         self._write_lookup_index(entries)
@@ -616,6 +628,156 @@ class DictionaryCompiler:
             ])
         
         return dirs
+
+    def current_source_manifest(self, project_name: str | None = None) -> dict[str, dict[str, object]]:
+        """Return a content manifest for the Markdown sources used by this cache."""
+        return self._build_source_manifest(self._get_scan_dirs(project_name))
+
+    def load_cached_source_manifest(self) -> dict[str, dict[str, object]]:
+        """Load the source manifest embedded in the compiled SQLite metadata."""
+        payload = self._load_metadata().get("source_manifest_json", "")
+        if not payload:
+            return {}
+        try:
+            manifest = json.loads(payload)
+        except json.JSONDecodeError:
+            return {}
+        if not isinstance(manifest, dict):
+            return {}
+        return {
+            str(path): dict(value)
+            for path, value in manifest.items()
+            if isinstance(value, dict)
+        }
+
+    def source_cache_status(self, project_name: str | None = None) -> dict[str, object]:
+        """Compare current dictionary sources with the manifest stored in SQLite."""
+        current_manifest = self.current_source_manifest(project_name)
+        current_hash = self._source_manifest_hash(current_manifest)
+
+        if not self.db_path.exists():
+            return {
+                "stale": True,
+                "reason": "missing_db",
+                "cached_hash": "",
+                "current_hash": current_hash,
+                "cached_files": 0,
+                "current_files": len(current_manifest),
+                "added_files": sorted(current_manifest),
+                "removed_files": [],
+                "changed_files": [],
+            }
+
+        metadata = self._load_metadata()
+        cached_manifest = self.load_cached_source_manifest()
+        cached_hash = metadata.get("source_manifest_hash") or (
+            self._source_manifest_hash(cached_manifest) if cached_manifest else ""
+        )
+
+        cached_paths = set(cached_manifest)
+        current_paths = set(current_manifest)
+        added_files = sorted(current_paths - cached_paths)
+        removed_files = sorted(cached_paths - current_paths)
+        changed_files = sorted(
+            path
+            for path in cached_paths & current_paths
+            if self._manifest_digest_tuple(cached_manifest[path])
+            != self._manifest_digest_tuple(current_manifest[path])
+        )
+
+        if not cached_hash:
+            reason = "missing_source_manifest"
+        elif cached_hash != current_hash:
+            reason = "source_changed"
+        else:
+            reason = "fresh"
+
+        return {
+            "stale": reason != "fresh",
+            "reason": reason,
+            "cached_hash": cached_hash,
+            "current_hash": current_hash,
+            "cached_files": len(cached_manifest),
+            "current_files": len(current_manifest),
+            "added_files": added_files,
+            "removed_files": removed_files,
+            "changed_files": changed_files,
+        }
+
+    def is_cache_stale(self, project_name: str | None = None) -> bool:
+        """Return True when trie_cache.db no longer matches dictionary sources."""
+        return bool(self.source_cache_status(project_name)["stale"])
+
+    def _load_metadata(self) -> dict[str, str]:
+        if not self.db_path.exists():
+            return {}
+        conn: sqlite3.Connection | None = None
+        try:
+            conn = sqlite3.connect(str(self.db_path))
+            rows = conn.execute("SELECT key, value FROM metadata").fetchall()
+        except sqlite3.Error:
+            return {}
+        finally:
+            if conn is not None:
+                conn.close()
+        return {str(key): str(value or "") for key, value in rows}
+
+    def _build_source_manifest(
+        self,
+        scan_dirs: list[tuple[Path, int]],
+    ) -> dict[str, dict[str, object]]:
+        manifest: dict[str, dict[str, object]] = {}
+        for filepath in self._iter_manifest_source_files(scan_dirs):
+            stat = filepath.stat()
+            relpath = self._manifest_relpath(filepath)
+            manifest[relpath] = {
+                "size": stat.st_size,
+                "modified_ns": stat.st_mtime_ns,
+                "sha256": self._file_sha256(filepath),
+            }
+        return dict(sorted(manifest.items()))
+
+    def _iter_manifest_source_files(self, scan_dirs: list[tuple[Path, int]]) -> Iterator[Path]:
+        seen: set[Path] = set()
+        for scan_dir, _priority in scan_dirs:
+            if not scan_dir.exists():
+                continue
+            for filepath in sorted(scan_dir.rglob("*.md")):
+                resolved = filepath.resolve()
+                if resolved in seen:
+                    continue
+                seen.add(resolved)
+                yield filepath
+
+    def _manifest_relpath(self, filepath: Path) -> str:
+        try:
+            return filepath.resolve().relative_to(self.dict_root.resolve()).as_posix()
+        except ValueError:
+            return filepath.resolve().as_posix()
+
+    @staticmethod
+    def _file_sha256(filepath: Path) -> str:
+        digest = hashlib.sha256()
+        with open(filepath, "rb") as handle:
+            for chunk in iter(lambda: handle.read(1024 * 1024), b""):
+                digest.update(chunk)
+        return digest.hexdigest()
+
+    @staticmethod
+    def _source_manifest_hash(manifest: dict[str, dict[str, object]]) -> str:
+        digest_payload = {
+            path: DictionaryCompiler._manifest_digest_tuple(item)
+            for path, item in sorted(manifest.items())
+        }
+        payload = json.dumps(digest_payload, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(payload.encode("utf-8")).hexdigest()
+
+    @staticmethod
+    def _manifest_digest_tuple(item: dict[str, object]) -> tuple[int, str]:
+        return (
+            int(item.get("size", 0) or 0),
+            str(item.get("sha256", "") or ""),
+        )
     
     def _merge_entry(self, entries: dict, entry: DictEntry, stats: dict):
         """Merge entry into entries dict, respecting priority and locked status."""
@@ -644,6 +806,7 @@ class DictionaryCompiler:
         normalization_rules: list[NormalizationRule],
         audit_events: list[AuditEvent],
         reading_seed_entries: list[DictEntry],
+        source_manifest: dict[str, dict[str, object]],
     ) -> int:
         """Write compiled data to SQLite database."""
         # Remove old DB
@@ -847,6 +1010,14 @@ class DictionaryCompiler:
         c.execute("INSERT INTO metadata VALUES (?, ?)", ("normalization_rules_count", str(len(normalization_rules))))
         c.execute("INSERT INTO metadata VALUES (?, ?)", ("audit_events_count", str(len(audit_events))))
         c.execute("INSERT INTO metadata VALUES (?, ?)", ("entry_readings_count", str(len(reading_rows))))
+        c.execute(
+            "INSERT INTO metadata VALUES (?, ?)",
+            (
+                "source_manifest_json",
+                json.dumps(source_manifest, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+            ),
+        )
+        c.execute("INSERT INTO metadata VALUES (?, ?)", ("source_manifest_hash", self._source_manifest_hash(source_manifest)))
         
         conn.commit()
         conn.close()

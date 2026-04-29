@@ -1355,6 +1355,21 @@ def _build_pipeline_status(payload: dict) -> dict:
             dictionary_stats = accessor.get_dictionary_stats()
         finally:
             accessor.close()
+    try:
+        compiler = DictionaryCompiler(str(dict_root), str(db_path.parent))
+        cache_status = compiler.source_cache_status(project_name=payload.get("project_name"))
+    except Exception as exc:
+        cache_status = {
+            "stale": not db_path.exists(),
+            "reason": f"source_status_error:{exc}",
+            "cached_hash": "",
+            "current_hash": "",
+            "cached_files": 0,
+            "current_files": 0,
+            "added_files": [],
+            "removed_files": [],
+            "changed_files": [],
+        }
 
     project_payload_present = "project_dir" in payload or "project_id" in payload
     overview = None
@@ -1376,7 +1391,8 @@ def _build_pipeline_status(payload: dict) -> dict:
     draft_exists = bool(translate_paths and translate_paths["draft"].exists())
     trace_exists = bool(translate_paths and translate_paths["trace"].exists())
     qa_exists = bool(qa_paths and qa_paths["json"].exists())
-    compile_completed = db_path.exists()
+    compile_completed = db_path.exists() and not bool(cache_status.get("stale"))
+    compile_stale = db_path.exists() and bool(cache_status.get("stale"))
     pos_progress = int(round(float(dictionary_stats.get("pos_coverage_pct", 0.0) or 0.0)))
     pinyin_progress = int(round(float(dictionary_stats.get("pinyin_coverage_pct", 0.0) or 0.0)))
 
@@ -1395,12 +1411,21 @@ def _build_pipeline_status(payload: dict) -> dict:
             "id": "compile",
             "label": "Bien dich",
             "status": "completed" if compile_completed else "pending",
-            "progress": 100 if compile_completed else 0,
-            "message": f"SQLite san sang: {db_path}" if compile_completed else "Chua co trie_cache.db duoc bien dich.",
+            "progress": 100 if compile_completed else (50 if compile_stale else 0),
+            "message": (
+                f"SQLite san sang: {db_path}"
+                if compile_completed
+                else (
+                    f"trie_cache.db can bien dich lai: {cache_status.get('reason')}"
+                    if compile_stale
+                    else "Chua co trie_cache.db duoc bien dich."
+                )
+            ),
             "metrics": {
                 "db_path": str(db_path),
                 "entries_total": dictionary_stats.get("total", 0),
                 "compiled_at": dictionary_stats.get("compiled_at"),
+                "source_cache": cache_status,
             },
         },
         {

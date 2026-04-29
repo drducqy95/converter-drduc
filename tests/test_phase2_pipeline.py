@@ -7,12 +7,14 @@ import sys
 import zipfile
 from pathlib import Path
 
+import pytest
+
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
 from src.engine.pinyin_processor import PinyinProcessor
 from src.engine.structure_preserver import StructurePreserver
 from src.engine.traditional_to_simplified import TraditionalToSimplifiedConverter
-from src.pipeline.document_importer import DocumentImporter
+from src.pipeline.document_importer import DocumentImporter, ImportValidationError
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
 
 
@@ -42,6 +44,27 @@ def test_document_importer_handles_html_and_docx(tmp_path):
     _create_docx(docx_path, "第1章 林动突破")
     docx_import = importer.import_file(docx_path)
     assert "林动突破" in docx_import.normalized_text
+
+
+def test_document_importer_validates_source_files(tmp_path):
+    importer = DocumentImporter(max_file_size_bytes=4)
+
+    missing = tmp_path / "missing.txt"
+    with pytest.raises(ImportValidationError) as missing_error:
+        importer.import_file(missing)
+    assert missing_error.value.details["reason"] == "missing"
+
+    too_large = tmp_path / "large.txt"
+    too_large.write_text("12345", encoding="utf-8")
+    with pytest.raises(ImportValidationError) as large_error:
+        importer.import_file(too_large)
+    assert large_error.value.details["reason"] == "file_too_large"
+
+    null_file = tmp_path / "null.txt"
+    null_file.write_bytes(b"abc\x00def")
+    with pytest.raises(ImportValidationError) as null_error:
+        DocumentImporter().import_file(null_file)
+    assert null_error.value.details["reason"] == "null_character"
 
 
 def test_structure_preserver_and_converters():

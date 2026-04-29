@@ -9,6 +9,7 @@ Non-LLM translation workspace focused on `ZH -> VI` with a baseline `EN -> VI` p
 - Current baseline: Phase 00-08 implemented and tested; v23.0 core hardening foundations are in place for TM governance, trace, segment typing, protected spans, noise safety, grammar relation detection, and a conservative grammar transfer pack.
 - Python setup: `python -m pip install -e ".[dev]"`
 - Test command: `python -m pytest`
+- Task runner: `make test`, `make coverage`, `make desktop-build`, `make verify`
 - Desktop shell build: `cd desktop && npm run build`
 
 ## Production Boundary
@@ -21,7 +22,7 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 
 - `scripts/migrate_qt_to_md.py`: migrate Quick Translator dictionaries into Markdown-based sources.
 - `scripts/runners/`: local pipeline, translation, and coach-feedback entry points.
-- `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into SQLite.
+- `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into SQLite with source-manifest stale detection.
 - `src/core/trie_engine.py`: runtime Trie lookup with priority handling.
 - `src/core/luat_nhan_engine.py`: grammar/disambiguation rule loading and application.
 - `src/engine/number_converter.py`: number/date/unit conversion baseline plus semantic percent, fraction, countdown, rating, and ordinal-time frames.
@@ -32,13 +33,13 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 - `src/state/`: project manager, split SQLite TM governance, candidate workflow, runtime stats, Obsidian export.
 - `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: v23 segment typing and safety foundation.
 - `src/grammar/`: v23 clause segmentation, relation detection, source-side grammar transfer, rule claims, registry, and conflict resolver foundation.
-- `src/en_vi/en_vi_translator.py`: phrase-first EN-VI baseline with small grammar transfer rules.
+- `src/en_vi/en_vi_translator.py`: phrase-first EN-VI baseline with passive voice and phrasal-verb rules.
 - `src/ui/`: sidecar command protocol for the desktop app.
 - `desktop/`: React shell, Tauri scaffold, and verified web build.
 
 ## Verification
 
-- `python -m pytest` -> `170 passed`
+- `python -m pytest` -> `177 passed`
 - `cd desktop && npm run build` -> Vite production build succeeds
 - Native Tauri packaging has not been validated in this environment because Rust tooling is not installed
 

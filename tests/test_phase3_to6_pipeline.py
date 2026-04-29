@@ -8,7 +8,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from src.engine.rbmt_translator import RBMTTranslator
+from src.engine.rbmt_translator import RBMTTranslator, SegmentTranslation, TranslationResult
 from src.qa.report_generator import QAReportGenerator
 from src.state.project_manager import ProjectManager
 from src.state.translation_memory import TranslationMemory
@@ -77,3 +77,39 @@ def test_rbmt_translation_and_qa_report(tmp_path):
     assert report["summary"]["issues"] >= 1
     assert any(issue["checker"] == "ambiguity" for issue in report["issues"])
     assert (project_dir / "reports" / "qa_report.md").exists()
+
+
+def test_rbmt_export_writes_segment_checkpoint_and_atomic_outputs(tmp_path):
+    result = TranslationResult(
+        clean_text="Lâm Động đột phá.",
+        draft_text="Lâm Động đột phá.",
+        segments=[
+            SegmentTranslation(
+                sentence_id="seg-0001",
+                source_text="林动突破。",
+                clean_text="Lâm Động đột phá.",
+                draft_text="Lâm Động đột phá.",
+                emotion=None,
+                trace=[],
+                trace_id="trace-1",
+            )
+        ],
+        config={},
+    )
+
+    translator = RBMTTranslator()
+    try:
+        translator.export(result, tmp_path, artifact_stem="chapter-001")
+    finally:
+        translator.close()
+
+    output_path = tmp_path / "output" / "chapter-001.txt"
+    draft_path = tmp_path / "drafts" / "chapter-001_draft.txt"
+    checkpoint_path = tmp_path / "drafts" / "chapter-001_checkpoint.jsonl"
+
+    assert output_path.read_text(encoding="utf-8") == "Lâm Động đột phá."
+    assert draft_path.read_text(encoding="utf-8") == "Lâm Động đột phá."
+    assert not (tmp_path / "output" / "chapter-001.txt.partial").exists()
+    checkpoint_rows = [json.loads(line) for line in checkpoint_path.read_text(encoding="utf-8").splitlines()]
+    assert checkpoint_rows[0]["sentence_id"] == "seg-0001"
+    assert checkpoint_rows[0]["trace_id"] == "trace-1"

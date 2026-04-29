@@ -35,8 +35,9 @@ class FuzzyMatchResult(TMEntry):
 class TranslationMemory:
     """Persist approved translations separately from machine suggestions."""
 
-    def __init__(self, db_path: str | Path):
+    def __init__(self, db_path: str | Path, *, max_machine_entries: int | None = None):
         self.db_path = Path(db_path)
+        self.max_machine_entries = max_machine_entries
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
         self.conn = sqlite3.connect(str(self.db_path))
         self.conn.row_factory = sqlite3.Row
@@ -55,7 +56,8 @@ class TranslationMemory:
                 quality_score REAL DEFAULT 0.0,
                 created_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 trace_json TEXT DEFAULT '',
-                hit_count INTEGER DEFAULT 0
+                hit_count INTEGER DEFAULT 0,
+                last_accessed TEXT DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS tm_approved (
@@ -69,7 +71,8 @@ class TranslationMemory:
                 approved_at TEXT DEFAULT CURRENT_TIMESTAMP,
                 confidence REAL DEFAULT 1.0,
                 provenance TEXT DEFAULT '',
-                hit_count INTEGER DEFAULT 0
+                hit_count INTEGER DEFAULT 0,
+                last_accessed TEXT DEFAULT ''
             );
 
             CREATE TABLE IF NOT EXISTS tm_reviewed (
@@ -87,10 +90,12 @@ class TranslationMemory:
         self._ensure_columns("tm_machine", {
             "hit_count": "INTEGER DEFAULT 0",
             "trace_json": "TEXT DEFAULT ''",
+            "last_accessed": "TEXT DEFAULT ''",
         })
         self._ensure_columns("tm_approved", {
             "hit_count": "INTEGER DEFAULT 0",
             "provenance": "TEXT DEFAULT ''",
+            "last_accessed": "TEXT DEFAULT ''",
         })
         self._migrate_legacy_tm_entries()
         self.conn.commit()
@@ -167,6 +172,8 @@ class TranslationMemory:
             ),
         )
         self.conn.commit()
+        if self.max_machine_entries is not None:
+            self.evict_machine_entries(self.max_machine_entries)
         return int(cursor.lastrowid)
 
     def store_approved(
@@ -286,7 +293,7 @@ class TranslationMemory:
         source_hash = self.source_hash(source_text)
         row = self.conn.execute(
             """
-            SELECT source_text, approved_target AS target_text, confidence,
+            SELECT id, source_hash, source_text, approved_target AS target_text, confidence,
                    provenance AS source, 'approved' AS status, hit_count
             FROM tm_approved
             WHERE source_hash = ?
@@ -294,8 +301,7 @@ class TranslationMemory:
             (source_hash,),
         ).fetchone()
         if row is not None:
-            self.conn.execute("UPDATE tm_approved SET hit_count = hit_count + 1 WHERE source_hash = ?", (source_hash,))
-            self.conn.commit()
+            self._touch_row("tm_approved", int(row["id"]))
             return self._entry_from_row(row)
         if include_machine:
             return self.machine_suggestion(source_text)
@@ -309,23 +315,23 @@ class TranslationMemory:
     ) -> FuzzyMatchResult | None:
         rows = self.conn.execute(
             """
-            SELECT source_text, approved_target AS target_text, confidence,
+            SELECT id, source_hash, source_text, approved_target AS target_text, confidence,
                    provenance AS source, 'approved' AS status, hit_count
             FROM tm_approved
             """
         ).fetchall()
-        best = self._best_fuzzy(source_text, rows, threshold)
+        best = self._best_fuzzy(source_text, rows, threshold, table_name="tm_approved")
         if best is not None or not include_machine:
             return best
 
         machine_rows = self.conn.execute(
             """
-            SELECT source_text, machine_target AS target_text, quality_score AS confidence,
+            SELECT id, source_hash, source_text, machine_target AS target_text, quality_score AS confidence,
                    engine_version AS source, 'machine' AS status, hit_count
             FROM tm_machine
             """
         ).fetchall()
-        return self._best_fuzzy(source_text, machine_rows, threshold)
+        return self._best_fuzzy(source_text, machine_rows, threshold, table_name="tm_machine")
 
     def machine_suggestion(self, source_text: str) -> TMEntry | None:
         source_hash = self.source_hash(source_text)
@@ -343,8 +349,7 @@ class TranslationMemory:
         ).fetchone()
         if row is None:
             return None
-        self.conn.execute("UPDATE tm_machine SET hit_count = hit_count + 1 WHERE id = ?", (row["id"],))
-        self.conn.commit()
+        self._touch_row("tm_machine", int(row["id"]))
         return self._entry_from_row(row)
 
     def exists_in_machine(self, source_text: str) -> bool:
@@ -366,8 +371,11 @@ class TranslationMemory:
         source_text: str,
         rows: list[sqlite3.Row],
         threshold: float,
+        *,
+        table_name: str,
     ) -> FuzzyMatchResult | None:
         best: FuzzyMatchResult | None = None
+        best_row_id: int | None = None
         for row in rows:
             score = self.similarity(source_text, row["source_text"])
             if score < threshold:
@@ -375,7 +383,37 @@ class TranslationMemory:
             candidate = FuzzyMatchResult(score=score, **self._entry_kwargs(row))
             if best is None or candidate.score > best.score:
                 best = candidate
+                best_row_id = int(row["id"])
+        if best_row_id is not None:
+            self._touch_row(table_name, best_row_id)
         return best
+
+    def evict_machine_entries(self, max_entries: int) -> int:
+        if max_entries < 0:
+            raise ValueError("max_entries must be >= 0")
+        row = self.conn.execute("SELECT COUNT(*) AS count FROM tm_machine").fetchone()
+        count = int(row["count"] if row else 0)
+        overflow = count - max_entries
+        if overflow <= 0:
+            return 0
+
+        victims = self.conn.execute(
+            """
+            SELECT id
+            FROM tm_machine
+            ORDER BY hit_count ASC, COALESCE(NULLIF(last_accessed, ''), created_at) ASC, id ASC
+            LIMIT ?
+            """,
+            (overflow,),
+        ).fetchall()
+        victim_ids = [int(row["id"]) for row in victims]
+        if not victim_ids:
+            return 0
+
+        placeholders = ",".join("?" for _ in victim_ids)
+        self.conn.execute(f"DELETE FROM tm_machine WHERE id IN ({placeholders})", victim_ids)
+        self.conn.commit()
+        return len(victim_ids)
 
     @classmethod
     def similarity(cls, left: str, right: str) -> float:
@@ -449,6 +487,15 @@ class TranslationMemory:
         for column_name, ddl in columns.items():
             if column_name not in existing:
                 self.conn.execute(f"ALTER TABLE {table_name} ADD COLUMN {column_name} {ddl}")
+
+    def _touch_row(self, table_name: str, row_id: int):
+        if table_name not in {"tm_machine", "tm_approved"}:
+            raise ValueError(f"Unsupported TM table: {table_name}")
+        self.conn.execute(
+            f"UPDATE {table_name} SET hit_count = hit_count + 1, last_accessed = ? WHERE id = ?",
+            (self._now(), row_id),
+        )
+        self.conn.commit()
 
     @staticmethod
     def source_hash(source_text: str) -> str:

@@ -12,12 +12,14 @@ CONTEXT_SCORE_THRESHOLDS = {
     "inner_monologue": 1.01,
     "narrative": 1.01,
 }
+NEGATION_MARKERS = ("并非", "不是", "没有", "沒", "没", "非", "不")
 
 EMOTION_MARKERS = {
     "anger": (
         ("怒吼", 0.7),
         ("咆哮", 0.7),
         ("愤怒", 0.7),
+        ("恨", 0.45),
         ("吼", 0.45),
         ("骂", 0.45),
         ("该死", 0.55),
@@ -126,9 +128,15 @@ class EmotionDetector:
             evidence: list[str] = []
             score = 0.0
             for marker, weight in markers:
-                if marker in normalized:
-                    evidence.append(marker)
-                    score += weight
+                marker_hits = self._marker_hits(normalized, marker)
+                active_hits = 0
+                for hit_pos in marker_hits:
+                    if self._is_negated(normalized, hit_pos):
+                        continue
+                    active_hits += 1
+                if active_hits:
+                    evidence.extend([marker] * active_hits)
+                    score += weight * active_hits
             if "!" in normalized or "！" in normalized:
                 if label == "anger":
                     score += 0.08
@@ -148,3 +156,31 @@ class EmotionDetector:
 
     def detect_label(self, text: str, *, context_type: str | None = None) -> str:
         return self.detect(text, context_type=context_type)[0].label
+
+    @staticmethod
+    def _marker_hits(text: str, marker: str) -> list[int]:
+        positions: list[int] = []
+        start = 0
+        while True:
+            idx = text.find(marker, start)
+            if idx < 0:
+                return positions
+            positions.append(idx)
+            start = idx + len(marker)
+
+    @staticmethod
+    def _is_negated(text: str, marker_pos: int, window: int = 5) -> bool:
+        left_context = text[max(0, marker_pos - window):marker_pos]
+        negation_count = 0
+        cursor = 0
+        while cursor < len(left_context):
+            matched = False
+            for negation in NEGATION_MARKERS:
+                if left_context.startswith(negation, cursor):
+                    negation_count += 1
+                    cursor += len(negation)
+                    matched = True
+                    break
+            if not matched:
+                cursor += 1
+        return negation_count % 2 == 1

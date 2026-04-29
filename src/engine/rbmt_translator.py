@@ -392,10 +392,35 @@ class RBMTTranslator:
         draft_dir = project_path / "drafts"
         output_dir.mkdir(parents=True, exist_ok=True)
         draft_dir.mkdir(parents=True, exist_ok=True)
-        (output_dir / f"{artifact_stem}.txt").write_text(result.clean_text, encoding="utf-8")
-        (draft_dir / f"{artifact_stem}_draft.txt").write_text(result.draft_text, encoding="utf-8")
+        self._write_segment_checkpoint(result, draft_dir / f"{artifact_stem}_checkpoint.jsonl")
+        self._atomic_write_text(output_dir / f"{artifact_stem}.txt", result.clean_text)
+        self._atomic_write_text(draft_dir / f"{artifact_stem}_draft.txt", result.draft_text)
         trace_payload = [asdict(segment) for segment in result.segments]
-        (draft_dir / f"{artifact_stem}_trace.json").write_text(json.dumps(trace_payload, ensure_ascii=False, indent=2), encoding="utf-8")
+        self._atomic_write_text(
+            draft_dir / f"{artifact_stem}_trace.json",
+            json.dumps(trace_payload, ensure_ascii=False, indent=2),
+        )
+
+    @staticmethod
+    def _atomic_write_text(path: Path, text: str):
+        partial_path = path.with_suffix(path.suffix + ".partial")
+        partial_path.write_text(text, encoding="utf-8")
+        partial_path.replace(path)
+
+    @staticmethod
+    def _write_segment_checkpoint(result: TranslationResult, checkpoint_path: Path):
+        rows = []
+        for index, segment in enumerate(result.segments, start=1):
+            rows.append(json.dumps({
+                "index": index,
+                "sentence_id": segment.sentence_id,
+                "trace_id": segment.trace_id,
+                "source_text": segment.source_text,
+                "clean_text": segment.clean_text,
+                "draft_text": segment.draft_text,
+                "emotion": segment.emotion,
+            }, ensure_ascii=False, separators=(",", ":")))
+        checkpoint_path.write_text("\n".join(rows) + ("\n" if rows else ""), encoding="utf-8")
 
     def _lookup_tm(self, source_text: str, *, config: dict | None = None) -> dict | None:
         if not self.tm:
