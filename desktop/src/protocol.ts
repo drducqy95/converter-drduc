@@ -15,6 +15,11 @@ export type CommandName =
   | "run_qa"
   | "load_qa_report"
   | "load_learning_report"
+  | "update_project_translation_config"
+  | "upsert_project_entity"
+  | "delete_project_entity"
+  | "delete_project_entities"
+  | "suggest_entity_targets"
   | "search_dictionary_entries"
   | "list_dictionary_entries"
   | "update_dictionary_entry"
@@ -23,6 +28,7 @@ export type CommandName =
   | "list_candidate_entries"
   | "review_candidate_entry"
   | "submit_natural_feedback"
+  | "scan_grammar_learning_patterns"
   | "list_candidate_rules"
   | "review_candidate_rule";
 
@@ -115,6 +121,14 @@ export type TranslationTrace = {
   priority?: number;
   fallback_level: string;
   reason: string;
+};
+
+export type EntityTargetSuggestion = {
+  kind: string;
+  label: string;
+  value: string;
+  detail: string;
+  confidence: number;
 };
 
 export type TranslationSegment = {

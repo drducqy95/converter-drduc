@@ -114,6 +114,19 @@ def test_entity_scanner_rejects_shifted_preposition_and_demonstrative_prefixes()
     assert "\u90a3\u7ea2\u8863" not in heuristic_sources
 
 
+def test_entity_scanner_requires_more_evidence_for_weak_repeated_names():
+    scanner = EntityScanner()
+    text = (
+        "\u738b\u9053\u65e0\u60c5\uff0c\u738b\u9053\u6d69\u8361\u3002"
+        "\u590f\u5929\u9a90\u8bf4\u9053\uff1a\u201c\u4f60\u597d\u3002\u201d\u590f\u5929\u9a90\u8f6c\u8eab\u5c31\u8d70\u3002"
+    )
+    entities = scanner.scan(text)
+    heuristic_sources = {entity.source for entity in entities if entity.source_dict == "heuristic_name_mining"}
+
+    assert "\u590f\u5929\u9a90" in heuristic_sources
+    assert "\u738b\u9053" not in heuristic_sources
+
+
 def test_config_generator_does_not_lock_singleton_heuristic_entities():
     config = ConfigGenerator().generate(
         text="\u590f\u5929\u9a90\u8bf4\u9053\uff1a\u201c\u4f60\u597d\u3002\u201d \u4e0d\u8fc7\u4ed6\u6ca1\u6709\u56de\u7b54\u3002",

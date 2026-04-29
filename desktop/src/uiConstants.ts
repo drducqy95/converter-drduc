@@ -9,6 +9,15 @@ export const SCREENS = [
 
 export type ScreenKey = (typeof SCREENS)[number];
 
+export const SCREEN_LABELS: Record<ScreenKey, string> = {
+  Dashboard: "Tổng quan",
+  "Dictionary Editor": "Từ điển",
+  "Translation Workspace": "Workspace dịch",
+  "Translation Coach": "Coach dịch",
+  "Pipeline Monitor": "Pipeline",
+  Settings: "Cài đặt",
+};
+
 export const POS_TAG_OPTIONS = [
   "NOUN",
   "VERB",

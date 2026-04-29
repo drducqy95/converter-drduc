@@ -16,6 +16,7 @@ export function CoachScreen(props: {
   candidates: CandidateEntry[];
   candidateRules: CandidateRule[];
   learningReport: LearningReport | null;
+  grammarScanReport: Record<string, unknown> | null;
   feedbackAnalysis: NaturalFeedbackAnalysis | null;
   feedbackText: string;
   feedbackSourceText: string;
@@ -31,11 +32,17 @@ export function CoachScreen(props: {
   onCandidateFilterChange: (value: string) => void;
   onCandidateQueryChange: (value: string) => void;
   onSubmitFeedback: () => void;
+  onScanGrammarPatterns: () => void;
   onReviewRule: (rule: CandidateRule, status: string) => void;
   onReviewCandidate: (entry: CandidateEntry, status: string) => void;
   onInspectToken: (query: string) => void;
 }) {
   const filteredRules = props.candidateRules.filter((rule) => props.ruleFilter === "all" || rule.status === props.ruleFilter);
+  const grammarSummary = (props.grammarScanReport?.summary && typeof props.grammarScanReport.summary === "object"
+    ? props.grammarScanReport.summary
+    : {}) as Record<string, unknown>;
+  const grammarUnknownCount = Number(grammarSummary.unknown_candidate_count ?? 0) || 0;
+  const grammarMatchCount = Number(grammarSummary.total_matches ?? 0) || 0;
   const filteredCandidates = props.candidates.filter((entry) => {
     const matchesStatus = props.candidateFilter === "all" || entry.status === props.candidateFilter;
     const query = props.candidateQuery.trim().toLowerCase();
@@ -49,23 +56,23 @@ export function CoachScreen(props: {
   return (
     <div className="panel-stack">
       <div className="split-grid coach-grid">
-        <Panel title="Feedback Form" subtitle="Đóng vào feedback, preferred translation và scope học tập.">
+        <Panel title="Form feedback" subtitle="Nhập feedback, bản dịch mong muốn và phạm vi học.">
           <div className="form-grid">
             <div className="split-grid">
               <label className="field">
-                <span>Scope</span>
+                <span>Phạm vi</span>
                 <select className="input" value={props.feedbackScope} onChange={(event) => props.onFeedbackFieldChange("feedbackScope", event.target.value)}>
-                  <option value="chapter">Chapter</option>
+                  <option value="chapter">Chương</option>
                   <option value="project">Project</option>
                 </select>
               </label>
               <label className="field">
-                <span>Rule Hint</span>
+                <span>Gợi ý rule</span>
                 <select className="input" value={props.feedbackRuleHint} onChange={(event) => props.onFeedbackFieldChange("feedbackRuleHint", event.target.value)}>
-                  <option value="auto">Auto</option>
-                  <option value="phrase_override">Phrase Override</option>
-                  <option value="style_profile">Style Profile</option>
-                  <option value="style_guidance">Style Guidance</option>
+                  <option value="auto">Tự động</option>
+                  <option value="phrase_override">Override cụm</option>
+                  <option value="style_profile">Style profile</option>
+                  <option value="style_guidance">Hướng dẫn style</option>
                 </select>
               </label>
             </div>
@@ -74,53 +81,66 @@ export function CoachScreen(props: {
               <textarea className="textarea compact-textarea" value={props.feedbackText} onChange={(event) => props.onFeedbackFieldChange("feedbackText", event.target.value)} />
             </label>
             <label className="field">
-              <span>Source Snippet</span>
+              <span>Trích đoạn nguồn</span>
               <textarea className="textarea compact-textarea" value={props.feedbackSourceText} onChange={(event) => props.onFeedbackFieldChange("feedbackSourceText", event.target.value)} />
             </label>
             <label className="field">
-              <span>Current Translation</span>
+              <span>Bản dịch hiện tại</span>
               <textarea className="textarea compact-textarea" value={props.feedbackCurrentTranslation} onChange={(event) => props.onFeedbackFieldChange("feedbackCurrentTranslation", event.target.value)} />
             </label>
             <label className="field">
-              <span>Preferred Translation</span>
+              <span>Bản dịch mong muốn</span>
               <textarea className="textarea compact-textarea" value={props.feedbackPreferredTranslation} onChange={(event) => props.onFeedbackFieldChange("feedbackPreferredTranslation", event.target.value)} />
             </label>
             <button className="button" type="button" disabled={props.busy || !props.backendAvailable} onClick={props.onSubmitFeedback}>
-              Analyze and Propose
+              Phân tích và đề xuất
+            </button>
+            <button className="button secondary" type="button" disabled={props.busy || !props.backendAvailable} onClick={props.onScanGrammarPatterns}>
+              Quét mẫu ngữ pháp
             </button>
           </div>
         </Panel>
 
-        <Panel title="Learning Timeline" subtitle="Snapshot mới nhất và đề xuất từ vòng học tập.">
+        <Panel title="Timeline học" subtitle="Snapshot mới nhất và đề xuất từ vòng học tập.">
           <div className="list-stack">
             <article className="timeline-row">
               <span className="pill subtle">Now</span>
               <div>
                 <strong>{props.overview?.project.active_chapter ?? "project"}</strong>
-                <p>{String(props.learningReport?.current_run?.qa_total ?? "No QA data yet")}</p>
+                <p>{String(props.learningReport?.current_run?.qa_total ?? "Chưa có dữ liệu QA")}</p>
               </div>
             </article>
             <article className="timeline-row">
               <span className="pill subtle">Reco</span>
               <div>
-                <strong>Recommendations</strong>
+                <strong>Đề xuất</strong>
                 <p>{String((props.learningReport?.recommendations ?? []).length)} item(s)</p>
               </div>
             </article>
             <article className="timeline-row">
               <span className="pill subtle">Auto</span>
               <div>
-                <strong>Auto Applied</strong>
+                <strong>Tự áp dụng</strong>
                 <p>{String((props.learningReport?.auto_applied ?? []).length)} item(s)</p>
+              </div>
+            </article>
+            <article className="timeline-row">
+              <span className="pill subtle">Grammar</span>
+              <div>
+                <strong>Quét pattern</strong>
+                <p>{grammarUnknownCount} candidate chưa rõ, {grammarMatchCount} match đã biết</p>
               </div>
             </article>
           </div>
           <pre className="output-block compact-block">{JSON.stringify(props.learningReport ?? {}, null, 2)}</pre>
+          {props.grammarScanReport ? (
+            <pre className="output-block compact-block">{JSON.stringify(props.grammarScanReport, null, 2)}</pre>
+          ) : null}
         </Panel>
       </div>
 
       <div className="split-grid coach-grid">
-        <Panel title="Analysis Suggestions" subtitle="Danh sách suggestion sinh ra từ feedback tự nhiên.">
+        <Panel title="Đề xuất phân tích" subtitle="Danh sách suggestion sinh ra từ feedback tự nhiên.">
           <div className="list-stack">
             {props.feedbackAnalysis?.suggestions.length ? (
               props.feedbackAnalysis.suggestions.map((suggestion, index) => (
@@ -138,24 +158,24 @@ export function CoachScreen(props: {
                 </article>
               ))
             ) : (
-              <p className="empty-state">Submit feedback để populate suggestion queue.</p>
+              <p className="empty-state">Gửi feedback để tạo hàng đợi suggestion.</p>
             )}
           </div>
         </Panel>
 
-        <Panel title="Candidate Entry Review" subtitle="Review ambiguity term với ngữ cảnh chapter và mở thẳng Dictionary Editor.">
+        <Panel title="Duyệt candidate entry" subtitle="Review term mơ hồ theo ngữ cảnh chương và mở thẳng Từ điển.">
           <div className="toolbar">
             <label className="field compact">
-              <span>Status</span>
+              <span>Trạng thái</span>
               <select className="input" value={props.candidateFilter} onChange={(event) => props.onCandidateFilterChange(event.target.value)}>
-                <option value="all">All</option>
+                <option value="all">Tất cả</option>
                 <option value="candidate">Candidate</option>
-                <option value="verified">Verified</option>
-                <option value="rejected">Rejected</option>
+                <option value="verified">Đã duyệt</option>
+                <option value="rejected">Đã loại</option>
               </select>
             </label>
             <label className="field grow">
-              <span>Search</span>
+              <span>Tìm</span>
               <input className="input" value={props.candidateQuery} onChange={(event) => props.onCandidateQueryChange(event.target.value)} />
             </label>
           </div>
@@ -174,15 +194,15 @@ export function CoachScreen(props: {
                     <span className="pill subtle">{entry.chapter_id || "project"}</span>
                     <span className="pill subtle">{entry.fallback_level}</span>
                     <button className="pill subtle" type="button" onClick={() => props.onInspectToken(entry.source_text)}>
-                      Open In Dictionary
+                      Mở trong Từ điển
                     </button>
                   </div>
                   <div className="action-row">
                     <button className="button" type="button" disabled={props.busy || !props.backendAvailable || entry.status === "verified"} onClick={() => props.onReviewCandidate(entry, "verified")}>
-                      Verify
+                      Duyệt
                     </button>
                     <button className="button secondary" type="button" disabled={props.busy || !props.backendAvailable || entry.status === "rejected"} onClick={() => props.onReviewCandidate(entry, "rejected")}>
-                      Reject
+                      Loại
                     </button>
                   </div>
                 </article>
@@ -194,15 +214,15 @@ export function CoachScreen(props: {
         </Panel>
       </div>
 
-      <Panel title="Candidate Rules" subtitle="Rule queue được verify/reject và apply thẳng vào project config.">
+      <Panel title="Candidate rule" subtitle="Hàng đợi rule được duyệt/loại và apply vào project config.">
         <div className="toolbar">
           <label className="field compact">
-            <span>Status</span>
+            <span>Trạng thái</span>
             <select className="input" value={props.ruleFilter} onChange={(event) => props.onRuleFilterChange(event.target.value)}>
-              <option value="all">All</option>
+              <option value="all">Tất cả</option>
               <option value="candidate">Candidate</option>
-              <option value="verified">Verified</option>
-              <option value="rejected">Rejected</option>
+              <option value="verified">Đã duyệt</option>
+              <option value="rejected">Đã loại</option>
             </select>
           </label>
         </div>
@@ -225,10 +245,10 @@ export function CoachScreen(props: {
                 <pre className="output-block compact-block">{JSON.stringify(rule.rule_payload, null, 2)}</pre>
                 <div className="action-row">
                   <button className="button" type="button" disabled={props.busy || !props.backendAvailable || rule.status === "verified"} onClick={() => props.onReviewRule(rule, "verified")}>
-                    Verify and Apply
+                    Duyệt và áp dụng
                   </button>
                   <button className="button secondary" type="button" disabled={props.busy || !props.backendAvailable || rule.status === "rejected"} onClick={() => props.onReviewRule(rule, "rejected")}>
-                    Reject
+                    Loại
                   </button>
                 </div>
               </article>

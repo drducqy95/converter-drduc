@@ -1,7 +1,7 @@
 import React, { startTransition, useDeferredValue, useEffect, useState } from "react";
 import { invoke, isTauri } from "@tauri-apps/api/core";
 
-import { Panel, InfoLine, MetricCard } from "./components/Panel";
+import { Panel, InfoLine } from "./components/Panel";
 import { CoachScreen } from "./screens/CoachScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { DictionaryEditorScreen } from "./screens/DictionaryEditorScreen";
@@ -16,6 +16,7 @@ import type {
   CommandName,
   DictionaryEntry,
   DictionaryListResponse,
+  EntityTargetSuggestion,
   LearningReport,
   NaturalFeedbackAnalysis,
   PipelineStatus,
@@ -26,7 +27,7 @@ import type {
   TranslationArtifacts,
 } from "./protocol";
 import { downloadJson, getParentPath, isAbsolutePath, normalizeUserPath } from "./pathUtils";
-import { SCREENS, type ScreenKey } from "./uiConstants";
+import { SCREENS, SCREEN_LABELS, type ScreenKey } from "./uiConstants";
 
 export function App() {
   const [screen, setScreen] = useState<ScreenKey>("Dashboard");
@@ -40,6 +41,7 @@ export function App() {
   const [candidates, setCandidates] = useState<CandidateEntry[]>([]);
   const [candidateRules, setCandidateRules] = useState<CandidateRule[]>([]);
   const [learningReport, setLearningReport] = useState<LearningReport | null>(null);
+  const [grammarScanReport, setGrammarScanReport] = useState<Record<string, unknown> | null>(null);
   const [feedbackAnalysis, setFeedbackAnalysis] = useState<NaturalFeedbackAnalysis | null>(null);
   const [statusMessage, setStatusMessage] = useState("Mở project để bắt đầu pipeline.");
   const [events, setEvents] = useState<CommandEvent[]>([]);
@@ -105,13 +107,13 @@ export function App() {
       }
       setTransport(nextTransport);
       if (nextTransport.mode === "tauri") {
-        setStatusMessage("Native Tauri bridge detected. Path resolution is absolute and sidecar-backed.");
+        setStatusMessage("Đã kết nối bridge Tauri native. Đường dẫn dùng dạng tuyệt đối và chạy qua Python sidecar.");
       } else if (nextTransport.mode === "http") {
-        setStatusMessage("HTTP bridge connected. Browser dev mode is running against the live Python pipeline.");
+        setStatusMessage("Đã kết nối HTTP bridge. Chế độ dev đang dùng pipeline Python thật.");
       } else if (nextTransport.mode === "demo") {
-        setStatusMessage("Demo transport enabled for UI-only development.");
+        setStatusMessage("Đang dùng demo transport cho kiểm tra UI.");
       } else {
-        setStatusMessage("Browser preview detected. Real pipeline commands need HTTP bridge or native Tauri.");
+        setStatusMessage("Browser preview cần HTTP bridge hoặc Tauri native để chạy pipeline thật.");
       }
     })();
     return () => {
@@ -298,6 +300,8 @@ export function App() {
     setOverview(nextOverview);
 
     const chapterId = nextOverview.project.active_chapter ?? nextOverview.chapters[0]?.chapter_id;
+    const sourceChapter = nextOverview.chapters.find((chapter) => chapter.chapter_id === chapterId) ?? nextOverview.chapters[0];
+    setTranslationInput(sourceChapter?.text ?? "");
     const nextArtifacts = await execute<TranslationArtifacts>("load_translation_artifacts", {
       ...buildProjectPayload(projectId),
       chapter_id: chapterId,
@@ -509,6 +513,110 @@ export function App() {
     startTransition(() => {
       setScreen("Translation Coach");
     });
+  }
+
+  async function handleScanGrammarLearningPatterns() {
+    if (!currentProjectId) {
+      return;
+    }
+    const data = await execute<{
+      report: Record<string, unknown>;
+      rules: CandidateRule[];
+      overview: ProjectOverview;
+      created_rule_ids: number[];
+    }>("scan_grammar_learning_patterns", {
+      ...buildProjectPayload(currentProjectId),
+      scope: "project",
+      enqueue_candidates: true,
+      max_candidate_rules: 80,
+      unknown_min_count: 5,
+    });
+    if (!data) {
+      return;
+    }
+    setGrammarScanReport(data.report);
+    setCandidateRules(data.rules);
+    setOverview(data.overview);
+    setRuleFilter("candidate");
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  async function handleSaveTranslationConfig(config: Record<string, unknown>) {
+    if (!currentProjectId) {
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview; config: Record<string, unknown> }>("update_project_translation_config", {
+      ...buildProjectPayload(currentProjectId),
+      config,
+    });
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  async function handleSaveProjectEntity(entity: Record<string, unknown>, syncLocked: boolean) {
+    if (!currentProjectId) {
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview }>("upsert_project_entity", {
+      ...buildProjectPayload(currentProjectId),
+      entity,
+      sync_locked: syncLocked,
+    });
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  async function handleDeleteProjectEntity(source: string, syncLocked: boolean) {
+    if (!currentProjectId) {
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview }>("delete_project_entity", {
+      ...buildProjectPayload(currentProjectId),
+      source,
+      sync_locked: syncLocked,
+    });
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  async function handleDeleteProjectEntities(sources: string[], syncLocked: boolean) {
+    if (!currentProjectId) {
+      return;
+    }
+    const cleanSources = sources.map((source) => source.trim()).filter(Boolean);
+    if (!cleanSources.length) {
+      return;
+    }
+    const data = await execute<{ overview: ProjectOverview }>("delete_project_entities", {
+      ...buildProjectPayload(currentProjectId),
+      sources: cleanSources,
+      sync_locked: syncLocked,
+    });
+    if (!data) {
+      return;
+    }
+    setOverview(data.overview);
+    await refreshPipelineStatus(currentProjectId);
+  }
+
+  async function handleSuggestEntityTargets(source: string): Promise<EntityTargetSuggestion[]> {
+    if (!source.trim()) {
+      return [];
+    }
+    const data = await execute<{ suggestions: EntityTargetSuggestion[] }>("suggest_entity_targets", {
+      ...buildProjectPayload(currentProjectId),
+      source: source.trim(),
+    });
+    return data?.suggestions ?? [];
   }
 
   async function handleRunPipelineStage(stageId: string) {
@@ -761,6 +869,11 @@ export function App() {
             onRunQa={() => void handleRunQa()}
             onSelectChapter={(chapterId, chapterText) => void handleSelectChapter(chapterId, chapterText)}
             onInspectToken={(query) => void handleInspectToken(query)}
+            onSaveTranslationConfig={(config) => void handleSaveTranslationConfig(config)}
+            onSaveProjectEntity={(entity, syncLocked) => void handleSaveProjectEntity(entity, syncLocked)}
+            onDeleteProjectEntity={(source, syncLocked) => void handleDeleteProjectEntity(source, syncLocked)}
+            onDeleteProjectEntities={(sources, syncLocked) => void handleDeleteProjectEntities(sources, syncLocked)}
+            onSuggestEntityTargets={(source) => handleSuggestEntityTargets(source)}
           />
         );
       case "Translation Coach":
@@ -772,6 +885,7 @@ export function App() {
             candidates={candidates}
             candidateRules={candidateRules}
             learningReport={learningReport}
+            grammarScanReport={grammarScanReport}
             feedbackAnalysis={feedbackAnalysis}
             feedbackText={feedbackText}
             feedbackSourceText={feedbackSourceText}
@@ -787,6 +901,7 @@ export function App() {
             onCandidateFilterChange={setCandidateFilter}
             onCandidateQueryChange={setCandidateQuery}
             onSubmitFeedback={() => void handleSubmitFeedback()}
+            onScanGrammarPatterns={() => void handleScanGrammarLearningPatterns()}
             onReviewRule={(rule, status) => void handleReviewRule(rule, status)}
             onReviewCandidate={(entry, status) => void handleReviewCandidate(entry, status)}
             onInspectToken={(query) => void handleInspectToken(query)}
@@ -823,12 +938,72 @@ export function App() {
 
   return (
     <div className="app-shell">
+      <header className="top-bar">
+        <div className="top-brand">
+          <span className="brand-kicker">DrDuc</span>
+          <strong>DrDuc Translator</strong>
+        </div>
+
+        <span className="command-separator" aria-hidden="true" />
+
+        <nav className="top-nav" aria-label="Primary">
+          {SCREENS.map((item) => (
+            <button
+              key={item}
+              className={`nav-button ${item === screen ? "active" : ""}`}
+              type="button"
+              onClick={() => startTransition(() => setScreen(item))}
+            >
+              {SCREEN_LABELS[item]}
+            </button>
+          ))}
+        </nav>
+
+        <span className="command-separator" aria-hidden="true" />
+
+        <form className="top-project-controls" onSubmit={handleCreateProject}>
+          <label className="field compact top-control">
+            <span>Project</span>
+            <select
+              className="input"
+              value={selectedProjectId}
+              onChange={(event) => startTransition(() => setSelectedProjectId(event.target.value))}
+            >
+              <option value="">Chọn project</option>
+              {projects.map((project) => (
+                <option key={project.project_id} value={project.project_id}>
+                  {project.project_id} ({project.source_language} -&gt; {project.target_language})
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="field compact top-control new-project-control">
+            <span>Project mới</span>
+            <input className="input" value={createProjectId} onChange={(event) => setCreateProjectId(event.target.value)} />
+          </label>
+          <button className="button top-create-button" type="submit" disabled={busy || !backendAvailable}>Tạo</button>
+          <span className="pill subtle transport-pill">{transport?.mode ?? "loading"}</span>
+        </form>
+      </header>
       <aside className="sidebar">
         <div className="brand">
           <span className="brand-kicker">Pipeline UI</span>
           <h1>DrDuc Translator</h1>
           <p>Glassmorphism UI được tách module hóa thành 6 screen có dictionary CRUD và pipeline monitor.</p>
         </div>
+
+        <nav className="nav-stack">
+          {SCREENS.map((item) => (
+            <button
+              key={item}
+              className={`nav-button ${item === screen ? "active" : ""}`}
+              type="button"
+              onClick={() => startTransition(() => setScreen(item))}
+            >
+              {SCREEN_LABELS[item]}
+            </button>
+          ))}
+        </nav>
 
         <div className="transport-card">
           <span className="pill">{transport?.mode ?? "loading"} transport</span>
@@ -855,19 +1030,6 @@ export function App() {
           </div>
         </form>
 
-        <nav className="nav-stack">
-          {SCREENS.map((item) => (
-            <button
-              key={item}
-              className={`nav-button ${item === screen ? "active" : ""}`}
-              type="button"
-              onClick={() => startTransition(() => setScreen(item))}
-            >
-              {item}
-            </button>
-          ))}
-        </nav>
-
         <div className="sidebar-section">
           <h2>Projects</h2>
           <div className="list-stack">
@@ -887,24 +1049,24 @@ export function App() {
         </div>
       </aside>
 
-      <main className="workspace">
+      <main className={`workspace ${screen === "Dashboard" ? "dashboard-mode" : ""}`}>
         <header className="hero">
           <div>
-            <span className="brand-kicker">Active Slice</span>
-            <h2>{overview?.project.project_id ?? "No project selected"}</h2>
+            <span className="brand-kicker">Slice đang mở</span>
+            <h2>{overview?.project.project_id ?? "Chưa chọn project"}</h2>
             <p>{statusMessage}</p>
           </div>
           <div className="hero-actions">
-            <span className={`pill ${busy ? "busy" : ""}`}>{busy ? "Running" : "Idle"}</span>
-            <span className="pill subtle">{overview?.project.active_chapter ?? "No active chapter"}</span>
+            <span className={`pill ${busy ? "busy" : ""}`}>{busy ? "Đang chạy" : "Sẵn sàng"}</span>
+            <span className="pill subtle">{overview?.project.active_chapter ?? "Chưa chọn chương"}</span>
           </div>
         </header>
 
-        <section className="metrics-row">
-          <MetricCard label="Chapters" value={overview?.counts.chapters ?? 0} />
-          <MetricCard label="Segments" value={overview?.counts.segments ?? 0} />
-          <MetricCard label="Candidates" value={overview?.counts.candidates_total ?? 0} />
-          <MetricCard label="QA Issues" value={overview?.counts.qa_issues ?? 0} />
+        <section className="compact-status-row">
+          <span>Chương <strong>{overview?.counts.chapters ?? 0}</strong></span>
+          <span>Đoạn <strong>{overview?.counts.segments ?? 0}</strong></span>
+          <span>Candidate <strong>{overview?.counts.candidates_total ?? 0}</strong></span>
+          <span>QA <strong>{overview?.counts.qa_issues ?? 0}</strong></span>
         </section>
 
         {warnings.length > 0 ? (
@@ -917,8 +1079,9 @@ export function App() {
 
         <section className="screen-area">{renderScreen()}</section>
 
+        {screen !== "Dashboard" ? (
         <section className="split-grid footer-grid">
-          <Panel title="Command Timeline" subtitle="Event payload tu sidecar giup debug va monitor stage transitions.">
+          <Panel title="Timeline lệnh" subtitle="Event payload từ sidecar để debug và theo dõi stage.">
             <div className="list-stack">
               {events.length ? (
                 events.map((event, index) => (
@@ -931,7 +1094,7 @@ export function App() {
                   </div>
                 ))
               ) : (
-                <p className="empty-state">No command events recorded yet.</p>
+                <p className="empty-state">Chưa có event lệnh.</p>
               )}
             </div>
           </Panel>
@@ -944,6 +1107,7 @@ export function App() {
             </div>
           </Panel>
         </section>
+        ) : null}
       </main>
     </div>
   );

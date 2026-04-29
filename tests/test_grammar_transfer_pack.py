@@ -35,6 +35,27 @@ def test_source_grammar_transfer_handles_passive_parallel_and_protected_spans():
     assert "vừa 扫描 vừa" in protected.text
 
 
+def test_source_grammar_transfer_rewrites_mined_template_book_frames():
+    engine = GrammarTransferEngine()
+
+    text = (
+        "\u4e0e\u5176\u5750\u7b49\uff0c\u4e0d\u5982\u51fa\u624b\u3002"
+        "\u65e2\u80fd\u653b\u51fb\uff0c\u53c8\u80fd\u9632\u5b88\u3002"
+        "\u8d8a\u60f3\u8d8a\u89c9\u5f97\u4e0d\u5bf9\u3002"
+        "\u4e4b\u6240\u4ee5\u5931\u8d25\uff0c\u662f\u56e0\u4e3a\u4ed6\u8f7b\u654c\u3002"
+        "\u53ea\u6709\u8fdb\u5165\u5c71\u95e8\uff0c\u624d\u80fd\u901a\u8fc7\u8003\u9a8c\u3002"
+    )
+    result = engine.rewrite_source(text)
+
+    assert "thà" in result.text
+    assert "chẳng bằng" in result.text
+    assert "vừa" in result.text
+    assert "càng" in result.text
+    assert "sở dĩ" in result.text
+    assert "chỉ khi" in result.text
+    assert {trace["fallback_level"] for trace in result.traces} == {"grammar_transfer"}
+
+
 def test_clause_segmenter_auto_protects_bracket_commas():
     text = "他获得了【龙之心脏，基因链】，如果敌人靠近，就会启动。"
     clauses = ClauseSegmenter().segment(text)
@@ -78,4 +99,3 @@ def test_rbmt_attaches_grammar_transfer_trace_before_lexical_decode():
     assert "Dù" in result.clean_text
     assert "cũng" in result.clean_text
     assert any(trace["stage"] == "grammar_transfer" for trace in result.segments[0].trace)
-

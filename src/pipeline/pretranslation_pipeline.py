@@ -20,6 +20,9 @@ from src.pipeline.entity_scanner import EntityScanner
 from src.pipeline.relationship_builder import RelationshipBuilder
 from src.pipeline.segment_classifier import SegmentClassifier
 from src.pipeline.terminology_suggester import TerminologySuggester
+from src.parser.dependency_parser import DependencyParser
+from src.parser.morphological_analyzer import MorphologicalAnalyzer
+from src.rules.syntax_transfer_rules import SyntaxTransferRules
 
 
 SUPPORTED_SOURCE_SUFFIXES = {".txt", ".md", ".markdown", ".html", ".htm", ".docx", ".pdf"}
@@ -27,6 +30,8 @@ CHAPTER_NUMBER_RE = re.compile(r"(\d{1,4})")
 MAX_ANALYSIS_CHARS = 500_000  # Cap text for entity/relationship scanning to prevent OOM
 MAX_ENTITIES = 200            # Cap entity count to prevent O(n²) relationship explosion
 MAX_RELATIONSHIPS = 500       # Cap relationship edges to prevent JSON serialization OOM
+MAX_SYNTAX_SEGMENTS = 2_000   # Keep syntax artifacts bounded on large projects
+MAX_SYNTAX_TEXT_CHARS = 800
 
 
 @dataclass(slots=True)
@@ -38,6 +43,7 @@ class PreTranslationResult:
     relationships: list[dict]
     config: dict
     segments: list[dict] | None = None
+    syntax_analysis: list[dict] | None = None
 
 
 class PreTranslationPipeline:
@@ -55,6 +61,9 @@ class PreTranslationPipeline:
         self.suggester = TerminologySuggester(db_path=db_path)
         self.config_generator = ConfigGenerator(db_path=db_path)
         self.segment_classifier = SegmentClassifier()
+        self.morphological_analyzer = MorphologicalAnalyzer()
+        self.dependency_parser = DependencyParser()
+        self.syntax_transfer_rules = SyntaxTransferRules()
         self.accessor = RuntimeDictionaryAccessor(db_path) if db_path else None
 
     def close(self):
@@ -165,11 +174,13 @@ class PreTranslationPipeline:
         config = self._merge_external_project_metadata(config, metadata_source)
         self.config_generator.write(config, project_dir)
         segment_packets = self._build_segment_packets(chapters)
+        syntax_analysis = self._build_syntax_analysis(segment_packets)
 
         self._write_json(project_dir, "working/entities/entities_suggested.json", [item.to_dict() for item in entities])
         self._write_json(project_dir, "working/relationships/relationships_suggested.json", [item.to_dict() for item in relationships])
         self._write_json(project_dir, "working/config/terminology_suggestions.json", [item.to_dict() for item in terminology])
         self._write_json(project_dir, "working/segments/segments_classified.json", segment_packets)
+        self._write_json(project_dir, "working/segments/syntax_analysis.json", syntax_analysis)
 
         return PreTranslationResult(
             imported=imported,
@@ -179,6 +190,7 @@ class PreTranslationPipeline:
             relationships=[item.to_dict() for item in relationships],
             config=config,
             segments=segment_packets,
+            syntax_analysis=syntax_analysis,
         )
 
     def _transform_text(self, text: str) -> str:
@@ -360,6 +372,39 @@ class PreTranslationPipeline:
                     "trace": [event.to_dict() for event in packet.trace],
                 })
         return packets
+
+    def _build_syntax_analysis(self, segment_packets: list[dict]) -> list[dict]:
+        analysis_packets: list[dict] = []
+        for packet in segment_packets[:MAX_SYNTAX_SEGMENTS]:
+            text = str(packet.get("normalized_text") or packet.get("raw_text") or "").strip()
+            if not text:
+                continue
+            clipped = text[:MAX_SYNTAX_TEXT_CHARS]
+            morphology = self.morphological_analyzer.analyze(clipped)
+            dependencies = self.dependency_parser.parse(morphology)
+            transfer = self.syntax_transfer_rules.apply(
+                dependencies,
+                context={
+                    "chapter_id": packet.get("chapter_id"),
+                    "segment_id": packet.get("segment_id"),
+                    "seg_type": packet.get("seg_type"),
+                },
+            )
+            analysis_packets.append({
+                "segment_id": packet.get("segment_id"),
+                "trace_id": packet.get("trace_id"),
+                "chapter_id": packet.get("chapter_id"),
+                "position": packet.get("position"),
+                "seg_type": packet.get("seg_type"),
+                "text": clipped,
+                "tokens": dependencies.get("tokens", []),
+                "posTags": dependencies.get("posTags", []),
+                "dependencies": dependencies.get("dependencies", []),
+                "root": dependencies.get("root"),
+                "syntax_rules_applied": transfer.get("syntax_rules_applied", []),
+                "transformed": transfer.get("transformed", False),
+            })
+        return analysis_packets
 
     def _merge_external_project_metadata(self, config: dict, source_path: Path) -> dict:
         project_root = self._detect_external_project_root(source_path)

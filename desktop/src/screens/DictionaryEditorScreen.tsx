@@ -47,30 +47,30 @@ export function DictionaryEditorScreen(props: {
 
   return (
     <div className="panel-stack">
-      <Panel title="Dictionary Browser" subtitle="Tìm kiếm, lọc và phân trang để thao tác trên runtime/reference dictionary.">
+      <Panel title="Duyệt từ điển" subtitle="Tìm kiếm, lọc và phân trang để thao tác trên runtime/reference dictionary.">
         <div className="toolbar">
           <label className="field grow">
-            <span>Query</span>
+            <span>Từ khóa</span>
             <input
               className="input"
               value={props.query}
               onChange={(event) => props.onQueryChange(event.target.value)}
-              placeholder="source, target, pinyin, explanation"
+              placeholder="nguồn, target, pinyin, giải thích"
             />
           </label>
           <label className="field compact">
-            <span>Scope</span>
+            <span>Phạm vi</span>
             <select className="input" value={props.tableFilter} onChange={(event) => props.onTableFilterChange(event.target.value)}>
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {(props.filters?.tables ?? []).map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
             </select>
           </label>
           <label className="field compact">
-            <span>Category</span>
+            <span>Nhóm</span>
             <select className="input" value={props.sourceDictFilter} onChange={(event) => props.onSourceDictFilterChange(event.target.value)}>
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {(props.filters?.categories ?? []).map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
@@ -79,7 +79,7 @@ export function DictionaryEditorScreen(props: {
           <label className="field compact">
             <span>POS</span>
             <select className="input" value={props.posTagFilter} onChange={(event) => props.onPosTagFilterChange(event.target.value)}>
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {(props.filters?.pos_tags ?? []).map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
@@ -88,14 +88,14 @@ export function DictionaryEditorScreen(props: {
           <label className="field compact">
             <span>Entity</span>
             <select className="input" value={props.entityTypeFilter} onChange={(event) => props.onEntityTypeFilterChange(event.target.value)}>
-              <option value="">All</option>
+              <option value="">Tất cả</option>
               {(props.filters?.entity_types ?? []).map((value) => (
                 <option key={value} value={value}>{value}</option>
               ))}
             </select>
           </label>
           <button className="button" type="button" disabled={props.busy} onClick={() => props.onSearch(1)}>
-            Apply
+            Áp dụng
           </button>
         </div>
 
@@ -130,12 +130,12 @@ export function DictionaryEditorScreen(props: {
           </div>
 
           <div className="panel-stack">
-            <Panel title="Entry Detail" subtitle="Chỉnh sửa đầy đủ metadata POS 8 cột và thông tin runtime.">
+            <Panel title="Chi tiết entry" subtitle="Chỉnh sửa đầy đủ metadata POS 8 cột và thông tin runtime.">
               {effectiveDraft ? (
                 <div className="form-grid">
                   <div className="split-grid">
                     <label className="field">
-                      <span>Source</span>
+                      <span>Nguồn</span>
                       <input className="input" value={effectiveDraft.source} onChange={handleChange(props.onDraftChange, "source")} />
                     </label>
                     <label className="field">
@@ -146,13 +146,13 @@ export function DictionaryEditorScreen(props: {
 
                   <div className="split-grid">
                     <label className="field">
-                      <span>Priority</span>
+                      <span>Độ ưu tiên</span>
                       <input className="input" value={String(effectiveDraft.priority)} onChange={handleChange(props.onDraftChange, "priority")} />
                     </label>
                     <label className="field">
                       <span>POS Tag</span>
                       <select className="input" value={effectiveDraft.pos_tag ?? ""} onChange={handleChange(props.onDraftChange, "pos_tag")}>
-                        <option value="">None</option>
+                        <option value="">Không</option>
                         {POS_TAG_OPTIONS.map((option) => (
                           <option key={option} value={option}>{option}</option>
                         ))}
@@ -171,9 +171,9 @@ export function DictionaryEditorScreen(props: {
                       </select>
                     </label>
                     <label className="field">
-                      <span>Entity Type</span>
+                      <span>Loại entity</span>
                       <select className="input" value={effectiveDraft.entity_type ?? ""} onChange={handleChange(props.onDraftChange, "entity_type")}>
-                        <option value="">None</option>
+                        <option value="">Không</option>
                         {ENTITY_OPTIONS.map((option) => (
                           <option key={option} value={option}>{option}</option>
                         ))}
@@ -187,23 +187,23 @@ export function DictionaryEditorScreen(props: {
                       <input className="input" value={(effectiveDraft.pinyin ?? []).join(", ")} onChange={handleChange(props.onDraftChange, "pinyin")} />
                     </label>
                     <label className="field">
-                      <span>Traditional</span>
+                      <span>Phồn thể</span>
                       <input className="input" value={effectiveDraft.traditional ?? ""} onChange={handleChange(props.onDraftChange, "traditional")} />
                     </label>
                   </div>
 
                   <div className="split-grid">
                     <label className="field">
-                      <span>Reorder Role</span>
+                      <span>Vai trò reorder</span>
                       <select className="input" value={effectiveDraft.reorder_role ?? ""} onChange={handleChange(props.onDraftChange, "reorder_role")}>
-                        <option value="">None</option>
+                        <option value="">Không</option>
                         {REORDER_ROLE_OPTIONS.map((option) => (
                           <option key={option} value={option}>{option}</option>
                         ))}
                       </select>
                     </label>
                     <label className="field toggle-field">
-                      <span>Luat Nhan Trigger</span>
+                      <span>Kích hoạt Luật Nhân</span>
                       <input
                         type="checkbox"
                         checked={Boolean(effectiveDraft.luat_nhan_trigger)}
@@ -213,11 +213,11 @@ export function DictionaryEditorScreen(props: {
                   </div>
 
                   <label className="field">
-                    <span>Notes</span>
+                    <span>Ghi chú</span>
                     <textarea className="textarea compact-textarea" value={effectiveDraft.notes} onChange={handleChange(props.onDraftChange, "notes")} />
                   </label>
                   <label className="field">
-                    <span>Full Explanation</span>
+                    <span>Giải thích đầy đủ</span>
                     <textarea className="textarea compact-textarea" value={effectiveDraft.full_explanation} onChange={handleChange(props.onDraftChange, "full_explanation")} />
                   </label>
 
@@ -229,7 +229,7 @@ export function DictionaryEditorScreen(props: {
 
                   <div className="action-row">
                     <button className="button" type="button" disabled={props.busy || !props.backendAvailable} onClick={props.onSave}>
-                      Save Entry
+                      Lưu entry
                     </button>
                   </div>
                 </div>
@@ -238,7 +238,7 @@ export function DictionaryEditorScreen(props: {
               )}
             </Panel>
 
-            <Panel title="Metadata Preview" subtitle="JSON được backend đồng bộ vào SQLite và Markdown nguồn.">
+            <Panel title="Preview metadata" subtitle="JSON được backend đồng bộ vào SQLite và Markdown nguồn.">
               <pre className="output-block compact-block">
                 {JSON.stringify(effectiveDraft?.metadata ?? {}, null, 2)}
               </pre>
@@ -249,37 +249,37 @@ export function DictionaryEditorScreen(props: {
         <div className="toolbar">
           <div className="action-row">
             <button className="button secondary" type="button" disabled={props.page <= 1 || props.busy} onClick={() => props.onSearch(props.page - 1)}>
-              Prev
+              Trước
             </button>
-            <span className="pill subtle">Page {props.page}/{totalPages}</span>
+            <span className="pill subtle">Trang {props.page}/{totalPages}</span>
             <button className="button secondary" type="button" disabled={props.page >= totalPages || props.busy} onClick={() => props.onSearch(props.page + 1)}>
-              Next
+              Sau
             </button>
           </div>
           <div className="action-row">
             <label className="field compact">
-              <span>Bulk POS</span>
+              <span>POS hàng loạt</span>
               <select className="input" value={props.bulkPosTag} onChange={(event) => props.onBulkPosTagChange(event.target.value)}>
-                <option value="">None</option>
+                <option value="">Không</option>
                 {POS_TAG_OPTIONS.map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
             <label className="field compact">
-              <span>Bulk Entity</span>
+              <span>Entity hàng loạt</span>
               <select className="input" value={props.bulkEntityType} onChange={(event) => props.onBulkEntityTypeChange(event.target.value)}>
-                <option value="">None</option>
+                <option value="">Không</option>
                 {ENTITY_OPTIONS.map((option) => (
                   <option key={option} value={option}>{option}</option>
                 ))}
               </select>
             </label>
             <button className="button secondary" type="button" disabled={!props.selectedIds.length || props.busy || !props.backendAvailable} onClick={props.onApplyBulkUpdate}>
-              Apply To Selected
+              Áp dụng mục chọn
             </button>
             <button className="button secondary" type="button" onClick={props.onExportFiltered}>
-              Export Filtered
+              Xuất kết quả lọc
             </button>
           </div>
         </div>

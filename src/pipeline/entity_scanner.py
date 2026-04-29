@@ -132,6 +132,26 @@ FALSE_NAME_START_BIGRAMS = {
     "\u5bf9\u4e8e",
     "\u5728\u4e8e",
 }
+COMMON_NON_PERSON_NAME_TERMS = {
+    "\u5929\u5730",
+    "\u4e16\u754c",
+    "\u65f6\u95f4",
+    "\u4eca\u65e5",
+    "\u660e\u65e5",
+    "\u5929\u9053",
+    "\u5927\u9053",
+    "\u738b\u9053",
+    "\u7075\u6c14",
+    "\u5143\u6c14",
+    "\u5c71\u6cb3",
+    "\u4e3b\u795e",
+    "\u7cfb\u7edf",
+    "\u4efb\u52a1",
+    "\u6c5f\u6e56",
+    "\u5929\u4e0b",
+    "\u9ed1\u6697",
+    "\u5149\u660e",
+}
 
 
 @dataclass(slots=True)
@@ -229,6 +249,8 @@ class EntityScanner:
                     continue
                 if self._is_known_non_name(candidate):
                     continue
+                if self._looks_like_common_non_person_phrase(candidate):
+                    continue
                 if self._looks_like_embedded_named_term(text, idx, candidate):
                     continue
 
@@ -262,6 +284,8 @@ class EntityScanner:
                 continue
             positions = payload["positions"]
             if len(positions) < 2 and not payload["strong_context"]:
+                continue
+            if self._looks_like_common_non_person_phrase(source):
                 continue
             found[source] = EntitySuggestion(
                 source=source,
@@ -376,6 +400,12 @@ class EntityScanner:
     def _is_known_non_name(self, candidate: str) -> bool:
         record = self.accessor.lookup_runtime(candidate)
         return bool(record and "names" not in record.category and record.priority < 4)
+
+    @staticmethod
+    def _looks_like_common_non_person_phrase(candidate: str) -> bool:
+        if candidate in COMMON_NON_PERSON_NAME_TERMS:
+            return True
+        return any(candidate.endswith(suffix) for suffix in ("\u9053", "\u6c14", "\u754c", "\u6cd5", "\u529b"))
 
     def _looks_like_embedded_named_term(self, text: str, idx: int, candidate: str) -> bool:
         tail = text[idx + len(candidate):idx + len(candidate) + 5]

@@ -8,6 +8,8 @@ import argparse
 import contextlib
 import io
 import json
+import re
+import sys
 from dataclasses import asdict
 from pathlib import Path
 from time import perf_counter
@@ -16,6 +18,7 @@ from src.core.md_dictionary_compiler import DictionaryCompiler
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.engine.rbmt_translator import RBMTTranslator, SegmentTranslation, TranslationResult
 from src.engine.style_profiles import STYLE_PROFILES, default_style_preferences, resolve_style_selection
+from src.learning.grammar_pattern_scanner import GrammarLearningPatternScanner, write_grammar_learning_report
 from src.learning.natural_feedback_engine import NaturalFeedbackEngine
 from src.learning.project_learning_engine import ProjectLearningEngine
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
@@ -39,6 +42,11 @@ SUPPORTED_COMMANDS = {
     "run_qa",
     "load_qa_report",
     "load_learning_report",
+    "update_project_translation_config",
+    "upsert_project_entity",
+    "delete_project_entity",
+    "delete_project_entities",
+    "suggest_entity_targets",
     "search_dictionary_entries",
     "list_dictionary_entries",
     "update_dictionary_entry",
@@ -47,6 +55,7 @@ SUPPORTED_COMMANDS = {
     "list_candidate_entries",
     "review_candidate_entry",
     "submit_natural_feedback",
+    "scan_grammar_learning_patterns",
     "list_candidate_rules",
     "review_candidate_rule",
 }
@@ -435,6 +444,112 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 events=events,
             )
 
+        if command == "update_project_translation_config":
+            manager, project_id, project_dir = _resolve_project(payload)
+            incoming_config = payload.get("config")
+            if not isinstance(incoming_config, dict):
+                raise ValueError("config must be an object")
+            config_path = project_dir / "working" / "config" / "translation_config.json"
+            _write_json(config_path, incoming_config)
+            events.append(_event("config_updated", "Saved project translation config", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "config": incoming_config,
+                    "config_path": str(config_path),
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "upsert_project_entity":
+            manager, project_id, project_dir = _resolve_project(payload)
+            entity_payload = payload.get("entity")
+            if not isinstance(entity_payload, dict):
+                raise ValueError("entity must be an object")
+            entity = _normalize_project_entity(entity_payload)
+            if not entity["source"]:
+                raise ValueError("entity.source is required")
+            if entity["entity_type"] != "junk_phrase" and not entity["target"]:
+                raise ValueError("entity.target is required")
+            sync_locked = bool(payload.get("sync_locked", True))
+            result = _upsert_project_entity(project_dir, entity, sync_locked=sync_locked)
+            events.append(_event("entity_updated", "Saved project entity override", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    **result,
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "delete_project_entity":
+            manager, project_id, project_dir = _resolve_project(payload)
+            source = str(payload.get("source") or "").strip()
+            if not source:
+                raise ValueError("source is required")
+            sync_locked = bool(payload.get("sync_locked", True))
+            result = _delete_project_entity(project_dir, source, sync_locked=sync_locked)
+            events.append(_event("entity_deleted", "Deleted project entity override", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    **result,
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "delete_project_entities":
+            manager, project_id, project_dir = _resolve_project(payload)
+            sources_payload = payload.get("sources")
+            if not isinstance(sources_payload, list):
+                raise ValueError("sources must be a list")
+            sources = [str(item or "").strip() for item in sources_payload]
+            sources = [item for item in sources if item]
+            if not sources:
+                raise ValueError("sources must contain at least one entity source")
+            sync_locked = bool(payload.get("sync_locked", True))
+            result = _delete_project_entities(project_dir, sources, sync_locked=sync_locked)
+            events.append(_event("entities_deleted", "Deleted project entity overrides", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    **result,
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "suggest_entity_targets":
+            source = str(payload.get("source") or "").strip()
+            if not source:
+                raise ValueError("source is required")
+            accessor = RuntimeDictionaryAccessor(_resolve_db_path(payload, allow_missing=False))
+            try:
+                suggestions = _build_entity_target_suggestions(accessor, source)
+            finally:
+                accessor.close()
+            events.append(_event("entity_targets_suggested", "Generated entity target suggestions", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "source": source,
+                    "suggestions": suggestions,
+                },
+                warnings=warnings,
+                events=events,
+            )
+
         if command == "get_pipeline_status":
             pipeline_status = _build_pipeline_status(payload)
             events.append(_event("pipeline_loaded", "Loaded pipeline status", 100))
@@ -736,6 +851,76 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 events=events,
             )
 
+        if command == "scan_grammar_learning_patterns":
+            manager, project_id, project_dir = _resolve_project(payload)
+            input_paths = payload.get("paths")
+            if isinstance(input_paths, list):
+                scan_paths = [str(item) for item in input_paths if str(item).strip()]
+            else:
+                scan_path = (
+                    str(payload.get("filepath") or payload.get("input_path") or "").strip()
+                    or str(project_dir / "source" / "chapters")
+                )
+                scan_paths = [scan_path]
+            if not scan_paths:
+                raise ValueError("paths, filepath, or input_path is required")
+
+            scanner = GrammarLearningPatternScanner()
+            events.append(_event("grammar_scan_started", "Scanning source grammar patterns for coach learning", 20))
+            report = scanner.analyze_paths(
+                scan_paths,
+                unknown_min_count=int(payload.get("unknown_min_count") or 5),
+                max_files=int(payload["max_files"]) if payload.get("max_files") not in (None, "") else None,
+                max_bytes_per_file=int(payload["max_bytes_per_file"]) if payload.get("max_bytes_per_file") not in (None, "") else None,
+                max_sentences=int(payload["max_sentences"]) if payload.get("max_sentences") not in (None, "") else None,
+                candidate_limit=int(payload.get("candidate_limit") or 200),
+            )
+            out_dir = Path(str(payload.get("out_dir") or project_dir / "reports" / "grammar_learning"))
+            report_paths = write_grammar_learning_report(report, out_dir)
+
+            created_rules = []
+            if bool(payload.get("enqueue_candidates", True)):
+                max_candidate_rules = int(payload.get("max_candidate_rules") or 50)
+                for candidate in report.get("unknown_candidates", [])[:max_candidate_rules]:
+                    rule_payload = _grammar_candidate_to_rule_payload(
+                        candidate,
+                        report_paths=report_paths,
+                        scope=str(payload.get("scope") or "project"),
+                    )
+                    rule_id = manager.add_candidate_rule(
+                        project_id,
+                        "grammar_pattern_candidate",
+                        rule_payload,
+                        status="candidate",
+                    )
+                    created_rules.append(rule_id)
+
+            rules = manager.list_candidate_rules(project_id, status=payload.get("status"))
+            manager.update_state(
+                project_id,
+                {
+                    "last_grammar_learning_scan": {
+                        "summary": report.get("summary", {}),
+                        "report_paths": report_paths,
+                        "created_rule_ids": created_rules,
+                    }
+                },
+            )
+            events.append(_event("grammar_scan_completed", "Grammar learning scan report generated", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "report": report,
+                    "report_paths": report_paths,
+                    "created_rule_ids": created_rules,
+                    "rules": [rule.to_dict() for rule in rules],
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
         if command == "list_candidate_rules":
             manager, project_id, _ = _resolve_project(payload)
             rules = manager.list_candidate_rules(project_id, status=payload.get("status"))
@@ -946,6 +1131,18 @@ def _merge_learned_terms(project_dir: Path, config: dict) -> dict:
         project_phrase_overrides[source] = target
     if project_phrase_overrides:
         resolved["project_phrase_overrides"] = project_phrase_overrides
+
+    ignored_phrases = [
+        normalized_item
+        for normalized_item in (_normalize_junk_phrase_entry(item) for item in resolved.get("ignored_phrases", []))
+        if normalized_item
+    ]
+    for item in learned_terms.get("ignored_phrases", []):
+        normalized_item = _normalize_junk_phrase_entry(item)
+        if normalized_item:
+            ignored_phrases = _upsert_item(ignored_phrases, normalized_item, key_fields=("source", "target"))
+    if ignored_phrases:
+        resolved["ignored_phrases"] = ignored_phrases
     return resolved
 
 
@@ -1314,6 +1511,428 @@ def _learning_report_paths(project_dir: Path | None, chapter_id: str | None) -> 
     }
 
 
+def _normalize_project_entity(payload: dict) -> dict:
+    positions = payload.get("positions")
+    if not isinstance(positions, list):
+        positions = []
+    return {
+        "source": str(payload.get("source") or "").strip(),
+        "target": str(payload.get("target") or "").strip(),
+        "entity_type": str(payload.get("entity_type") or "project_term").strip() or "project_term",
+        "confidence": _coerce_float(payload.get("confidence"), 1.0),
+        "source_dict": str(payload.get("source_dict") or "user_review").strip() or "user_review",
+        "ambiguity_flag": bool(payload.get("ambiguity_flag", False)),
+        "count": max(1, int(_coerce_float(payload.get("count"), 1))),
+        "positions": [int(item) for item in positions if isinstance(item, (int, float))],
+    }
+
+
+def _coerce_float(value: object, default: float) -> float:
+    if isinstance(value, (int, float)):
+        return float(value)
+    try:
+        return float(str(value).strip())
+    except (TypeError, ValueError):
+        return default
+
+
+def _normalize_junk_phrase_entry(item: object) -> dict | None:
+    if isinstance(item, str):
+        source = item.strip()
+        if not source:
+            return None
+        return {
+            "source": source,
+            "target": "",
+            "clean_text": "",
+            "origin": "user_review",
+            "enabled": True,
+        }
+    if not isinstance(item, dict):
+        return None
+    source = str(item.get("source") or item.get("raw_pattern") or item.get("phrase") or item.get("text") or "").strip()
+    target = str(item.get("target") or item.get("target_vi") or "").strip()
+    if not source and not target:
+        return None
+    return {
+        "source": source,
+        "target": target,
+        "clean_text": str(item.get("clean_text") or item.get("replacement") or "").strip(),
+        "origin": str(item.get("origin") or item.get("source_dict") or "user_review").strip() or "user_review",
+        "enabled": item.get("enabled", True) is not False,
+    }
+
+
+def _upsert_config_junk_phrase(config: dict, entity: dict) -> tuple[dict, int]:
+    entries = config.get("ignored_phrases", [])
+    if not isinstance(entries, list):
+        entries = []
+    normalized = [
+        normalized_item
+        for normalized_item in (_normalize_junk_phrase_entry(item) for item in entries)
+        if normalized_item and normalized_item["enabled"]
+    ]
+    new_item = {
+        "source": entity["source"],
+        "target": entity.get("target", ""),
+        "clean_text": "",
+        "origin": "user_review",
+        "enabled": True,
+    }
+    config["ignored_phrases"] = _upsert_item(normalized, new_item, key_fields=("source", "target"))
+    return config, len(config["ignored_phrases"])
+
+
+def _delete_config_junk_phrases(config: dict, sources: set[str]) -> tuple[dict, int]:
+    deleted_total = 0
+    for key in ("ignored_phrases", "junk_phrases", "user_noise_phrases"):
+        entries = config.get(key, [])
+        if not isinstance(entries, list):
+            continue
+        normalized = [
+            normalized_item
+            for normalized_item in (_normalize_junk_phrase_entry(item) for item in entries)
+            if normalized_item
+        ]
+        updated = [
+            item
+            for item in normalized
+            if item["source"] not in sources and item["target"] not in sources
+        ]
+        deleted_total += len(normalized) - len(updated)
+        config[key] = updated
+    return config, deleted_total
+
+
+def _upsert_project_entity(project_dir: Path, entity: dict, *, sync_locked: bool) -> dict:
+    entities_path = project_dir / "working" / "entities" / "entities_suggested.json"
+    entities = _load_json(entities_path, [])
+    if not isinstance(entities, list):
+        entities = []
+    normalized_entities = [dict(item) for item in entities if isinstance(item, dict)]
+    updated_entities = _upsert_item(normalized_entities, entity, key_fields=("source",))
+    _write_json(entities_path, updated_entities)
+
+    config_path = project_dir / "working" / "config" / "translation_config.json"
+    config = _load_json(config_path, {})
+    if not isinstance(config, dict):
+        config = {}
+    locked_count = len(config.get("locked_entities", []) if isinstance(config.get("locked_entities"), list) else [])
+    junk_phrase_count = len(config.get("ignored_phrases", []) if isinstance(config.get("ignored_phrases"), list) else [])
+    if entity.get("entity_type") == "junk_phrase":
+        config, junk_phrase_count = _upsert_config_junk_phrase(config, entity)
+        _write_json(config_path, config)
+        sync_locked = False
+    elif sync_locked:
+        locked_item = {
+            "source": entity["source"],
+            "target": entity["target"],
+            "entity_type": entity["entity_type"],
+            "origin": "user_review",
+        }
+        locked_entities = config.get("locked_entities", [])
+        if not isinstance(locked_entities, list):
+            locked_entities = []
+        config["locked_entities"] = _upsert_item(
+            [dict(item) for item in locked_entities if isinstance(item, dict)],
+            locked_item,
+            key_fields=("source",),
+        )
+        locked_count = len(config["locked_entities"])
+        _write_json(config_path, config)
+
+    return {
+        "entity": entity,
+        "entities_path": str(entities_path),
+        "entity_count": len(updated_entities),
+        "sync_locked": sync_locked,
+        "config_path": str(config_path),
+        "locked_entity_count": locked_count,
+        "junk_phrase_count": junk_phrase_count,
+    }
+
+
+def _delete_project_entity(project_dir: Path, source: str, *, sync_locked: bool) -> dict:
+    result = _delete_project_entities(project_dir, [source], sync_locked=sync_locked)
+    normalized_source = result["sources"][0] if result["sources"] else str(source or "").strip()
+    return {
+        "source": normalized_source,
+        "deleted": result["deleted_count"] > 0,
+        "entities_path": result["entities_path"],
+        "entity_count": result["entity_count"],
+        "sync_locked": sync_locked,
+        "config_path": result["config_path"],
+        "locked_deleted": result["locked_deleted_count"] > 0,
+        "locked_entity_count": result["locked_entity_count"],
+    }
+
+
+def _delete_project_entities(project_dir: Path, sources: list[str], *, sync_locked: bool) -> dict:
+    normalized_sources = [str(source or "").strip() for source in sources]
+    normalized_sources = [source for source in normalized_sources if source]
+    source_set = set(normalized_sources)
+    entities_path = project_dir / "working" / "entities" / "entities_suggested.json"
+    entities = _load_json(entities_path, [])
+    if not isinstance(entities, list):
+        entities = []
+    normalized_entities = [dict(item) for item in entities if isinstance(item, dict)]
+    updated_entities = [
+        item
+        for item in normalized_entities
+        if str(item.get("source") or "").strip() not in source_set
+    ]
+    _write_json(entities_path, updated_entities)
+
+    config_path = project_dir / "working" / "config" / "translation_config.json"
+    config = _load_json(config_path, {})
+    if not isinstance(config, dict):
+        config = {}
+    locked_deleted_count = 0
+    junk_deleted_count = 0
+    locked_count = len(config.get("locked_entities", []) if isinstance(config.get("locked_entities"), list) else [])
+    junk_phrase_count = len(config.get("ignored_phrases", []) if isinstance(config.get("ignored_phrases"), list) else [])
+    config, junk_deleted_count = _delete_config_junk_phrases(config, source_set)
+    junk_phrase_count = len(config.get("ignored_phrases", []) if isinstance(config.get("ignored_phrases"), list) else [])
+    if sync_locked:
+        locked_entities = config.get("locked_entities", [])
+        if not isinstance(locked_entities, list):
+            locked_entities = []
+        normalized_locked = [dict(item) for item in locked_entities if isinstance(item, dict)]
+        updated_locked = [
+            item
+            for item in normalized_locked
+            if str(item.get("source") or "").strip() not in source_set
+        ]
+        locked_deleted_count = len(normalized_locked) - len(updated_locked)
+        config["locked_entities"] = updated_locked
+        locked_count = len(updated_locked)
+    if sync_locked or junk_deleted_count:
+        _write_json(config_path, config)
+
+    return {
+        "sources": normalized_sources,
+        "deleted_count": len(normalized_entities) - len(updated_entities),
+        "entities_path": str(entities_path),
+        "entity_count": len(updated_entities),
+        "sync_locked": sync_locked,
+        "config_path": str(config_path),
+        "locked_deleted_count": locked_deleted_count,
+        "locked_entity_count": locked_count,
+        "junk_deleted_count": junk_deleted_count,
+        "junk_phrase_count": junk_phrase_count,
+    }
+
+
+def _build_entity_target_suggestions(accessor: RuntimeDictionaryAccessor, source: str) -> list[dict]:
+    suggestions: list[dict] = []
+    seen: set[tuple[str, str]] = set()
+
+    def add(kind: str, label: str, value: str, detail: str, confidence: float):
+        normalized = " ".join(str(value or "").split()).strip()
+        if not normalized:
+            return
+        key = (kind, normalized.casefold())
+        if key in seen:
+            return
+        seen.add(key)
+        suggestions.append({
+            "kind": kind,
+            "label": label,
+            "value": normalized,
+            "detail": detail,
+            "confidence": round(confidence, 3),
+        })
+
+    direct_hv = _pick_han_viet_reading(accessor, source)
+    if direct_hv:
+        add(
+            "han_viet_dictionary",
+            "Hán Việt dictionary",
+            _title_case_words(direct_hv),
+            "Đọc Hán Việt theo mục từ có sẵn.",
+            0.96,
+        )
+
+    word_hv = _resolve_han_viet_word_by_word(accessor, source)
+    if word_hv:
+        add(
+            "han_viet_word",
+            "Hán Việt word by word",
+            word_hv,
+            "Ghép từng Hán tự theo thứ tự source.",
+            0.9,
+        )
+
+    latin_from_dict = _resolve_latin_dictionary_targets(accessor, source)
+    for value in latin_from_dict:
+        add(
+            "latin_dictionary",
+            "Latinh dictionary",
+            value,
+            "Tên phương Tây lấy từ dictionary.",
+            0.92,
+        )
+
+    latin_from_source = _extract_latin_name(source)
+    if latin_from_source:
+        add(
+            "latin_source",
+            "Latinh source",
+            latin_from_source,
+            "Giữ phần chữ Latin có sẵn trong source.",
+            0.86,
+        )
+
+    pinyin = _resolve_pinyin_word_by_word(accessor, source)
+    if pinyin and latin_from_dict and _has_latin_letter(pinyin):
+        add(
+            "latin_pinyin",
+            "Latinh pinyin",
+            pinyin,
+            "Pinyin tham khảo khi cần phiên âm Latin.",
+            0.72,
+        )
+
+    return suggestions
+
+
+def _pick_han_viet_reading(accessor: RuntimeDictionaryAccessor, source: str) -> str:
+    for record in accessor.get_entry_readings(source):
+        value = _normalize_reading(record.han_viet_readings)
+        if value:
+            return value
+    return ""
+
+
+def _resolve_han_viet_word_by_word(accessor: RuntimeDictionaryAccessor, source: str) -> str:
+    parts: list[str] = []
+    has_cjk = False
+    for char in source:
+        if _is_cjk_char(char):
+            has_cjk = True
+            reading = _pick_han_viet_reading(accessor, char)
+            parts.append(reading or char)
+        elif char.isspace():
+            continue
+        else:
+            parts.append(char)
+    if not has_cjk:
+        return ""
+    return _title_case_words(" ".join(parts))
+
+
+def _resolve_pinyin_word_by_word(accessor: RuntimeDictionaryAccessor, source: str) -> str:
+    parts: list[str] = []
+    has_cjk = False
+    for char in source:
+        if _is_cjk_char(char):
+            has_cjk = True
+            pinyin = ""
+            for record in accessor.get_entry_readings(char):
+                pinyin = _normalize_reading(record.pinyin)
+                if pinyin:
+                    break
+            parts.append(pinyin or char)
+        elif char.isspace():
+            continue
+        else:
+            parts.append(char)
+    if not has_cjk:
+        return ""
+    return " ".join(parts).strip()
+
+
+def _resolve_latin_dictionary_targets(accessor: RuntimeDictionaryAccessor, source: str) -> list[str]:
+    values: list[str] = []
+    for record in accessor.lookup_all(source):
+        if not _looks_like_western_name_record(record):
+            continue
+        value = _first_target_variant(record.target)
+        if value and _has_latin_letter(value):
+            values.append(_title_case_latin(value))
+    return values
+
+
+def _looks_like_western_name_record(record: object) -> bool:
+    source_file = str(getattr(record, "source_file", "") or "").casefold()
+    category = str(getattr(record, "category", "") or "").casefold()
+    cultural_origin = str(getattr(record, "cultural_origin", "") or "").casefold()
+    metadata = getattr(record, "metadata", {}) or {}
+    metadata_origin = str(metadata.get("cultural_origin", "") or "").casefold() if isinstance(metadata, dict) else ""
+    return (
+        "west" in source_file
+        or "latin" in category
+        or cultural_origin in {"western", "west", "latin"}
+        or metadata_origin in {"western", "west", "latin"}
+    )
+
+
+def _extract_latin_name(source: str) -> str:
+    spans = re.findall(r"[A-Za-z][A-Za-z0-9'._-]*(?:\s+[A-Za-z][A-Za-z0-9'._-]*)*", source)
+    if not spans:
+        return ""
+    return _title_case_latin(" ".join(spans))
+
+
+def _first_target_variant(value: str) -> str:
+    return re.split(r"[|,;/]", value or "", maxsplit=1)[0].strip()
+
+
+def _normalize_reading(value: str) -> str:
+    if not value:
+        return ""
+    return re.split(r"[|,;/]", value, maxsplit=1)[0].strip()
+
+
+def _title_case_words(value: str) -> str:
+    return " ".join(part[:1].upper() + part[1:] for part in value.split() if part)
+
+
+def _title_case_latin(value: str) -> str:
+    return " ".join(part[:1].upper() + part[1:] for part in value.split() if part)
+
+
+def _has_latin_letter(value: str) -> bool:
+    return bool(re.search(r"[A-Za-z]", value or ""))
+
+
+def _is_cjk_char(value: str) -> bool:
+    return "\u4e00" <= value <= "\u9fff"
+
+
+def _grammar_candidate_to_rule_payload(candidate: dict, *, report_paths: dict, scope: str) -> dict:
+    pattern_text = str(candidate.get("pattern_text") or "").strip()
+    pattern_type = str(candidate.get("pattern_type") or "").strip()
+    guessed_category = str(candidate.get("guessed_category") or "").strip()
+    frequency = int(candidate.get("frequency") or 0)
+    chapter_count = int(candidate.get("chapter_count") or 0)
+    confidence = float(candidate.get("confidence") or 0.0)
+    return {
+        "title": f"Grammar candidate: {pattern_text}",
+        "summary": (
+            f"{pattern_type} repeated {frequency} time(s) across "
+            f"{chapter_count} chapter(s); review before promoting to a grammar rule."
+        ),
+        "payload": {
+            **candidate,
+            "report_paths": report_paths,
+            "scope": scope,
+        },
+        "confidence": round(confidence, 3),
+        "scope": scope,
+        "chapter_id": None,
+        "origin": "grammar_pattern_scanner",
+        "review_note": "Coach-only candidate. Verification writes to grammar learning backlog, not translation config.",
+        "suggested_rule": {
+            "pattern_text": pattern_text,
+            "pattern_type": pattern_type,
+            "category": guessed_category or None,
+            "regex": candidate.get("suggested_regex"),
+            "status": "review",
+        },
+    }
+
+
 def _apply_candidate_rule(project_dir: Path, chapter_id: str | None, rule: dict) -> dict:
     rule_type = str(rule.get("rule_type") or "").strip()
     payload = dict(rule.get("rule_payload") or {})
@@ -1332,6 +1951,33 @@ def _apply_candidate_rule(project_dir: Path, chapter_id: str | None, rule: dict)
         "config_path": str(config_path),
         "learned_terms_path": str(learned_terms_path),
     }
+
+    if rule_type == "grammar_pattern_candidate":
+        backlog_path = project_dir / "working" / "grammar_learning" / "verified_patterns.json"
+        existing_backlog = _load_json(backlog_path, [])
+        if not isinstance(existing_backlog, list):
+            existing_backlog = []
+        candidate_payload = dict(suggestion_payload or payload)
+        candidate_id = str(candidate_payload.get("candidate_id") or payload.get("title") or rule.get("id") or "").strip()
+        candidate_payload["verified_rule_id"] = rule.get("id")
+        candidate_payload["verified_from"] = "candidate_rule"
+        candidate_payload["chapter_id"] = effective_chapter_id or ""
+        candidate_payload["scope"] = scope
+        normalized_backlog = [
+            item
+            for item in existing_backlog
+            if isinstance(item, dict) and str(item.get("candidate_id") or "") != candidate_id
+        ]
+        normalized_backlog.append(candidate_payload)
+        _write_json(backlog_path, normalized_backlog)
+        applied_changes["updated"] = "grammar_learning_backlog"
+        applied_changes["backlog_path"] = str(backlog_path)
+        applied_changes["effective_config"] = _resolve_translation_config(
+            project_dir,
+            config,
+            effective_chapter_id if scope == "chapter" else None,
+        )
+        return applied_changes
 
     if rule_type in {"phrase_override", "locked_entity"}:
         if rule_type == "phrase_override":
@@ -1535,9 +2181,13 @@ def _event(stage: str, message: str, progress: int, *, level: str = "info", payl
 
 def main():
     parser = argparse.ArgumentParser(description="Desktop sidecar bridge")
-    parser.add_argument("--request-json", required=True, help="JSON encoded CommandRequest")
+    parser.add_argument("--request-json", help="JSON encoded CommandRequest")
+    parser.add_argument("--request-json-stdin", action="store_true", help="Read JSON encoded CommandRequest from stdin")
     args = parser.parse_args()
-    request = CommandRequest(**json.loads(args.request_json))
+    request_payload = sys.stdin.read() if args.request_json_stdin else args.request_json
+    if not request_payload:
+        raise SystemExit("--request-json or --request-json-stdin is required")
+    request = CommandRequest(**json.loads(request_payload))
     response = handle_request(request)
     print(json.dumps(response.to_dict(), ensure_ascii=False))
 

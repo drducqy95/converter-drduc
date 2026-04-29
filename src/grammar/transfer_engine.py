@@ -174,6 +174,11 @@ class GrammarTransferEngine:
                 passive_marker = "do"
             return f"{passive_marker} {agent}{verb}"
 
+        def preference_ningke(match: re.Match[str]) -> str:
+            clause, connector = match.groups()
+            tail = "cũng phải" if connector == "也要" else "cũng không"
+            return f"thà {clause} {tail}"
+
         fixed_map = {
             "有鉴于此": "vì vậy",
             "不管怎么说": "dù nói thế nào thì",
@@ -215,6 +220,20 @@ class GrammarTransferEngine:
             "而已": "thôi",
             "不过如此": "chỉ vậy thôi",
             "如此而已": "chỉ như vậy thôi",
+            "何况": "huống chi",
+            "更何况": "huống chi là",
+            "反而": "ngược lại",
+            "乃至": "thậm chí đến",
+            "甚至": "thậm chí",
+            "并非": "không phải",
+            "未必": "chưa chắc",
+            "何尝": "đâu phải",
+            "与此同时": "cùng lúc đó",
+            "不至于": "không đến mức",
+            "否则": "nếu không thì",
+            "因此": "vì vậy",
+            "因而": "cho nên",
+            "由于": "do",
             "随着": "theo",
             "至于": "còn về",
             "关于": "về",
@@ -233,6 +252,16 @@ class GrammarTransferEngine:
             _TransferRule("regardless_wulun", re.compile(rf"(?:无论|不管){_SHORT_CLAUSE}(?:，)?(?:也|都)"), repl("dù {0} cũng"), 80),
             _TransferRule("contrast_bushi_ershi", re.compile(rf"不是{_SHORT_CLAUSE}而是"), repl("không phải {0} mà là"), 78),
             _TransferRule("additive_budan_erqie", re.compile(rf"(?:不但|不仅){_SHORT_CLAUSE}(?:而且|还)"), repl("không chỉ {0} mà còn"), 76),
+            _TransferRule("preference_yuqi_buru", re.compile(rf"与其{_SHORT_CLAUSE}(?:，)?不如"), repl("thà {0} chẳng bằng"), 82),
+            _TransferRule("preference_ningke", re.compile(rf"(?:宁可|宁愿){_SHORT_CLAUSE}(?:，)?(也不|也要)"), preference_ningke, 80),
+            _TransferRule("parallel_ji_you", re.compile(rf"既{_SHORT_CLAUSE}(?:，)?又"), repl("vừa {0} vừa"), 78),
+            _TransferRule("progressive_yue_yue", re.compile(rf"越{_SHORT_CLAUSE}越"), repl("càng {0} càng"), 78),
+            _TransferRule("concession_zaizenme", re.compile(rf"再怎么{_SHORT_CLAUSE}(?:，)?(?:也|都)"), repl("dù {0} thế nào cũng"), 78),
+            _TransferRule("reason_zhisuoyi_shiyinwei", re.compile(rf"之所以{_CLAUSE}(?:，)?是因为"), repl("sở dĩ {0} là vì"), 80),
+            _TransferRule("exclusive_zhiyou_cai", re.compile(rf"只有{_SHORT_CLAUSE}(?:，)?才"), repl("chỉ khi {0} mới"), 80),
+            _TransferRule("hypothesis_ruoshi", re.compile(rf"(?:倘若|假如|若是){_SHORT_CLAUSE}(?:，)?"), repl("nếu {0}"), 76),
+            _TransferRule("avoidance_miande", re.compile(rf"(?:免得|以免){_SHORT_CLAUSE}"), repl("để tránh {0}"), 76),
+            _TransferRule("cause_youyu_yinci", re.compile(rf"由于{_SHORT_CLAUSE}(?:，)?(?:因此|因而|所以)"), repl("do {0} nên"), 78),
             _TransferRule("concurrent_yibian", re.compile(rf"一边{_SHORT_CLAUSE}(?:，)?一边"), repl("vừa {0} vừa"), 78),
             _TransferRule("concurrent_bian", re.compile(rf"边([^边，。！？；\n]{{1,20}}?)边"), repl("vừa {0} vừa"), 76),
             _TransferRule("formal_passive_suo", re.compile(rf"(为|被|由){_SHORT_CLAUSE}所([^，。！？；\n]{{1,6}})"), passive, 84),

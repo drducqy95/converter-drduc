@@ -49,6 +49,11 @@ const SUPPORTED_COMMANDS: CommandName[] = [
   "run_qa",
   "load_qa_report",
   "load_learning_report",
+  "update_project_translation_config",
+  "upsert_project_entity",
+  "delete_project_entity",
+  "delete_project_entities",
+  "suggest_entity_targets",
   "search_dictionary_entries",
   "list_dictionary_entries",
   "update_dictionary_entry",
@@ -57,6 +62,7 @@ const SUPPORTED_COMMANDS: CommandName[] = [
   "list_candidate_entries",
   "review_candidate_entry",
   "submit_natural_feedback",
+  "scan_grammar_learning_patterns",
   "list_candidate_rules",
   "review_candidate_rule",
 ];
@@ -247,6 +253,102 @@ export function createDemoTransport(): Transport {
               report: clone(project.learningReport ?? emptyLearningReport(project.project.active_chapter)),
             } as T, events);
           }
+          case "update_project_translation_config": {
+            const project = ensureProject(projects, payload);
+            if (!payload.config || typeof payload.config !== "object" || Array.isArray(payload.config)) {
+              throw new Error("config must be an object");
+            }
+            project.config = clone(payload.config as Record<string, unknown>);
+            events.push(makeEvent("config_updated", "Saved demo project translation config", 100));
+            return makeResponse(command, requestId, {
+              project_id: project.project.project_id,
+              config: clone(project.config),
+              overview: buildOverview(project),
+            } as T, events);
+          }
+          case "upsert_project_entity": {
+            const project = ensureProject(projects, payload);
+            if (!payload.entity || typeof payload.entity !== "object" || Array.isArray(payload.entity)) {
+              throw new Error("entity must be an object");
+            }
+            const entity = normalizeDemoEntity(payload.entity as Record<string, unknown>);
+            project.entities = upsertBySource(project.entities, entity);
+            if (entity.entity_type === "junk_phrase") {
+              project.config.ignored_phrases = upsertJunkPhrase(project.config.ignored_phrases, entity);
+            } else if (payload.sync_locked !== false) {
+              const locked = Array.isArray(project.config.locked_entities)
+                ? [...(project.config.locked_entities as Array<Record<string, unknown>>)]
+                : [];
+              project.config.locked_entities = upsertBySource(locked, {
+                source: entity.source,
+                target: entity.target,
+                entity_type: entity.entity_type,
+                origin: "user_review",
+              });
+            }
+            events.push(makeEvent("entity_updated", "Saved demo project entity", 100));
+            return makeResponse(command, requestId, {
+              project_id: project.project.project_id,
+              entity: clone(entity),
+              overview: buildOverview(project),
+            } as T, events);
+          }
+          case "delete_project_entity": {
+            const project = ensureProject(projects, payload);
+            const source = asString(payload.source, "").trim();
+            if (!source) {
+              throw new Error("source is required");
+            }
+            const beforeCount = project.entities.length;
+            project.entities = project.entities.filter((entity) => asString(entity.source, "").trim() !== source);
+            project.config = removeJunkPhrases(project.config, new Set([source]));
+            if (payload.sync_locked !== false && Array.isArray(project.config.locked_entities)) {
+              project.config.locked_entities = (project.config.locked_entities as Array<Record<string, unknown>>)
+                .filter((entity) => asString(entity.source, "").trim() !== source);
+            }
+            events.push(makeEvent("entity_deleted", "Deleted demo project entity", 100));
+            return makeResponse(command, requestId, {
+              project_id: project.project.project_id,
+              source,
+              deleted: project.entities.length !== beforeCount,
+              overview: buildOverview(project),
+            } as T, events);
+          }
+          case "delete_project_entities": {
+            const project = ensureProject(projects, payload);
+            const sources = Array.isArray(payload.sources)
+              ? payload.sources.map((source) => asString(source, "").trim()).filter(Boolean)
+              : [];
+            if (!sources.length) {
+              throw new Error("sources must contain at least one entity source");
+            }
+            const sourceSet = new Set(sources);
+            const beforeCount = project.entities.length;
+            project.entities = project.entities.filter((entity) => !sourceSet.has(asString(entity.source, "").trim()));
+            project.config = removeJunkPhrases(project.config, sourceSet);
+            if (payload.sync_locked !== false && Array.isArray(project.config.locked_entities)) {
+              project.config.locked_entities = (project.config.locked_entities as Array<Record<string, unknown>>)
+                .filter((entity) => !sourceSet.has(asString(entity.source, "").trim()));
+            }
+            events.push(makeEvent("entities_deleted", "Deleted demo project entities", 100));
+            return makeResponse(command, requestId, {
+              project_id: project.project.project_id,
+              sources,
+              deleted_count: beforeCount - project.entities.length,
+              overview: buildOverview(project),
+            } as T, events);
+          }
+          case "suggest_entity_targets": {
+            const source = asString(payload.source, "").trim();
+            if (!source) {
+              throw new Error("source is required");
+            }
+            events.push(makeEvent("entity_targets_suggested", "Generated demo entity target suggestions", 100));
+            return makeResponse(command, requestId, {
+              source,
+              suggestions: buildDemoEntityTargetSuggestions(source),
+            } as T, events);
+          }
           case "search_dictionary_entries": {
             const query = asString(payload.query, "一");
             const entries = buildDemoDictionaryResults(query);
@@ -408,6 +510,44 @@ export function createDemoTransport(): Transport {
             return makeResponse(command, requestId, {
               project_id: project.project.project_id,
               analysis,
+              created_rule_ids: createdRuleIds,
+              rules: clone(project.candidateRules),
+              overview: buildOverview(project),
+            } as T, events);
+          }
+          case "scan_grammar_learning_patterns": {
+            const project = ensureProject(projects, payload);
+            const report = buildDemoGrammarLearningReport();
+            const createdRuleIds: number[] = [];
+            if (payload.enqueue_candidates !== false) {
+              for (const candidate of report.unknown_candidates.slice(0, Number(payload.max_candidate_rules ?? 5))) {
+                const ruleId = project.nextRuleId;
+                project.candidateRules.push({
+                  id: ruleId,
+                  rule_type: "grammar_pattern_candidate",
+                  rule_payload: {
+                    title: `Grammar candidate: ${candidate.pattern_text}`,
+                    summary: `${candidate.pattern_type} repeated ${candidate.frequency} time(s); review only.`,
+                    payload: clone(candidate) as Record<string, unknown>,
+                    confidence: candidate.confidence,
+                    scope: "project",
+                    chapter_id: null,
+                    origin: "grammar_pattern_scanner",
+                  },
+                  status: "candidate",
+                  reviewer_reason: "",
+                  created_at: new Date().toISOString(),
+                  updated_at: new Date().toISOString(),
+                });
+                createdRuleIds.push(ruleId);
+                project.nextRuleId += 1;
+              }
+            }
+            events.push(makeEvent("grammar_scan_completed", "Generated demo grammar learning report", 100));
+            return makeResponse(command, requestId, {
+              project_id: project.project.project_id,
+              report,
+              report_paths: {},
               created_rule_ids: createdRuleIds,
               rules: clone(project.candidateRules),
               overview: buildOverview(project),
@@ -966,6 +1106,50 @@ function buildDemoFeedbackAnalysis(
   };
 }
 
+function buildDemoGrammarLearningReport(): Record<string, unknown> & {
+  unknown_candidates: Array<Record<string, unknown> & {
+    pattern_text: string;
+    pattern_type: string;
+    frequency: number;
+    confidence: number;
+  }>;
+} {
+  const unknownCandidates = [
+    {
+      candidate_id: "unknown_demo_yuqi_buru",
+      pattern_text: "与其...不如",
+      pattern_type: "paired_marker",
+      frequency: 12,
+      chapter_count: 4,
+      confidence: 0.83,
+      guessed_category: "preference",
+      suggested_regex: "与其(?P<a>.+?)不如(?P<b>.+)",
+      status: "review",
+      examples: ["与其坐以待毙，不如主动出击。"],
+    },
+  ];
+  return {
+    summary: {
+      total_sources: 1,
+      total_chapters: 1,
+      total_sentences: 24,
+      total_matches: 8,
+      total_rules_matched: 3,
+      unknown_candidate_count: unknownCandidates.length,
+    },
+    sources: [],
+    warnings: [],
+    known_rules: [],
+    unknown_candidates: unknownCandidates,
+    rule_backlog: [],
+    metadata: {
+      engine: "GrammarLearningPatternScanner",
+      pipeline_scope: "translator_learning_coach_only",
+      non_llm: true,
+    },
+  };
+}
+
 function applyDemoRule(project: DemoProject, rule: CandidateRule): Record<string, unknown> | null {
   const payload = (rule.rule_payload.payload ?? {}) as Record<string, unknown>;
   switch (rule.rule_type) {
@@ -994,6 +1178,14 @@ function applyDemoRule(project: DemoProject, rule: CandidateRule): Record<string
       guidance.push(clone(payload));
       project.config.style_guidance = guidance;
       return { updated: "style_guidance" };
+    }
+    case "grammar_pattern_candidate": {
+      const backlog = Array.isArray(project.config.grammar_learning_backlog)
+        ? [...(project.config.grammar_learning_backlog as Array<Record<string, unknown>>)]
+        : [];
+      backlog.push(clone(payload));
+      project.config.grammar_learning_backlog = backlog;
+      return { updated: "grammar_learning_backlog" };
     }
     default:
       return null;
@@ -1029,6 +1221,125 @@ function getLockedEntityTarget(config: Record<string, unknown>, source: string):
     }
   }
   return null;
+}
+
+function normalizeDemoEntity(payload: Record<string, unknown>): Record<string, unknown> {
+  return {
+    source: asString(payload.source, "").trim(),
+    target: asString(payload.target, "").trim(),
+    entity_type: asString(payload.entity_type, "project_term"),
+    confidence: Number(payload.confidence ?? 1) || 1,
+    source_dict: asString(payload.source_dict, "user_review"),
+    ambiguity_flag: Boolean(payload.ambiguity_flag),
+    count: Math.max(1, Number(payload.count ?? 1) || 1),
+    positions: Array.isArray(payload.positions) ? payload.positions : [],
+  };
+}
+
+function normalizeJunkPhrase(item: unknown): Record<string, unknown> | null {
+  if (typeof item === "string") {
+    const source = item.trim();
+    return source ? { source, target: "", clean_text: "", origin: "user_review", enabled: true } : null;
+  }
+  if (!item || typeof item !== "object" || Array.isArray(item)) {
+    return null;
+  }
+  const payload = item as Record<string, unknown>;
+  const source = asString(payload.source ?? payload.raw_pattern ?? payload.phrase ?? payload.text, "").trim();
+  const target = asString(payload.target ?? payload.target_vi, "").trim();
+  if (!source && !target) {
+    return null;
+  }
+  return {
+    source,
+    target,
+    clean_text: asString(payload.clean_text ?? payload.replacement, "").trim(),
+    origin: asString(payload.origin ?? payload.source_dict, "user_review").trim() || "user_review",
+    enabled: payload.enabled !== false,
+  };
+}
+
+function upsertJunkPhrase(current: unknown, entity: Record<string, unknown>): Array<Record<string, unknown>> {
+  const entries = Array.isArray(current)
+    ? current.map(normalizeJunkPhrase).filter(Boolean) as Array<Record<string, unknown>>
+    : [];
+  return upsertBySource(entries, {
+    source: asString(entity.source, "").trim(),
+    target: asString(entity.target, "").trim(),
+    clean_text: "",
+    origin: "user_review",
+    enabled: true,
+  });
+}
+
+function removeJunkPhrases(config: Record<string, unknown>, sources: Set<string>): Record<string, unknown> {
+  for (const key of ["ignored_phrases", "junk_phrases", "user_noise_phrases"]) {
+    const entries = Array.isArray(config[key])
+      ? (config[key] as unknown[]).map(normalizeJunkPhrase).filter(Boolean) as Array<Record<string, unknown>>
+      : null;
+    if (!entries) {
+      continue;
+    }
+    config[key] = entries.filter((item) => {
+      const source = asString(item.source, "").trim();
+      const target = asString(item.target, "").trim();
+      return !sources.has(source) && !sources.has(target);
+    });
+  }
+  return config;
+}
+
+function buildDemoEntityTargetSuggestions(source: string): Array<Record<string, unknown>> {
+  if (source === "九岭十三坡") {
+    return [
+      {
+        kind: "han_viet_word",
+        label: "Hán Việt word by word",
+        value: "Cửu Lĩnh Thập Tam Pha",
+        detail: "Ghép từng Hán tự theo thứ tự source.",
+        confidence: 0.9,
+      },
+    ];
+  }
+  const latinMatch = source.match(/[A-Za-z][A-Za-z0-9'._-]*(?:\s+[A-Za-z][A-Za-z0-9'._-]*)*/);
+  return [
+    {
+      kind: "han_viet_word",
+      label: "Hán Việt word by word",
+      value: source,
+      detail: "Demo fallback.",
+      confidence: 0.5,
+    },
+    ...(latinMatch ? [{
+      kind: "latin_source",
+      label: "Latinh source",
+      value: latinMatch[0],
+      detail: "Giữ phần chữ Latin có sẵn trong source.",
+      confidence: 0.86,
+    }] : []),
+  ];
+}
+
+function upsertBySource(
+  items: Array<Record<string, unknown>>,
+  incoming: Record<string, unknown>,
+): Array<Record<string, unknown>> {
+  const source = asString(incoming.source, "").trim();
+  if (!source) {
+    return items;
+  }
+  let replaced = false;
+  const next = items.map((item) => {
+    if (asString(item.source, "").trim() !== source) {
+      return item;
+    }
+    replaced = true;
+    return { ...item, ...incoming };
+  });
+  if (!replaced) {
+    next.push(incoming);
+  }
+  return next;
 }
 
 function makeEvent(stage: string, message: string, progress: number): CommandEvent {

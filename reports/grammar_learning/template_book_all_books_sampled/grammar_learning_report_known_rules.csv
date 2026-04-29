@@ -1,0 +1,30 @@
+rule_id,category,name,count,chapter_count
+jiang_construction,disposal,将 construction,8861,157
+passive_bei,passive,被 passive,7909,158
+ba_construction,disposal,把 construction,3461,138
+concession_suiran_danshi,concession,虽然...但是/但/却...,2677,158
+concession_jiusuan_ye,concession,就算...也...,840,133
+condition_ruguo_jiu,condition,如果...就...,806,138
+viewpoint_dui_laishuo,viewpoint,对...来说/而言,763,136
+concession_jibian_ye,concession,即便/即使...也...,731,138
+viewpoint_zuowei,viewpoint,作为...,649,121
+regardless_wulun_dou,regardless,无论/不管...都/也...,538,128
+condition_zhiyao_jiu,condition,只要...就...,526,127
+minimizing_eryi,minimizing,X而已,492,126
+contrast_bushi_ershi,contrast_correction,不是...而是...,391,122
+concession_napa_ye,concession,哪怕...也...,330,97
+additive_budan_erqie,additive,不但/不仅...而且/还...,306,120
+minimizing_bale,minimizing,X罢了,251,98
+condition_yidan_jiu,condition,一旦...就/便...,216,101
+definition_suowei,definition,所谓...,197,91
+passive_bei_suo,passive,被...所...,178,83
+emphatic_jiulian_ye,emphatic_even,就连X也/都Y,154,78
+evidential_jushuo,evidential,据说/据悉/据了解,134,76
+comparison_yu_x_xiangbi,comparison,与/和X相比,131,81
+passive_wei_suo,passive,为...所...,104,67
+parallel_yibian_yibian,parallel_action,一边...一边...,62,47
+condition_chufei_fouze,condition,除非...否则...,30,23
+precaution_yifang,precaution,以防...,27,22
+enumeration_yilai_erlai,enumeration,一来...二来...,24,21
+comparison_biqi,comparison,比起X来,20,17
+necessity_fei_buke,necessity,非X不可,14,12

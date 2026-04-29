@@ -2,10 +2,16 @@
 
 use serde::Serialize;
 use std::env;
+use std::io::Write;
 use std::path::{Path, PathBuf};
-use std::process::Command;
+use std::process::{Command, Stdio};
+
+#[cfg(target_os = "windows")]
+use std::os::windows::process::CommandExt;
 
 const PROTOCOL_VERSION: &str = "2026-04-16.phase10";
+#[cfg(target_os = "windows")]
+const CREATE_NO_WINDOW: u32 = 0x08000000;
 
 #[derive(Clone)]
 struct PythonInvocation {
@@ -95,20 +101,34 @@ fn run_sidecar(
     command.args([
         "-m",
         "src.ui.sidecar_bridge",
-        "--request-json",
-        request_json,
+        "--request-json-stdin",
     ]);
     command.current_dir(repo_root);
     command.env("PYTHONUTF8", "1");
     command.env("PYTHONIOENCODING", "utf-8");
+    command.stdin(Stdio::piped());
+    command.stdout(Stdio::piped());
+    command.stderr(Stdio::piped());
+    #[cfg(target_os = "windows")]
+    command.creation_flags(CREATE_NO_WINDOW);
 
-    let output = command.output().map_err(|error| {
+    let mut child = command.spawn().map_err(|error| {
         format!(
             "{} failed to launch: {}",
             render_candidate(candidate),
             error
         )
     })?;
+
+    if let Some(mut stdin) = child.stdin.take() {
+        stdin
+            .write_all(request_json.as_bytes())
+            .map_err(|error| format!("{} stdin write failed: {}", render_candidate(candidate), error))?;
+    }
+
+    let output = child
+        .wait_with_output()
+        .map_err(|error| format!("{} failed to read sidecar output: {}", render_candidate(candidate), error))?;
 
     if !output.status.success() {
         let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();

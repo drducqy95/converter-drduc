@@ -19,6 +19,7 @@ from src.eapee.expression_bank import ExpressionBank
 from src.eapee.pronoun_resolver import PronounResolver
 from src.engine.context_manager import ContextManager
 from src.engine.cultural_origin_detector import CulturalOriginDetector
+from src.engine.junk_phrase_filter import JunkPhraseFilter
 from src.engine.number_converter import NumberConverter
 from src.engine.pinyin_processor import PinyinProcessor
 from src.engine.sentence_segmenter import SentenceSegmenter
@@ -284,6 +285,7 @@ class RBMTTranslator:
         self.expression_bank = ExpressionBank()
         self.pronoun_resolver = PronounResolver()
         self.grammar_transfer = GrammarTransferEngine()
+        self.junk_filter = JunkPhraseFilter()
         self.tm = TranslationMemory(tm_db_path) if tm_db_path else None
         self.enable_tm_lookup = enable_tm_lookup
         self.function_translations = dict(DEFAULT_FUNCTION_TRANSLATIONS)
@@ -313,7 +315,13 @@ class RBMTTranslator:
         simplified = self.converter.convert(preserved.text)
         protected = {item["source"] for item in config.get("locked_entities", [])}
         resolved = self.pinyin.resolve(simplified, protected_terms=protected)
-        working_text = resolved
+        source_junk_result = self.junk_filter.apply_source(
+            resolved,
+            config,
+            normalizer=self.converter.convert,
+        )
+        working_text = source_junk_result.text
+        source_junk_traces = list(source_junk_result.traces)
 
         segments: list[SegmentTranslation] = []
         clean_sentences: list[str] = []
@@ -337,7 +345,11 @@ class RBMTTranslator:
                 )
                 clean_text = self.preserver.restore(clean_text, preserved.placeholders)
                 draft_text = self.preserver.restore(draft_text, preserved.placeholders)
-                trace = self._attach_trace_metadata(trace, trace_id)
+
+            if position == 0 and source_junk_traces:
+                trace = [*source_junk_traces, *trace]
+                source_junk_traces = []
+            trace = self._attach_trace_metadata(trace, trace_id)
 
             self.context.update(
                 source_sentence=display_source,
@@ -354,8 +366,6 @@ class RBMTTranslator:
                     quality_score=0.92,
                     trace_json=trace,
                 )
-            elif tm_hit:
-                trace = self._attach_trace_metadata(trace, trace_id)
 
             segment = SegmentTranslation(
                 sentence_id=span.sentence_id,
@@ -445,6 +455,8 @@ class RBMTTranslator:
             return "context_resolver"
         if fallback_level in {"grammar_transfer"}:
             return "grammar_transfer"
+        if fallback_level in {"junk_phrase_filter"}:
+            return "junk_filter"
         if fallback_level in {"phrase_override", "runtime", "function_map", "reading_fallback", "ambiguous", "unresolved"}:
             return "lexical_decode"
         return "rbmt"
@@ -598,6 +610,12 @@ class RBMTTranslator:
             style_selection=style_selection,
             inject_expression=False,
         )
+        clean_filter = self.junk_filter.apply_target(clean_text, config)
+        draft_filter = self.junk_filter.apply_target(draft_text, config)
+        clean_text = clean_filter.text
+        draft_text = draft_filter.text
+        traces.extend(clean_filter.traces)
+        traces.extend(draft_filter.traces)
         return clean_text, draft_text, traces, emotion
 
     def _build_trie_trace(self, source: str, target: str, priority: int, config: dict) -> dict:

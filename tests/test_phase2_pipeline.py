@@ -76,8 +76,13 @@ def test_pretranslation_pipeline_creates_project_artifacts(tmp_path):
 
     config_path = project_dir / "working" / "config" / "translation_config.json"
     entities_path = project_dir / "working" / "entities" / "entities_suggested.json"
+    syntax_path = project_dir / "working" / "segments" / "syntax_analysis.json"
     assert config_path.exists()
     assert entities_path.exists()
+    assert syntax_path.exists()
+    syntax_payload = json.loads(syntax_path.read_text(encoding="utf-8"))
+    assert syntax_payload
+    assert "dependencies" in syntax_payload[0]
 
     config = json.loads(config_path.read_text(encoding="utf-8"))
     assert "locked_entities" in config
