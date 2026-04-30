@@ -393,6 +393,79 @@ def test_pronoun_resolver_tracks_implicit_alternating_dialogue_speakers():
     assert second["listener"] == "\u6797\u52a8"
 
 
+def test_pronoun_resolver_uses_relationship_graph_for_third_person():
+    resolver = PronounResolver()
+    resolver.set_entity_graph(
+        [
+            {"source": "\u6797\u52a8", "target": "Lâm Động", "entity_type": "person", "gender": "male"},
+            {"source": "\u8427\u708e", "target": "Tiêu Viêm", "entity_type": "person", "gender": "male"},
+            {"source": "\u9752\u5c71", "target": "Thanh Sơn", "entity_type": "location"},
+        ],
+        [
+            {
+                "source": "\u6797\u52a8",
+                "target": "\u8427\u708e",
+                "relation_type": "ally",
+                "confidence": 0.91,
+            }
+        ],
+    )
+    text = "\u6797\u52a8\u8bf4\u9053\uff1a\u201c\u8427\u708e\u6765\u4e86\uff0c\u4ed6\u53d7\u4f24\u4e86\u3002\u201d"
+    context = resolver.detect_dialogue_context(
+        text,
+        active_entities=["\u6797\u52a8", "\u8427\u708e", "\u9752\u5c71"],
+        context_type="dialogue",
+    )
+    trace = resolver.resolve_token(
+        text,
+        text.index("\u4ed6"),
+        context,
+        emotion=None,
+        genre="general",
+    )
+
+    assert trace is not None
+    assert trace["resolved_entity"] == "\u8427\u708e"
+    assert trace["resolved_target"] == "Tiêu Viêm"
+    assert trace["relation_type"] == "ally"
+    assert trace["reason"] == "pronoun_graph:ally"
+
+
+def test_rbmt_translator_emits_pronoun_graph_trace():
+    translator = RBMTTranslator()
+    try:
+        result = translator.translate_text(
+            "\u6797\u52a8\u8bf4\u9053\uff1a\u201c\u8427\u708e\u6765\u4e86\uff0c\u4ed6\u53d7\u4f24\u4e86\u3002\u201d",
+            config={
+                "genre_hints": ["general"],
+                "locked_entities": [
+                    {"source": "\u6797\u52a8", "target": "Lâm Động", "entity_type": "person", "gender": "male"},
+                    {"source": "\u8427\u708e", "target": "Tiêu Viêm", "entity_type": "person", "gender": "male"},
+                ],
+                "relationships": [
+                    {
+                        "source": "\u6797\u52a8",
+                        "target": "\u8427\u708e",
+                        "relation_type": "ally",
+                        "confidence": 0.91,
+                    }
+                ],
+            },
+        )
+    finally:
+        translator.close()
+
+    pronoun_traces = [
+        trace
+        for segment in result.segments
+        for trace in segment.trace
+        if trace.get("source") == "\u4ed6"
+    ]
+    assert pronoun_traces
+    assert pronoun_traces[0]["resolved_entity"] == "\u8427\u708e"
+    assert pronoun_traces[0]["reason"] == "pronoun_graph:ally"
+
+
 def test_entity_scanner_common_non_name_blacklist_covers_pronouns_and_common_people_terms():
     assert EntityScanner._looks_like_common_non_person_phrase("\u4ed6\u4eec")
     assert EntityScanner._looks_like_common_non_person_phrase("\u5929\u4e0b\u4eba")

@@ -309,6 +309,10 @@ class RBMTTranslator:
         config["style_context"] = style_selection["effective_context"]
         config["naturalization"] = style_selection["naturalization"]
         config["style_resolution"] = style_selection
+        self.pronoun_resolver.set_entity_graph(
+            config.get("locked_entities", []),
+            config.get("relationships", []),
+        )
         phrase_overrides, phrase_override_keys = self._resolve_phrase_overrides(config)
         preserved = self.preserver.preserve(text)
         simplified = self.converter.convert(preserved.text)
@@ -519,7 +523,7 @@ class RBMTTranslator:
             if sentence_context == "dialogue"
             else None
         )
-        entity_pairs = [(item["source"], item["target"]) for item in locked_entities]
+        entity_pairs = [(item["source"], item["target"], item.get("entity_type", "")) for item in locked_entities]
         self.luat_nhan.set_entity_pairs(entity_pairs)
         sentence = self.luat_nhan.apply_with_source_entities(sentence)
 

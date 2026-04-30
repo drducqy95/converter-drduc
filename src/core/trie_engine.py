@@ -341,6 +341,53 @@ class TrieEngine:
                 )
 
         return None
+
+    def lookup_viterbi(self, text: str, pos: int = 0) -> TrieMatch | None:
+        """Return the first token from the highest-scoring Viterbi path."""
+        if pos >= len(text):
+            return None
+        tokens = self.segment_viterbi(text[pos:])
+        if not tokens:
+            return None
+        return tokens[0]
+
+    def lookup_prefixes(self, text: str, pos: int = 0) -> list[TrieMatch]:
+        """Return all trie prefix matches starting at `pos`, shortest to longest."""
+        node = self.root
+        matches: list[TrieMatch] = []
+
+        for i in range(pos, len(text)):
+            char = text[i]
+            if char not in node.children:
+                break
+            node = node.children[char]
+
+            if node.is_end:
+                matches.append(self._match_from_node(text[pos:i + 1], node))
+
+        return matches
+
+    @staticmethod
+    def _match_from_node(source: str, node: TrieNode) -> TrieMatch:
+        target = node.target
+        if node.one_mean and ';' in target:
+            target = target.split(';')[0].strip()
+
+        return TrieMatch(
+            source=source,
+            target=target,
+            priority=node.priority,
+            length=len(source),
+            one_mean=node.one_mean,
+            pos_tag=node.pos_tag,
+            pos_sub=node.pos_sub,
+            entity_type=node.entity_type,
+            is_function_word=node.is_function_word,
+            luat_nhan_trigger=node.luat_nhan_trigger,
+            reorder_role=node.reorder_role,
+            cultural_origin=node.cultural_origin,
+            register_level=node.register_level,
+        )
     
     def lookup_exact(self, source: str) -> TrieMatch | None:
         """Look up an exact source string."""
@@ -412,7 +459,7 @@ class TrieEngine:
     
     # ─── Translate ───
     
-    def translate_text(self, text: str, fallback_char: bool = True) -> str:
+    def translate_text(self, text: str, fallback_char: bool = True, *, strategy: str = "viterbi") -> str:
         """
         Translate a text using longest-prefix matching + algorithmic numbers.
         
@@ -433,6 +480,11 @@ class TrieEngine:
         """
         if not text:
             return ""
+
+        if strategy == "viterbi":
+            return ''.join(token.target for token in self.segment_viterbi(text, fallback_char=fallback_char))
+        if strategy != "greedy":
+            raise ValueError(f"Unsupported trie translation strategy: {strategy}")
         
         result = []
         i = 0
@@ -493,13 +545,103 @@ class TrieEngine:
     
     # ─── Segmentation & Rich Translation ───
     
-    def segment_to_tokens(self, text: str) -> List[TrieMatch]:
+    def segment_viterbi(self, text: str, fallback_char: bool = True) -> list[TrieMatch]:
         """
-        Segment a text into a sequence of longest-prefix TrieMatch tokens.
+        Segment text with dynamic-programming path scoring.
+
+        This avoids greedy traps where a long medium-priority entry blocks a better
+        sequence of shorter high-confidence entries.
+        """
+        if not text:
+            return []
+
+        n = len(text)
+        best_score = [float("-inf")] * (n + 1)
+        best_path: list[list[TrieMatch] | None] = [None] * (n + 1)
+        best_score[n] = 0.0
+        best_path[n] = []
+
+        for pos in range(n - 1, -1, -1):
+            candidates = self._viterbi_candidates(text, pos, fallback_char=fallback_char)
+            for candidate in candidates:
+                next_pos = pos + candidate.length
+                if next_pos > n or best_path[next_pos] is None:
+                    continue
+                score = self._viterbi_token_score(candidate) + best_score[next_pos]
+                if score > best_score[pos] or (
+                    score == best_score[pos]
+                    and best_path[pos] is not None
+                    and candidate.length > best_path[pos][0].length
+                ):
+                    best_score[pos] = score
+                    best_path[pos] = [candidate, *best_path[next_pos]]
+
+        return best_path[0] or []
+
+    def _viterbi_candidates(self, text: str, pos: int, *, fallback_char: bool) -> list[TrieMatch]:
+        candidates = self.lookup_prefixes(text, pos)
+
+        if self._number_converter:
+            num_result = self._number_converter.try_convert(text, pos)
+            if num_result:
+                candidates.append(TrieMatch(
+                    source=text[pos:pos + num_result.consumed],
+                    target=num_result.text,
+                    priority=2,
+                    length=num_result.consumed,
+                    one_mean=False,
+                    pos_tag="NUMBER",
+                ))
+
+        if candidates:
+            return candidates
+
+        char = text[pos]
+        if fallback_char and self._is_cjk(char):
+            reading = self.lookup_reading(char)
+            return [TrieMatch(
+                source=char,
+                target=reading if reading else char,
+                priority=1 if reading else 0,
+                length=1,
+                one_mean=bool(reading),
+            )]
+
+        return [TrieMatch(
+            source=char,
+            target=char,
+            priority=0,
+            length=1,
+            one_mean=False,
+        )]
+
+    @staticmethod
+    def _viterbi_token_score(match: TrieMatch) -> float:
+        priority = max(0, int(match.priority or 0))
+        length = max(1, int(match.length or 1))
+        score = (priority * 6.0) + length - 6.0
+        if match.pos_tag == "NUMBER":
+            score += 2.0
+        if match.entity_type:
+            score += 1.5
+        if match.luat_nhan_trigger:
+            score += 1.0
+        if priority <= 0:
+            score -= 8.0
+        return score
+
+    def segment_to_tokens(self, text: str, *, strategy: str = "viterbi") -> List[TrieMatch]:
+        """
+        Segment a text into a sequence of TrieMatch tokens.
         Handles both Trie matches and NumberConverter algorithmic matches.
         """
         if not text:
             return []
+
+        if strategy == "viterbi":
+            return self.segment_viterbi(text)
+        if strategy != "greedy":
+            raise ValueError(f"Unsupported trie segmentation strategy: {strategy}")
         
         tokens = []
         i = 0

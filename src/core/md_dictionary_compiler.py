@@ -961,7 +961,7 @@ class DictionaryCompiler:
         # Insert grammar patterns
         for p in patterns:
             # Extract the key part (the Chinese text without {0})
-            pattern_key = p.pattern.replace('{0}', '')
+            pattern_key = re.sub(r"\{(?:\d+(?::[A-Za-z_][\w-]*)?|[A-Za-z_][\w-]*)\}", "", p.pattern)
             c.execute(
                 "INSERT INTO grammar_patterns (pattern, replacement, category, source_file, pattern_key) VALUES (?, ?, ?, ?, ?)",
                 (p.pattern, p.replacement, p.category, p.source_file, pattern_key)

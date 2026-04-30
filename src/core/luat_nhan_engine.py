@@ -20,6 +20,21 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Optional
 
+PLACEHOLDER_RE = re.compile(r"\{(?:(?P<index>\d+)(?::(?P<typed>[A-Za-z_][\w-]*))?|(?P<named>[A-Za-z_][\w-]*))\}")
+ENTITY_TYPE_ALIASES = {
+    "character": "person",
+    "name": "person",
+    "person_name": "person",
+    "place": "location",
+    "loc": "location",
+    "org": "organization",
+    "organisation": "organization",
+    "faction": "organization",
+    "sect": "organization",
+    "any": "",
+    "entity": "",
+}
+
 
 # ─────────────────────────────────────────────────
 # Data Classes
@@ -34,15 +49,22 @@ class LuatNhanRule:
     category: str       # luat_nhan_primary or luat_nhan_extended
     prefix: str = ""    # Text before {0} in pattern
     suffix: str = ""    # Text after {0} in pattern
+    placeholder: str = "{0}"
+    placeholder_type: str = ""
     
     def __post_init__(self):
-        # Parse where {0} appears in the pattern
-        idx = self.pattern.find('{0}')
-        if idx >= 0:
-            self.prefix = self.pattern[:idx]
-            self.suffix = self.pattern[idx + 3:]
+        # Parse where the placeholder appears in the pattern.
+        match = PLACEHOLDER_RE.search(self.pattern)
+        if match:
+            self.placeholder = match.group(0)
+            self.placeholder_type = _normalize_entity_type(match.group("typed") or match.group("named") or "")
+            self.prefix = self.pattern[:match.start()]
+            self.suffix = self.pattern[match.end():]
         else:
             self.suffix = self.pattern
+
+    def render(self, value: str) -> str:
+        return self.replacement.replace("{0}", value).replace(self.placeholder, value)
 
 
 # ─────────────────────────────────────────────────
@@ -61,7 +83,9 @@ class LuatNhanEngine:
         self.rules: list[LuatNhanRule] = []
         self._compiled_patterns: list[tuple[re.Pattern, LuatNhanRule]] = []
         self._entity_set: set[str] = set()
-        self._compiled_source_names: tuple[str, ...] = ()
+        self._entity_pairs: dict[str, str] = {}
+        self._entity_types_by_source: dict[str, str] = {}
+        self._compiled_source_signature: tuple[tuple[str, str], ...] = ()
         self._db_cache_key: str = ""
     
     def load_from_sqlite(self, db_path: str | Path) -> int:
@@ -117,30 +141,63 @@ class LuatNhanEngine:
         Source names are used for pattern matching in the source text.
         Target names are used for replacement in the translated text.
         """
-        self._entity_pairs = {src: tgt for src, tgt in pairs if src}
-        source_names = tuple(sorted((src for src, _ in pairs if src), key=len, reverse=True))
-        if source_names == self._compiled_source_names:
+        normalized_pairs = [self._normalize_entity_pair(item) for item in pairs]
+        self._entity_pairs = {src: tgt for src, tgt, _entity_type in normalized_pairs if src}
+        self._entity_types_by_source = {
+            src: entity_type
+            for src, _tgt, entity_type in normalized_pairs
+            if src and entity_type
+        }
+        source_signature = tuple(
+            sorted(
+                ((src, entity_type) for src, _tgt, entity_type in normalized_pairs if src),
+                key=lambda item: (len(item[0]), item[0], item[1]),
+                reverse=True,
+            )
+        )
+        if source_signature == self._compiled_source_signature:
             return
-        self._compiled_source_names = source_names
-        cache_key = (self._db_cache_key, source_names)
+        self._compiled_source_signature = source_signature
+        cache_key = (self._db_cache_key, source_signature)
         cached = _SHARED_COMPILED_PATTERNS.get(cache_key)
         if cached is not None:
             self._compiled_patterns = cached
             return
-        self._compile_patterns_with_source(source_names)
+        self._compile_patterns_with_source(source_signature)
         _SHARED_COMPILED_PATTERNS[cache_key] = self._compiled_patterns
 
-    def _compile_patterns_with_source(self, source_names: list[str] | tuple[str, ...]):
+    def _normalize_entity_pair(self, item) -> tuple[str, str, str]:
+        if isinstance(item, dict):
+            return (
+                str(item.get("source") or "").strip(),
+                str(item.get("target") or item.get("source") or "").strip(),
+                _normalize_entity_type(str(item.get("entity_type") or item.get("type") or "").strip()),
+            )
+        if len(item) >= 3:
+            src, tgt, entity_type = item[0], item[1], item[2]
+        else:
+            src, tgt = item[0], item[1]
+            entity_type = ""
+        return (
+            str(src or "").strip(),
+            str(tgt or src or "").strip(),
+            _normalize_entity_type(str(entity_type or "").strip()),
+        )
+
+    def _compile_patterns_with_source(self, source_signature: tuple[tuple[str, str], ...]):
         """Compile regex patterns using source entity names."""
         self._compiled_patterns = []
-
-        # Escape names for regex
-        name_pattern = '|'.join(re.escape(name) for name in source_names if name)
-        
-        if not name_pattern:
-            return
         
         for rule in self.rules:
+            names = [
+                source
+                for source, entity_type in source_signature
+                if self._entity_matches_rule_type(entity_type, rule.placeholder_type)
+            ]
+            name_pattern = '|'.join(re.escape(name) for name in names if name)
+            if not name_pattern:
+                continue
+
             if rule.prefix and rule.suffix:
                 # Pattern has text on both sides of {0}: prefix{0}suffix
                 regex = re.compile(
@@ -201,7 +258,7 @@ class LuatNhanEngine:
                 entity = match.group(1)
                 # Look up translated entity name
                 translated = self._entity_pairs.get(entity, entity)
-                return rule.replacement.replace('{0}', translated)
+                return rule.render(translated)
 
             text = regex.sub(replacer, text)
 
@@ -215,7 +272,7 @@ class LuatNhanEngine:
         for regex, rule in self._compiled_patterns:
             def replacer(match):
                 entity = match.group(1)
-                return rule.replacement.replace('{0}', entity)
+                return rule.render(entity)
 
             text = regex.sub(replacer, text)
 
@@ -234,7 +291,7 @@ class LuatNhanEngine:
         for regex, rule in self._compiled_patterns:
             def replacer(match):
                 entity = match.group(1)
-                return rule.replacement.replace('{0}', entity)
+                return rule.render(entity)
             
             text = regex.sub(replacer, text)
         
@@ -252,9 +309,20 @@ class LuatNhanEngine:
             "entities_registered": len(self._entity_set),
         }
 
+    @staticmethod
+    def _entity_matches_rule_type(entity_type: str, rule_type: str) -> bool:
+        if not rule_type:
+            return True
+        return _normalize_entity_type(entity_type) == rule_type
+
 
 _SHARED_RULES_CACHE: dict[str, list[LuatNhanRule]] = {}
-_SHARED_COMPILED_PATTERNS: dict[tuple[str, tuple[str, ...]], list[tuple[re.Pattern, LuatNhanRule]]] = {}
+_SHARED_COMPILED_PATTERNS: dict[tuple[str, tuple[tuple[str, str], ...]], list[tuple[re.Pattern, LuatNhanRule]]] = {}
+
+
+def _normalize_entity_type(value: str) -> str:
+    normalized = (value or "").strip().lower().replace("-", "_")
+    return ENTITY_TYPE_ALIASES.get(normalized, normalized)
 
 
 def _shared_db_cache_key(db_path: str | Path) -> str:

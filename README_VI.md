@@ -15,12 +15,13 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 ## Những Gì Đang Chạy Được
 
 - `src/pipeline/`: import tài liệu, tách chapter, preserve structure, scan entity, build relationship, sinh `translation_config.json`.
-- `src/eapee/`: emotion detector, emotion state, pronoun resolver, expression bank.
+- `src/eapee/`: emotion detector, emotion state, pronoun resolver với relationship-graph hints, expression bank.
 - `src/engine/rbmt_translator.py`: RBMT orchestrator sinh đồng thời clean output và draft annotated.
 - `src/qa/`: terminology/pronoun/emotion/structure/untranslated/length checks và QA report.
 - `src/state/`: project manager, SQLite translation memory đã tách `tm_machine`/`tm_approved`/`tm_reviewed`, candidate workflow, runtime stats, Obsidian export.
 - `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: nền tảng v23 cho segment typing và an toàn noise/protected span.
 - `src/grammar/`: ClauseSegmenter, RelationDetector, GrammarTransferEngine, RuleClaim/RuleRegistry/ConflictResolver.
+- `src/core/trie_engine.py`, `src/core/luat_nhan_engine.py`: Viterbi segmentation cho Trie và typed placeholder cho LuatNhan.
 - `src/en_vi/en_vi_translator.py`: baseline EN-VI phrase-first với passive voice và phrasal-verb rules.
 - `src/ui/`: command protocol và sidecar bridge cho desktop app.
 - `desktop/`: React shell build được bằng `npm run build`; `src-tauri/` đã có skeleton tối thiểu.
@@ -33,7 +34,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 
 ## Kiểm Chứng Gần Nhất
 
-- `python -m pytest`: `177 passed`
+- `python -m pytest`: `181 passed`
 - `cd desktop && npm run build`: build web shell thành công
 
 ## Tài Liệu Chính

@@ -61,3 +61,6 @@ _Append-only operation history._
 - `2026-04-29T21:47:52` — UPDATE [entity] project-converter-by-drduc
 - `2026-04-29T21:47:52` — CREATE [insight] Session 2026-04-29 21-47-52 → .brain\wiki\insights\session-2026-04-29-21-47-52.md
 - `2026-04-29T21:47:52` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-30T07:13:09` — UPDATE [entity] project-converter-by-drduc
+- `2026-04-30T07:13:09` — CREATE [insight] Session 2026-04-30 07-13-09 → .brain\wiki\insights\session-2026-04-30-07-13-09.md
+- `2026-04-30T07:13:09` — UPDATE [entity] project-converter-by-drduc

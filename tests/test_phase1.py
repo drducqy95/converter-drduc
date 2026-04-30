@@ -298,6 +298,21 @@ class TestTrieEngineUnit:
 # Test: Trie Engine (Integration with compiled DB)
 # ─────────────────────────────────────────────────
 
+def test_trie_viterbi_segmentation_avoids_greedy_trap():
+    trie = TrieEngine(enable_number_converter=False)
+    trie.insert("\u4fee\u4e3a\u5883\u754c", "tu vi cảnh giới", priority=2)
+    trie.insert("\u4fee\u4e3a", "tu vi", priority=2)
+    trie.insert("\u5883\u754c", "cảnh giới", priority=2)
+    trie.insert("\u7a81\u7834", "đột phá", priority=2)
+
+    greedy = trie.segment_to_tokens("\u4fee\u4e3a\u5883\u754c\u7a81\u7834", strategy="greedy")
+    viterbi = trie.segment_to_tokens("\u4fee\u4e3a\u5883\u754c\u7a81\u7834")
+
+    assert [token.source for token in greedy] == ["\u4fee\u4e3a\u5883\u754c", "\u7a81\u7834"]
+    assert [token.source for token in viterbi] == ["\u4fee\u4e3a", "\u5883\u754c", "\u7a81\u7834"]
+    assert trie.translate_text("\u4fee\u4e3a\u5883\u754c\u7a81\u7834") == "tu vicảnh giớiđột phá"
+
+
 class TestTrieEngineIntegration:
     def test_load_from_sqlite(self, loaded_trie):
         assert loaded_trie.size > 700000
@@ -366,6 +381,28 @@ class TestLuatNhanEngine:
 # ─────────────────────────────────────────────────
 # Test: Dictionary Compiler
 # ─────────────────────────────────────────────────
+
+def test_luat_nhan_typed_placeholder_only_matches_entity_type():
+    engine = LuatNhanEngine()
+    rule_cls = __import__('src.core.luat_nhan_engine', fromlist=['LuatNhanRule']).LuatNhanRule
+    engine.rules = [
+        rule_cls(
+            pattern="\u4e0e{person}\u8bf4\u8bdd",
+            replacement="nói chuyện với {0}",
+            pattern_key="\u4e0e\u8bf4\u8bdd",
+            category="primary",
+        )
+    ]
+    engine.set_entity_pairs([
+        ("\u6797\u52a8", "Lâm Động", "person"),
+        ("\u9752\u5c71", "Thanh Sơn", "location"),
+    ])
+
+    result = engine.apply("\u4e0e\u9752\u5c71\u8bf4\u8bdd\uff0c\u4e0e\u6797\u52a8\u8bf4\u8bdd")
+
+    assert "\u4e0e\u9752\u5c71\u8bf4\u8bdd" in result
+    assert "nói chuyện với Lâm Động" in result
+
 
 class TestDictionaryCompiler:
     def test_compile_sample(self, tmp_path):
