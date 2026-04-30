@@ -404,6 +404,30 @@ def test_luat_nhan_typed_placeholder_only_matches_entity_type():
     assert "nói chuyện với Lâm Động" in result
 
 
+def test_luat_nhan_specificity_prefers_longer_overlapping_pattern():
+    engine = LuatNhanEngine()
+    rule_cls = __import__('src.core.luat_nhan_engine', fromlist=['LuatNhanRule']).LuatNhanRule
+    engine.rules = [
+        rule_cls(
+            pattern="{0}\u7a81\u7834",
+            replacement="SHORT {0}",
+            pattern_key="\u7a81\u7834",
+            category="primary",
+        ),
+        rule_cls(
+            pattern="{0}\u7a81\u7834\u5230\u6d85\u69c3\u5883\u754c",
+            replacement="LONG {0}",
+            pattern_key="\u7a81\u7834\u5230\u6d85\u69c3\u5883\u754c",
+            category="primary",
+        ),
+    ]
+    engine.set_entity_pairs([("\u6797\u52a8", "Lam Dong", "person")])
+
+    result = engine.apply("\u6797\u52a8\u7a81\u7834\u5230\u6d85\u69c3\u5883\u754c")
+
+    assert result == "LONG Lam Dong"
+
+
 class TestDictionaryCompiler:
     def test_compile_sample(self, tmp_path):
         """Test compiling from sample MD files."""

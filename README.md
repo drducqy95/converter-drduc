@@ -24,9 +24,9 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 - `scripts/runners/`: local pipeline, translation, and coach-feedback entry points.
 - `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into SQLite with source-manifest stale detection.
 - `src/core/trie_engine.py`: runtime Trie lookup with priority handling and Viterbi segmentation.
-- `src/core/luat_nhan_engine.py`: grammar/disambiguation rule loading and typed placeholder application.
+- `src/core/luat_nhan_engine.py`: grammar/disambiguation rule loading, typed placeholder application, and specificity-based conflict resolution.
 - `src/engine/number_converter.py`: number/date/unit conversion baseline plus semantic percent, fraction, countdown, rating, and ordinal-time frames.
-- `src/pipeline/`: document import, chapter split, structure preservation, entity scan, relationship build, config generation.
+- `src/pipeline/`: document import with directory error recovery, chapter split, structure preservation, entity scan, relationship build, config generation.
 - `src/eapee/`: emotion detector, emotion state machine, pronoun resolver with relationship-graph hints, expression bank.
 - `src/engine/rbmt_translator.py`: clean + draft RBMT output with ambiguity trace and TM integration.
 - `src/qa/`: terminology, pronoun, emotion, structure, untranslated, length checks, and QA reports.
@@ -39,7 +39,7 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 
 ## Verification
 
-- `python -m pytest` -> `181 passed`
+- `python -m pytest` -> `183 passed`
 - `cd desktop && npm run build` -> Vite production build succeeds
 - Native Tauri packaging has not been validated in this environment because Rust tooling is not installed
 

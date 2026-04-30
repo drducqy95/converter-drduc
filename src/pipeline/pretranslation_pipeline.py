@@ -44,6 +44,7 @@ class PreTranslationResult:
     config: dict
     segments: list[dict] | None = None
     syntax_analysis: list[dict] | None = None
+    import_errors: list[dict] | None = None
 
 
 class PreTranslationPipeline:
@@ -101,14 +102,19 @@ class PreTranslationPipeline:
 
         imported_docs: list[ImportedDocument] = []
         chapters: list[Chapter] = []
+        import_errors: list[dict] = []
         used_chapter_ids: set[str] = set()
 
         # Directory import: each file is one logical chapter, with the file heading
         # kept as the chapter title when present.
         for source_file in source_files:
-            imported_doc = self.importer.import_file(source_file, output_dir=project_dir)
+            try:
+                imported_doc = self.importer.import_file(source_file, output_dir=project_dir)
+                transformed_text = self._transform_text(imported_doc.normalized_text)
+            except Exception as exc:
+                import_errors.append(self._import_error_payload(source_file, exc))
+                continue
             imported_docs.append(imported_doc)
-            transformed_text = self._transform_text(imported_doc.normalized_text)
             chapter_id = self._allocate_chapter_id(
                 used_chapter_ids,
                 self._extract_chapter_number(source_file),
@@ -124,6 +130,9 @@ class PreTranslationPipeline:
                 )
             )
 
+        if not imported_docs:
+            raise ValueError(f"No source files could be imported from directory: {source_path}")
+
         chapters = self._reindex_chapters(chapters)
         normalized_text = "\n\n".join(self._compose_chapter_block(chapter) for chapter in chapters).strip()
         imported = ImportedDocument(
@@ -132,7 +141,12 @@ class PreTranslationPipeline:
             detected_encoding="mixed",
             raw_text="\n\n".join(doc.raw_text for doc in imported_docs).strip(),
             normalized_text=normalized_text,
-            notes=["directory_import", f"source_files={len(imported_docs)}"],
+            notes=[
+                "directory_import",
+                f"source_files={len(source_files)}",
+                f"imported_files={len(imported_docs)}",
+                f"skipped_files={len(import_errors)}",
+            ],
         )
         return self._finalize_preparation(
             imported=imported,
@@ -140,6 +154,7 @@ class PreTranslationPipeline:
             chapters=chapters,
             project_dir=project_dir,
             metadata_source=source_files[0],
+            import_errors=import_errors,
         )
 
     def _finalize_preparation(
@@ -150,6 +165,7 @@ class PreTranslationPipeline:
         chapters: list[Chapter],
         project_dir: str | Path,
         metadata_source: Path,
+        import_errors: list[dict] | None = None,
     ) -> PreTranslationResult:
         self.splitter.write(chapters, project_dir)
 
@@ -181,6 +197,8 @@ class PreTranslationPipeline:
         self._write_json(project_dir, "working/config/terminology_suggestions.json", [item.to_dict() for item in terminology])
         self._write_json(project_dir, "working/segments/segments_classified.json", segment_packets)
         self._write_json(project_dir, "working/segments/syntax_analysis.json", syntax_analysis)
+        if import_errors:
+            self._write_json(project_dir, "working/import_errors.json", import_errors)
 
         return PreTranslationResult(
             imported=imported,
@@ -191,6 +209,7 @@ class PreTranslationPipeline:
             config=config,
             segments=segment_packets,
             syntax_analysis=syntax_analysis,
+            import_errors=import_errors or [],
         )
 
     def _transform_text(self, text: str) -> str:
@@ -342,6 +361,16 @@ class PreTranslationPipeline:
         target = Path(project_dir) / relative_path
         target.parent.mkdir(parents=True, exist_ok=True)
         target.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+    @staticmethod
+    def _import_error_payload(source_file: Path, exc: Exception) -> dict:
+        details = getattr(exc, "details", None)
+        return {
+            "source_path": str(source_file),
+            "error_type": type(exc).__name__,
+            "message": str(exc),
+            "details": details if isinstance(details, dict) else {},
+        }
 
     def _build_segment_packets(self, chapters: list[Chapter]) -> list[dict]:
         packets: list[dict] = []

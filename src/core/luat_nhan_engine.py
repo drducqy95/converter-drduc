@@ -16,7 +16,7 @@ Features:
 
 import sqlite3
 import re
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from typing import Optional
 
@@ -51,6 +51,7 @@ class LuatNhanRule:
     suffix: str = ""    # Text after {0} in pattern
     placeholder: str = "{0}"
     placeholder_type: str = ""
+    specificity: tuple[int, int, int, int] = field(init=False, repr=False)
     
     def __post_init__(self):
         # Parse where the placeholder appears in the pattern.
@@ -63,8 +64,34 @@ class LuatNhanRule:
         else:
             self.suffix = self.pattern
 
+        self.specificity = self._specificity()
+
     def render(self, value: str) -> str:
         return self.replacement.replace("{0}", value).replace(self.placeholder, value)
+
+    def _specificity(self) -> tuple[int, int, int, int]:
+        placeholder_count = len(PLACEHOLDER_RE.findall(self.pattern))
+        literal_text = PLACEHOLDER_RE.sub("", self.pattern)
+        category_weight = 1 if "primary" in (self.category or "").lower() else 0
+        return (
+            len(literal_text),
+            len(self.pattern),
+            category_weight,
+            -placeholder_count,
+        )
+
+
+@dataclass(slots=True)
+class _RuleApplication:
+    start: int
+    end: int
+    replacement: str
+    rule: LuatNhanRule
+    order: int
+
+    @property
+    def rank(self) -> tuple[int, int, int, int, int, int]:
+        return (*self.rule.specificity, self.end - self.start, -self.order)
 
 
 # ─────────────────────────────────────────────────
@@ -221,6 +248,7 @@ class LuatNhanEngine:
                 continue
             
             self._compiled_patterns.append((regex, rule))
+        self._sort_compiled_patterns()
     
     def _compile_patterns(self, entity_names: list[str]):
         """Compile regex patterns with entity names (Vietnamese, for post-translation)."""
@@ -239,6 +267,7 @@ class LuatNhanEngine:
                     re.escape(rule.suffix)
                 )
                 self._compiled_patterns.append((regex, rule))
+        self._sort_compiled_patterns()
     
     def apply(self, text: str) -> str:
         """
@@ -252,31 +281,13 @@ class LuatNhanEngine:
         """
         if not self._compiled_patterns:
             return text
-        
-        for regex, rule in self._compiled_patterns:
-            def replacer(match):
-                entity = match.group(1)
-                # Look up translated entity name
-                translated = self._entity_pairs.get(entity, entity)
-                return rule.render(translated)
-
-            text = regex.sub(replacer, text)
-
-        return text
+        return self._apply_compiled_patterns(text, translate_entity=True)
 
     def apply_with_source_entities(self, text: str) -> str:
         """Apply source-side templates while keeping entity placeholders in source form."""
         if not self._compiled_patterns:
             return text
-
-        for regex, rule in self._compiled_patterns:
-            def replacer(match):
-                entity = match.group(1)
-                return rule.render(entity)
-
-            text = regex.sub(replacer, text)
-
-        return text
+        return self._apply_compiled_patterns(text, translate_entity=False)
     
     def apply_post_translation(self, text: str) -> str:
         """
@@ -287,15 +298,7 @@ class LuatNhanEngine:
         """
         if not self._compiled_patterns:
             return text
-        
-        for regex, rule in self._compiled_patterns:
-            def replacer(match):
-                entity = match.group(1)
-                return rule.render(entity)
-            
-            text = regex.sub(replacer, text)
-        
-        return text
+        return self._apply_compiled_patterns(text, translate_entity=False)
     
     def get_stats(self) -> dict:
         """Return engine statistics."""
@@ -314,6 +317,62 @@ class LuatNhanEngine:
         if not rule_type:
             return True
         return _normalize_entity_type(entity_type) == rule_type
+
+    def _sort_compiled_patterns(self):
+        self._compiled_patterns.sort(
+            key=lambda item: (
+                item[1].specificity,
+                len(item[1].pattern),
+            ),
+            reverse=True,
+        )
+
+    def _apply_compiled_patterns(self, text: str, *, translate_entity: bool) -> str:
+        applications: list[_RuleApplication] = []
+        for order, (regex, rule) in enumerate(self._compiled_patterns):
+            for match in regex.finditer(text):
+                entity = match.group(1)
+                value = self._entity_pairs.get(entity, entity) if translate_entity else entity
+                applications.append(
+                    _RuleApplication(
+                        start=match.start(),
+                        end=match.end(),
+                        replacement=rule.render(value),
+                        rule=rule,
+                        order=order,
+                    )
+                )
+
+        if not applications:
+            return text
+
+        applications.sort(key=lambda item: (item.start, item.end))
+        selected: list[_RuleApplication] = []
+        cursor = 0
+        index = 0
+        while index < len(applications):
+            start = applications[index].start
+            same_start: list[_RuleApplication] = []
+            while index < len(applications) and applications[index].start == start:
+                same_start.append(applications[index])
+                index += 1
+            if start < cursor:
+                continue
+            chosen = max(same_start, key=lambda item: item.rank)
+            selected.append(chosen)
+            cursor = chosen.end
+
+        if not selected:
+            return text
+
+        parts: list[str] = []
+        cursor = 0
+        for item in selected:
+            parts.append(text[cursor:item.start])
+            parts.append(item.replacement)
+            cursor = item.end
+        parts.append(text[cursor:])
+        return "".join(parts)
 
 
 _SHARED_RULES_CACHE: dict[str, list[LuatNhanRule]] = {}

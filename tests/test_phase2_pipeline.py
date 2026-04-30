@@ -194,3 +194,27 @@ def test_pretranslation_pipeline_imports_source_directory_as_multiple_chapters(t
     index_path = tmp_path / "project" / "source" / "chapters" / "chapters_index.json"
     index_payload = json.loads(index_path.read_text(encoding="utf-8"))
     assert [item["chapter_id"] for item in index_payload] == ["chapter-001", "chapter-002"]
+
+
+def test_pretranslation_pipeline_directory_skips_bad_source_file(tmp_path):
+    source_dir = tmp_path / "external_source"
+    source_dir.mkdir(parents=True)
+    (source_dir / "chapter_001.md").write_text(
+        "# \u7b2c1\u7ae0 \u5f00\u59cb\n\u6797\u52a8\u7a81\u7834\u3002",
+        encoding="utf-8",
+    )
+    (source_dir / "chapter_002.md").write_bytes(b"broken\x00source")
+
+    project_dir = tmp_path / "project"
+    pipeline = PreTranslationPipeline()
+    result = pipeline.prepare(source_dir, project_dir)
+    pipeline.close()
+
+    assert len(result.chapters) == 1
+    assert result.import_errors
+    assert result.import_errors[0]["details"]["reason"] == "null_character"
+
+    errors_path = project_dir / "working" / "import_errors.json"
+    assert errors_path.exists()
+    errors_payload = json.loads(errors_path.read_text(encoding="utf-8"))
+    assert errors_payload[0]["error_type"] == "ImportValidationError"
