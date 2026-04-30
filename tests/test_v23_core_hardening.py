@@ -5,6 +5,7 @@
 from __future__ import annotations
 
 import pytest
+from types import SimpleNamespace
 
 from src.engine.rbmt_translator import RBMTTranslator
 from src.grammar.clause_segmenter import ClauseBoundary, ClauseSegmenter
@@ -14,6 +15,7 @@ from src.grammar.rule_claim import RuleClaim
 from src.pipeline.noise_filter import NoiseAction, NoiseFilter
 from src.pipeline.packet import LockLevel, ProtectedSpan, SegmentType
 from src.pipeline.protected_span_registry import ProtectedSpanRegistry
+from src.pipeline.robust_batch_runner import BatchConfig, ChapterStatus, run_batch_with_fault_isolation
 from src.pipeline.segment_classifier import SegmentClassifier
 from src.state.translation_memory import TranslationMemory
 
@@ -134,6 +136,59 @@ def test_tm_policy_tiered_fuzzy_search_and_snapshot_rollback(tmp_path):
         assert tm.exists_in_approved("abcdezz")
     finally:
         tm.close()
+
+
+def test_tm_fuzzy_search_rejects_negation_polarity_conflicts(tmp_path):
+    tm = TranslationMemory(tmp_path / "tm.sqlite")
+    try:
+        tm.store_approved("他可以走。", "Hắn có thể đi.", reviewer="tester")
+
+        assert tm.fuzzy_match("他不可以走。", threshold=0.70) is None
+        assert tm.tiered_fuzzy_search("他不可以走。", threshold=0.70) == []
+        assert tm.fuzzy_match("他可以走了。", threshold=0.70) is not None
+    finally:
+        tm.close()
+
+
+def test_robust_batch_runner_isolates_chapter_failures_and_checkpoints(tmp_path):
+    class DummyContext:
+        def __init__(self):
+            self.reset_count = 0
+
+        def reset_for_chapter(self):
+            self.reset_count += 1
+
+    class DummyTranslator:
+        def __init__(self):
+            self.context = DummyContext()
+
+        def translate_text(self, text, config=None):
+            if "boom" in text:
+                raise UnicodeError("bad chapter")
+            return SimpleNamespace(clean_text=text.upper(), segments=[object()], config={"tm_reuse_rate": 0.25})
+
+    translator = DummyTranslator()
+    report = run_batch_with_fault_isolation(
+        [
+            {"id": "001", "text": "alpha"},
+            {"id": "002", "text": "boom"},
+            {"id": "003", "text": "omega"},
+        ],
+        translator,
+        BatchConfig(
+            checkpoint_interval=1,
+            checkpoint_path=tmp_path / "checkpoint.json",
+            output_dir=tmp_path / "out",
+        ),
+    )
+
+    assert report.success_count == 2
+    assert report.failed_count == 1
+    assert report.results["002"].status == ChapterStatus.FAILED
+    assert report.results["003"].status == ChapterStatus.SUCCESS
+    assert translator.context.reset_count == 3
+    assert (tmp_path / "out" / "001.txt").read_text(encoding="utf-8") == "ALPHA"
+    assert '"failed_count": 1' in (tmp_path / "checkpoint.json").read_text(encoding="utf-8")
 
 
 def test_conflict_resolver_is_deterministic_and_traced():

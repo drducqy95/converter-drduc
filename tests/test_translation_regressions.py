@@ -391,6 +391,13 @@ def test_emotion_detector_respects_negation_scope():
     assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u6211\u5e76\u975e\u4e0d\u6068\u4f60\uff01\u201d", context_type="dialogue") == "anger"
 
 
+def test_emotion_detector_ignores_pretended_emotion():
+    detector = EmotionDetector()
+
+    assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u6211\u5047\u88c5\u9ad8\u5174\u3002\u201d", context_type="dialogue") == "neutral"
+    assert detector.detect_label("\u4ed6\u8bf4\u9053\uff1a\u201c\u5979\u6545\u4f5c\u6124\u6012\u5730\u770b\u7740\u6211\u3002\u201d", context_type="dialogue") == "neutral"
+
+
 def test_pronoun_resolver_tracks_implicit_alternating_dialogue_speakers():
     resolver = PronounResolver()
     active_entities = ["\u6797\u52a8", "\u8427\u708e"]
@@ -410,6 +417,16 @@ def test_pronoun_resolver_tracks_implicit_alternating_dialogue_speakers():
     assert first["listener"] == "\u8427\u708e"
     assert second["speaker"] == "\u8427\u708e"
     assert second["listener"] == "\u6797\u52a8"
+
+
+def test_pronoun_resolver_records_genre_fallback_chain():
+    resolver = PronounResolver()
+
+    trace = resolver.resolve_token("\u4f60\u8d70\u5427", 0, {}, emotion=None, genre="unknown_genre")
+
+    assert trace["target"] == "ngươi"
+    assert trace["fallback_genre"] == "general"
+    assert trace["fallback_chain"] == ["unknown_genre", "general"]
 
 
 def test_pronoun_resolver_uses_relationship_graph_for_third_person():

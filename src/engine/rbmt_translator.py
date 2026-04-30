@@ -576,6 +576,17 @@ class RBMTTranslator:
             return heading_override
 
         locked_entities = self._get_locked_entities(config)
+        source_sentence_context = self.sentence_context_classifier.classify(sentence)
+        dialogue_context = self.pronoun_resolver.detect_dialogue_context(
+            sentence,
+            active_entities=[item["source"] for item in locked_entities],
+            context_type=source_sentence_context,
+        )
+        emotion = (
+            self.emotion_detector.detect_label(sentence, context_type=source_sentence_context)
+            if source_sentence_context == "dialogue"
+            else None
+        )
         grammar_traces: list[dict] = []
         if self._grammar_transfer_enabled(config) and self._should_apply_grammar_transfer(sentence, phrase_override_keys):
             transfer_result = self.grammar_transfer.rewrite_source(
@@ -583,22 +594,17 @@ class RBMTTranslator:
                 protected_terms=[item["source"] for item in locked_entities],
             )
             sentence = transfer_result.text
-            grammar_traces.extend(transfer_result.traces)
+            grammar_traces.extend(
+                self._attach_eapee_handoff(
+                    transfer_result.traces,
+                    emotion=emotion,
+                    context_type=source_sentence_context,
+                    dialogue_context=dialogue_context,
+                )
+            )
 
         # Rewrite Chinese structural patterns before lexical processing.
         sentence = rewrite_chinese_structure(sentence)
-
-        sentence_context = self.sentence_context_classifier.classify(sentence)
-        dialogue_context = self.pronoun_resolver.detect_dialogue_context(
-            sentence,
-            active_entities=[item["source"] for item in locked_entities],
-            context_type=sentence_context,
-        )
-        emotion = (
-            self.emotion_detector.detect_label(sentence, context_type=sentence_context)
-            if sentence_context == "dialogue"
-            else None
-        )
         entity_pairs = [(item["source"], item["target"], item.get("entity_type", "")) for item in locked_entities]
         self.luat_nhan.set_entity_pairs(entity_pairs)
         sentence = self.luat_nhan.apply_with_source_entities(sentence)
@@ -727,6 +733,27 @@ class RBMTTranslator:
         traces.extend(clean_filter.traces)
         traces.extend(draft_filter.traces)
         return clean_text, draft_text, traces, emotion
+
+    @staticmethod
+    def _attach_eapee_handoff(
+        traces: list[dict],
+        *,
+        emotion: str | None,
+        context_type: str,
+        dialogue_context: dict,
+    ) -> list[dict]:
+        enriched: list[dict] = []
+        for trace in traces:
+            item = dict(trace)
+            item["handoff"] = {
+                "emotion": emotion,
+                "context_type": context_type,
+                "speaker": dialogue_context.get("speaker"),
+                "listener": dialogue_context.get("listener"),
+                "pronoun_resolution": "post_grammar_transfer",
+            }
+            enriched.append(item)
+        return enriched
 
     def _build_trie_trace(self, source: str, target: str, priority: int, config: dict) -> dict:
         record = self.accessor.lookup_runtime(source)

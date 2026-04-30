@@ -56,3 +56,12 @@ class ContextManager:
             scene_emotion=self.scene_emotion,
             genre=self.genre,
         )
+
+    def reset_for_chapter(self, *, keep_genre: bool = True):
+        """Clear sentence/entity/emotion windows at a chapter boundary."""
+        current_genre = self.genre
+        self._recent_sources.clear()
+        self._recent_targets.clear()
+        self._active_entities.clear()
+        self.scene_emotion = None
+        self.genre = current_genre if keep_genre else None

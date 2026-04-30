@@ -182,9 +182,10 @@ class PronounResolver:
         self._recent_mentions = []
 
     def resolve_token(self, text: str, pos: int, dialogue_context: dict, *, emotion: str | None, genre: str) -> dict | None:
-        candidates = self.matrix.get(genre) or self.matrix.get("general", {})
-        for key in sorted(candidates.keys(), key=len, reverse=True):
-            if text.startswith(key, pos):
+        for fallback_genre, candidates in self._candidate_chain(genre):
+            for key in sorted(candidates.keys(), key=len, reverse=True):
+                if not text.startswith(key, pos):
+                    continue
                 target = candidates[key]
                 if key == "我" and emotion == "respect":
                     target = "tại hạ" if genre == "xianxia" else "tôi"
@@ -194,11 +195,13 @@ class PronounResolver:
                     "candidates": [target],
                     "priority": 70,
                     "fallback_level": "pronoun",
-                    "reason": f"pronoun_matrix:{genre}",
+                    "reason": f"pronoun_matrix:{fallback_genre}",
                     "target": target,
                     "length": len(key),
                     "speaker": dialogue_context.get("speaker"),
                     "listener": dialogue_context.get("listener"),
+                    "fallback_chain": self._fallback_chain(genre),
+                    "fallback_genre": fallback_genre,
                 }
                 graph_candidate = self._resolve_graph_candidate(key, text, pos, dialogue_context)
                 if graph_candidate:
@@ -207,6 +210,23 @@ class PronounResolver:
                     payload["reason"] = f"pronoun_graph:{graph_candidate.get('relation_type') or 'context'}"
                 return payload
         return None
+
+    def _candidate_chain(self, genre: str) -> list[tuple[str, dict]]:
+        chain: list[tuple[str, dict]] = []
+        for fallback_genre in self._fallback_chain(genre):
+            candidates = self.matrix.get(fallback_genre)
+            if candidates:
+                chain.append((fallback_genre, candidates))
+        return chain
+
+    @staticmethod
+    def _fallback_chain(genre: str) -> list[str]:
+        ordered = [str(genre or "").strip() or "general", "general"]
+        chain: list[str] = []
+        for item in ordered:
+            if item and item not in chain:
+                chain.append(item)
+        return chain
 
     def _resolve_graph_candidate(self, pronoun: str, text: str, pos: int, dialogue_context: dict) -> dict | None:
         if pronoun not in THIRD_PERSON_PRONOUNS and pronoun not in PLURAL_THIRD_PERSON_PRONOUNS:

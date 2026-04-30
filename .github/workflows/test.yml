@@ -3,6 +3,9 @@ name: Tests
 on:
   push:
   pull_request:
+  workflow_dispatch:
+  schedule:
+    - cron: "0 19 * * 0"
 
 jobs:
   python-tests:
@@ -39,3 +42,34 @@ jobs:
       - name: Build desktop web shell
         working-directory: desktop
         run: npm run build
+
+  tauri-native-build:
+    if: github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "20"
+          cache: npm
+          cache-dependency-path: desktop/package-lock.json
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Install Tauri Linux dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            build-essential \
+            curl \
+            file \
+            libayatana-appindicator3-dev \
+            librsvg2-dev \
+            libssl-dev \
+            libwebkit2gtk-4.1-dev \
+            libxdo-dev \
+            wget
+      - name: Install desktop dependencies
+        working-directory: desktop
+        run: npm ci
+      - name: Build Tauri native package
+        working-directory: desktop
+        run: npm run tauri:build

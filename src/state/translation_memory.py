@@ -27,6 +27,25 @@ TIER_WEIGHTS = {
     "reviewed": 0.08,
     "machine": 0.0,
 }
+SEMANTIC_NEGATION_MARKERS = (
+    "不可以",
+    "不能",
+    "不得",
+    "不会",
+    "不是",
+    "没有",
+    "沒有",
+    "并非",
+    "並非",
+    "未必",
+    "未曾",
+    "无",
+    "無",
+    "没",
+    "未",
+    "非",
+    "不",
+)
 
 
 @dataclass(slots=True)
@@ -377,6 +396,8 @@ class TranslationMemory:
 
         results: list[TieredFuzzyMatchResult] = []
         for tier, row in self._tiered_rows(include_reviewed=include_reviewed, include_machine=include_machine):
+            if not self.semantic_compatible(source_text, row["source_text"]):
+                continue
             raw_score = self.similarity(source_text, row["source_text"])
             if raw_score < threshold:
                 continue
@@ -446,6 +467,8 @@ class TranslationMemory:
         best: FuzzyMatchResult | None = None
         best_row_id: int | None = None
         for row in rows:
+            if not self.semantic_compatible(source_text, row["source_text"]):
+                continue
             score = self.similarity(source_text, row["source_text"])
             if score < threshold:
                 continue
@@ -563,6 +586,38 @@ class TranslationMemory:
         if cls._contains_cjk(left) or cls._contains_cjk(right):
             return max(cls.cjk_similarity(left, right), SequenceMatcher(a=left, b=right).ratio())
         return SequenceMatcher(a=left, b=right).ratio()
+
+    @classmethod
+    def semantic_compatible(cls, left: str, right: str) -> bool:
+        left_norm = cls._normalize_semantic_text(left)
+        right_norm = cls._normalize_semantic_text(right)
+        if left_norm == right_norm:
+            return True
+        return cls._negation_polarity(left_norm) == cls._negation_polarity(right_norm)
+
+    @staticmethod
+    def _normalize_semantic_text(value: str) -> str:
+        return "".join(str(value or "").split())
+
+    @classmethod
+    def _negation_polarity(cls, value: str) -> int:
+        markers = sorted(SEMANTIC_NEGATION_MARKERS, key=len, reverse=True)
+        count = 0
+        cursor = 0
+        while cursor < len(value):
+            matched = False
+            for marker in markers:
+                if not value.startswith(marker, cursor):
+                    continue
+                if marker in {"无", "無"} and cursor + len(marker) < len(value) and value[cursor + len(marker)] == "论":
+                    continue
+                count += 1
+                cursor += len(marker)
+                matched = True
+                break
+            if not matched:
+                cursor += 1
+        return count % 2
 
     @staticmethod
     def cjk_similarity(left: str, right: str, n: int = 2) -> float:

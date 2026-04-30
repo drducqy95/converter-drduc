@@ -293,6 +293,25 @@ class TestTrieEngineUnit:
         result = trie.translate_text("㚻")
         assert result == "kê"
 
+    def test_contextual_one_mean_uses_right_context_hint(self):
+        trie = TrieEngine(enable_number_converter=False)
+        trie.insert("打", "đánh;gọi điện;giảm giá", priority=2, one_mean=True)
+
+        assert trie.lookup_exact("打").target == "đánh"
+        assert trie.lookup("打电话").target == "gọi điện"
+        assert trie.lookup("打折").target == "giảm giá"
+
+    def test_viterbi_normalizes_long_expressive_repetitions(self):
+        trie = TrieEngine(enable_number_converter=False)
+        trie.insert("哈", "ha", priority=2)
+        trie.insert("哈哈", "haha", priority=2)
+        trie.insert("哈哈哈", "hahaha", priority=2)
+        trie.insert("哈哈哈哈", "hahahaha", priority=2)
+
+        tokens = trie.segment_viterbi("哈哈哈哈哈哈")
+        assert TrieEngine.normalize_repetitions("哈哈哈哈哈哈") == "哈哈哈"
+        assert "".join(token.source for token in tokens) == "哈哈哈"
+
 
 # ─────────────────────────────────────────────────
 # Test: Trie Engine (Integration with compiled DB)

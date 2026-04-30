@@ -138,6 +138,8 @@ def test_rbmt_attaches_grammar_transfer_trace_before_lexical_decode():
     assert "Dù" in result.clean_text
     assert "cũng" in result.clean_text
     assert any(trace["stage"] == "grammar_transfer" for trace in result.segments[0].trace)
+    grammar_trace = next(trace for trace in result.segments[0].trace if trace["stage"] == "grammar_transfer")
+    assert grammar_trace["handoff"]["pronoun_resolution"] == "post_grammar_transfer"
 
 
 def test_rbmt_runtime_proper_name_scan_extends_locked_entities():

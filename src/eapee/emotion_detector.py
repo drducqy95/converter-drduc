@@ -13,6 +13,17 @@ CONTEXT_SCORE_THRESHOLDS = {
     "narrative": 1.01,
 }
 NEGATION_MARKERS = ("并非", "不是", "没有", "沒", "没", "非", "不")
+PRETEND_MARKERS = (
+    "假装",
+    "假裝",
+    "装作",
+    "裝作",
+    "佯装",
+    "佯裝",
+    "故作",
+    "强作",
+    "強作",
+)
 
 EMOTION_MARKERS = {
     "anger": (
@@ -131,7 +142,7 @@ class EmotionDetector:
                 marker_hits = self._marker_hits(normalized, marker)
                 active_hits = 0
                 for hit_pos in marker_hits:
-                    if self._is_negated(normalized, hit_pos):
+                    if self._is_negated(normalized, hit_pos) or self._is_pretended(normalized, hit_pos):
                         continue
                     active_hits += 1
                 if active_hits:
@@ -184,3 +195,8 @@ class EmotionDetector:
             if not matched:
                 cursor += 1
         return negation_count % 2 == 1
+
+    @staticmethod
+    def _is_pretended(text: str, marker_pos: int, window: int = 6) -> bool:
+        left_context = text[max(0, marker_pos - window):marker_pos]
+        return any(marker in left_context for marker in PRETEND_MARKERS)

@@ -12,10 +12,11 @@ Features:
 - Hot-reload support
 """
 
+import re
 import sqlite3
 import time
 from dataclasses import dataclass
-from typing import Dict, List, Set, Optional, Tuple, Any, TYPE_CHECKING
+from typing import List, Optional, TYPE_CHECKING
 from pathlib import Path
 
 if TYPE_CHECKING:
@@ -27,6 +28,25 @@ try:
     from src.engine.number_converter import NumberConverter
 except ImportError:
     from engine.number_converter import NumberConverter
+
+
+REPETITION_NORMALIZE_PATTERNS: tuple[tuple[re.Pattern[str], str], ...] = (
+    (re.compile(r"(哈){4,}"), "哈哈哈"),
+    (re.compile(r"(啊){4,}"), "啊啊啊"),
+    (re.compile(r"(呀){4,}"), "呀呀呀"),
+    (re.compile(r"(呜){4,}"), "呜呜呜"),
+    (re.compile(r"(哇){4,}"), "哇哇哇"),
+    (re.compile(r"(……){2,}"), "……"),
+    (re.compile(r"([！!]){4,}"), r"\1\1\1"),
+    (re.compile(r"([？?]){4,}"), r"\1\1\1"),
+)
+
+ONE_MEAN_CONTEXT_HINTS: dict[str, tuple[tuple[tuple[str, ...], tuple[str, ...]], ...]] = {
+    "打": (
+        (("电话", "電話", "手机", "手機"), ("gọi", "gọi điện")),
+        (("折",), ("giảm giá",)),
+    ),
+}
 
 
 # ─────────────────────────────────────────────────
@@ -93,21 +113,40 @@ class TrieEngine:
     Uses longest-prefix matching for best translation quality.
     """
     
-    def __init__(self, enable_number_converter: bool = True):
+    def __init__(
+        self,
+        enable_number_converter: bool = True,
+        *,
+        max_viterbi_candidates_per_position: int = 64,
+    ):
         self.root = TrieNode()
         self._size = 0
         self._load_time = 0.0
         self._reading_fallbacks: dict[str, str] = {}
         self._number_converter = NumberConverter() if enable_number_converter else None
+        self.max_viterbi_candidates_per_position = max(1, int(max_viterbi_candidates_per_position))
 
     @classmethod
-    def from_shared_sqlite(cls, db_path: str | Path, enable_number_converter: bool = True) -> "TrieEngine":
-        cache_key = _shared_trie_cache_key(db_path, enable_number_converter)
+    def from_shared_sqlite(
+        cls,
+        db_path: str | Path,
+        enable_number_converter: bool = True,
+        *,
+        max_viterbi_candidates_per_position: int = 64,
+    ) -> "TrieEngine":
+        cache_key = _shared_trie_cache_key(
+            db_path,
+            enable_number_converter,
+            max_viterbi_candidates_per_position,
+        )
         cached = _SHARED_TRIE_CACHE.get(cache_key)
         if cached is not None:
             return cached
 
-        trie = cls(enable_number_converter=enable_number_converter)
+        trie = cls(
+            enable_number_converter=enable_number_converter,
+            max_viterbi_candidates_per_position=max_viterbi_candidates_per_position,
+        )
         trie.load_from_sqlite(db_path)
         _SHARED_TRIE_CACHE[cache_key] = trie
         return trie
@@ -306,12 +345,16 @@ class TrieEngine:
             node = node.children[char]
             
             if node.is_end:
-                target = node.target
-                if node.one_mean and ';' in target:
-                    target = target.split(';')[0].strip()
+                source = text[pos : i + 1]
+                target = self._resolve_one_mean_target(
+                    source,
+                    node.target,
+                    node.one_mean,
+                    right_context=text[i + 1:i + 7],
+                )
                 
                 best_match = TrieMatch(
-                    source=text[pos : i + 1],
+                    source=source,
                     target=target,
                     priority=node.priority,
                     length=i - pos + 1,
@@ -367,11 +410,8 @@ class TrieEngine:
 
         return matches
 
-    @staticmethod
-    def _match_from_node(source: str, node: TrieNode) -> TrieMatch:
-        target = node.target
-        if node.one_mean and ';' in target:
-            target = target.split(';')[0].strip()
+    def _match_from_node(self, source: str, node: TrieNode, *, right_context: str = "") -> TrieMatch:
+        target = self._resolve_one_mean_target(source, node.target, node.one_mean, right_context=right_context)
 
         return TrieMatch(
             source=source,
@@ -400,9 +440,7 @@ class TrieEngine:
         if not node.is_end:
             return self._lookup_exact_fallback(source)
         
-        target = node.target
-        if node.one_mean and ';' in target:
-            target = target.split(';')[0].strip()
+        target = self._resolve_one_mean_target(source, node.target, node.one_mean)
         
         return TrieMatch(
             source=source,
@@ -446,6 +484,50 @@ class TrieEngine:
     def lookup_reading(self, source: str) -> str | None:
         """Look up a fallback reading loaded from entry_readings."""
         return self._reading_fallbacks.get(source)
+
+    @classmethod
+    def normalize_repetitions(cls, text: str) -> str:
+        """Cap long expressive repetitions before dynamic-programming passes."""
+        normalized = str(text or "")
+        for pattern, replacement in REPETITION_NORMALIZE_PATTERNS:
+            normalized = pattern.sub(replacement, normalized)
+        return normalized
+
+    @classmethod
+    def _resolve_one_mean_target(
+        cls,
+        source: str,
+        target: str,
+        one_mean: bool,
+        *,
+        right_context: str = "",
+    ) -> str:
+        if not one_mean or ";" not in target:
+            return target
+
+        meanings = cls._split_meanings(target)
+        if not meanings:
+            return target
+        if len(meanings) == 1:
+            return meanings[0]
+
+        contextual = cls._contextual_one_mean(source, right_context, meanings)
+        return contextual or meanings[0]
+
+    @staticmethod
+    def _split_meanings(target: str) -> list[str]:
+        return [part.strip() for part in str(target or "").split(";") if part.strip()]
+
+    @staticmethod
+    def _contextual_one_mean(source: str, right_context: str, meanings: list[str]) -> str | None:
+        for prefixes, preferred_targets in ONE_MEAN_CONTEXT_HINTS.get(source, ()):
+            if not any(str(right_context or "").startswith(prefix) for prefix in prefixes):
+                continue
+            for preferred in preferred_targets:
+                for meaning in meanings:
+                    if preferred in meaning:
+                        return meaning
+        return None
     
     def has_prefix(self, text: str, pos: int = 0) -> bool:
         """Check if any entry starts with the text from position pos."""
@@ -554,29 +636,40 @@ class TrieEngine:
         """
         if not text:
             return []
+        text = self.normalize_repetitions(text)
 
         n = len(text)
         best_score = [float("-inf")] * (n + 1)
-        best_path: list[list[TrieMatch] | None] = [None] * (n + 1)
+        best_choice: list[TrieMatch | None] = [None] * (n + 1)
+        best_next: list[int | None] = [None] * (n + 1)
         best_score[n] = 0.0
-        best_path[n] = []
+        best_next[n] = n
 
         for pos in range(n - 1, -1, -1):
             candidates = self._viterbi_candidates(text, pos, fallback_char=fallback_char)
             for candidate in candidates:
                 next_pos = pos + candidate.length
-                if next_pos > n or best_path[next_pos] is None:
+                if next_pos > n or best_next[next_pos] is None:
                     continue
                 score = self._viterbi_token_score(candidate) + best_score[next_pos]
                 if score > best_score[pos] or (
                     score == best_score[pos]
-                    and best_path[pos] is not None
-                    and candidate.length > best_path[pos][0].length
+                    and best_choice[pos] is not None
+                    and candidate.length > best_choice[pos].length
                 ):
                     best_score[pos] = score
-                    best_path[pos] = [candidate, *best_path[next_pos]]
+                    best_choice[pos] = candidate
+                    best_next[pos] = next_pos
 
-        return best_path[0] or []
+        path: list[TrieMatch] = []
+        pos = 0
+        while pos < n and best_choice[pos] is not None and best_next[pos] is not None:
+            path.append(best_choice[pos])
+            next_pos = best_next[pos]
+            if next_pos <= pos:
+                break
+            pos = next_pos
+        return path
 
     def _viterbi_candidates(self, text: str, pos: int, *, fallback_char: bool) -> list[TrieMatch]:
         candidates = self.lookup_prefixes(text, pos)
@@ -594,6 +687,12 @@ class TrieEngine:
                 ))
 
         if candidates:
+            if len(candidates) > self.max_viterbi_candidates_per_position:
+                candidates = sorted(
+                    candidates,
+                    key=lambda item: (item.priority, item.length, bool(item.entity_type)),
+                    reverse=True,
+                )[: self.max_viterbi_candidates_per_position]
             return candidates
 
         char = text[pos]
@@ -716,13 +815,21 @@ class TrieEngine:
         return count
 
 
-_SHARED_TRIE_CACHE: dict[tuple[str, bool], TrieEngine] = {}
+_SHARED_TRIE_CACHE: dict[tuple[str, bool, int], TrieEngine] = {}
 
 
-def _shared_trie_cache_key(db_path: str | Path, enable_number_converter: bool) -> tuple[str, bool]:
+def _shared_trie_cache_key(
+    db_path: str | Path,
+    enable_number_converter: bool,
+    max_viterbi_candidates_per_position: int,
+) -> tuple[str, bool, int]:
     path = Path(db_path).resolve()
     stat = path.stat()
-    return (f"{path}:{stat.st_mtime_ns}:{stat.st_size}", enable_number_converter)
+    return (
+        f"{path}:{stat.st_mtime_ns}:{stat.st_size}",
+        enable_number_converter,
+        max_viterbi_candidates_per_position,
+    )
 
 
 # ─────────────────────────────────────────────────
