@@ -42,7 +42,10 @@ NAME_INTRO_PREFIXES = {
     "\u540d\u53eb",
     "\u540d\u4e3a",
 }
-STRONG_NAME_FOLLOW_CHARS = set("\u8bf4\u95ee\u770b\u8d70\u5750\u7ad9\u53eb\u558a\u7b11\u671b\u542c\u60f3\u62ff\u6253\u627e\u6293\u653e")
+STRONG_NAME_FOLLOW_CHARS = set(
+    "\u8bf4\u95ee\u770b\u8d70\u5750\u7ad9\u53eb\u558a\u7b11\u671b\u542c\u60f3\u62ff\u6253\u627e\u6293\u653e"
+    "\u70b9\u6447\u62ac\u76b1\u53f9\u54ac\u63a5\u8f6c\u51b2"
+)
 INVALID_NAME_CHARS = set(
     "\u7684\u4e00\u662f\u5728\u4e0d\u4e86\u6709\u548c\u4e0e\u53ca\u5e76\u6216\u4f46\u5c31\u53c8\u4e5f\u5f88\u8fd8\u5148\u518d\u5c06\u628a\u88ab\u8ba9\u7ed9\u8ddf\u4ece\u5230\u6765\u53bb\u8bf4\u95ee\u9053\u770b\u542c\u60f3\u4f1a\u80fd\u53ef\u56e0\u6240\u5982\u800c\u4e14\u53ea\u4ec0\u600e\u4e48\u54ea\u5417\u5462\u554a\u5440\u5427\u5566\u4e48\u5f97\u5730\u8fc7\u91cc\u90fd"
     "\u62ff\u672c\u8fd9\u90a3\u4e9b\u6ca1\u89c9\u4ef6\u4e2a"
@@ -199,6 +202,9 @@ class EntityScanner:
         self.db_path = str(db_path or DEFAULT_DB_PATH)
         self.trie = TrieEngine.from_shared_sqlite(self.db_path, enable_number_converter=False)
         self.accessor = RuntimeDictionaryAccessor(self.db_path)
+
+    def close(self):
+        self.accessor.close()
 
     def scan(self, text: str) -> list[EntitySuggestion]:
         found: dict[str, EntitySuggestion] = {}

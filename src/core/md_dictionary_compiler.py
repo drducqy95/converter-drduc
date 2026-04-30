@@ -415,8 +415,8 @@ class DictionaryCompiler:
     
     Handles 5 priority tiers:
         P5: projects/{name}/names_rieng.md      (highest - project-specific names)
+        P5: projects/{name}/vietphrase_rieng.md  (project-specific overrides)
         P4: global/names/_bulk_names.md          (global names)
-        P3: projects/{name}/vietphrase_rieng.md  (project-specific VietPhrase)
         P2: global/vietphrase/_bulk_vietphrase.md (global VietPhrase)
         P1: global/phien_am/_bulk_phienam.md     (lowest - single char fallback)
     """
@@ -480,6 +480,7 @@ class DictionaryCompiler:
 
                 if md_type == "bulk_dictionary":
                     for entry in parse_bulk_md(str(filepath), metadata=metadata, body=body):
+                        self._apply_scan_priority(entry, default_priority)
                         if self._should_materialize_reading(entry):
                             reading_seed_entries.append(entry)
                         if self._is_runtime_entry(entry):
@@ -511,6 +512,7 @@ class DictionaryCompiler:
                 else:
                     entry = parse_rich_md(str(filepath), metadata=metadata, body=body)
                     if entry:
+                        self._apply_scan_priority(entry, default_priority)
                         if self._should_materialize_reading(entry):
                             reading_seed_entries.append(entry)
                         if self._is_runtime_entry(entry):
@@ -615,8 +617,9 @@ class DictionaryCompiler:
         if project_name:
             project_dir = self.dict_root / "projects" / project_name
             dirs.extend([
-                # P3: Project VietPhrase
-                (project_dir, 3),
+                # Project-local dictionaries must override all global dictionaries,
+                # including older files whose YAML priority was copied from globals.
+                (project_dir, 5),
                 # P5: Project names (highest)
                 (project_dir / "characters", 5),
                 (project_dir / "factions", 5),
@@ -628,6 +631,12 @@ class DictionaryCompiler:
             ])
         
         return dirs
+
+    @staticmethod
+    def _apply_scan_priority(entry: DictEntry, default_priority: int) -> None:
+        """Raise entries to the priority tier implied by their scan location."""
+        if default_priority > 0 and entry.priority < default_priority:
+            entry.priority = default_priority
 
     def current_source_manifest(self, project_name: str | None = None) -> dict[str, dict[str, object]]:
         """Return a content manifest for the Markdown sources used by this cache."""

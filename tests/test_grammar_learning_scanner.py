@@ -12,6 +12,7 @@ from src.learning.grammar_pattern_scanner import (
     GrammarLearningPatternScanner,
     GrammarPatternScanner,
     detect_protected_spans,
+    write_grammar_learning_report,
 )
 from src.ui.command_protocol import CommandRequest
 from src.ui.sidecar_bridge import handle_request
@@ -43,6 +44,40 @@ PS：明天更新，求月票。
     assert unknown["偏偏"]["status"] == "review"
     assert unknown["偏偏"]["guessed_category"] == "counter_expectation"
     assert report["summary"]["noise_counts"]["author_note"] == 1
+
+
+def test_template_book_report_includes_source_and_name_statistics(tmp_path):
+    text = "\n".join(
+        [
+            "\u7b2c1\u7ae0 \u6837\u672c",
+            "\u53ea\u8981\u6797\u52a8\u613f\u610f\uff0c\u5c31\u80fd\u79bb\u5f00\u8fd9\u91cc\u3002",
+            "\u6797\u52a8\u8bf4\u9053\u3002\u6797\u52a8\u770b\u5411\u738b\u5c0f\u660e\u3002",
+            "\u738b\u5c0f\u660e\u70b9\u5934\u3002\u4ed6\u4ece\u9752\u9633\u9547\u51fa\u53d1\uff0c\u540e\u6765\u56de\u5230\u9752\u9633\u9547\u3002",
+            "\u4e91\u5c9a\u5b97\u7684\u4eba\u6765\u5230\u4e91\u5c9a\u5b97\u3002",
+        ]
+    )
+
+    report = GrammarLearningPatternScanner().analyze_text(
+        text,
+        source_path="template-book-sample.txt",
+        unknown_min_count=2,
+        name_min_count=2,
+    )
+
+    assert report["summary"]["name_candidate_count"] >= 3
+    assert report["source_statistics"][0]["source_path"] == "template-book-sample.txt"
+    assert report["source_statistics"][0]["known_matches"] >= 1
+
+    names = {(item["source"], item["entity_type"]): item for item in report["name_candidates"]}
+    assert ("\u6797\u52a8", "person") in names
+    assert ("\u738b\u5c0f\u660e", "person") in names
+    assert ("\u9752\u9633\u9547", "location") in names
+    assert ("\u4e91\u5c9a\u5b97", "organization") in names
+
+    paths = write_grammar_learning_report(report, tmp_path)
+    assert Path(paths["name_candidates_csv"]).exists()
+    assert Path(paths["source_statistics_csv"]).exists()
+    assert "template-book-sample.txt" in Path(paths["source_statistics_csv"]).read_text(encoding="utf-8")
 
 
 def test_known_scanner_skips_system_panel_protected_spans():

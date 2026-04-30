@@ -20,6 +20,14 @@ from dataclasses import asdict, dataclass, field
 from pathlib import Path
 from typing import Iterable
 
+from src.pipeline.entity_scanner import (
+    COMMON_NON_PERSON_NAME_TERMS,
+    COMMON_SURNAMES,
+    COMPOUND_SURNAMES,
+    ENTITY_SUFFIX_FRAGMENTS,
+    INVALID_NAME_CHARS,
+)
+
 
 SUPPORTED_ENCODINGS = ("utf-8", "utf-8-sig", "gb18030", "gbk", "big5", "utf-16")
 CJK_RE = re.compile(r"[\u4e00-\u9fff]")
@@ -155,6 +163,368 @@ class _RuleStat:
     examples: list[dict] = field(default_factory=list)
 
 
+@dataclass(slots=True)
+class NameCandidate:
+    candidate_id: str
+    source: str
+    entity_type: str
+    frequency: int
+    chapter_count: int
+    source_count: int
+    confidence: float
+    examples: list[str] = field(default_factory=list)
+    source_paths: list[str] = field(default_factory=list)
+    status: str = "review"
+
+    def to_dict(self) -> dict:
+        return asdict(self)
+
+
+@dataclass(slots=True)
+class _NameStat:
+    source: str
+    entity_type: str
+    count: int = 0
+    chapter_ids: set[str] = field(default_factory=set)
+    source_paths: set[str] = field(default_factory=set)
+    examples: list[str] = field(default_factory=list)
+    strong_contexts: int = 0
+
+
+@dataclass(slots=True)
+class _SourceStat:
+    source_path: str
+    encoding: str = ""
+    chars: int = 0
+    truncated: bool = False
+    chapters: int = 0
+    paragraphs: int = 0
+    sentences: int = 0
+    clauses: int = 0
+    known_matches: int = 0
+
+    def to_dict(self) -> dict:
+        density = (self.known_matches / self.chars * 10000) if self.chars else 0.0
+        return {
+            "source_path": self.source_path,
+            "encoding": self.encoding,
+            "chars": self.chars,
+            "truncated": self.truncated,
+            "chapters": self.chapters,
+            "paragraphs": self.paragraphs,
+            "sentences": self.sentences,
+            "clauses": self.clauses,
+            "known_matches": self.known_matches,
+            "known_match_density_per_10k_chars": round(density, 3),
+        }
+
+
+NAME_BOUNDARY_CHARS = set(
+    "\uff0c\u3002\uff01\uff1f\uff1b\uff1a\u3001\u201c\u201d\u2018\u2019"
+    "\uff08\uff09\u300a\u300b\u3008\u3009\u3010\u3011\u300e\u300f\u300c\u300d"
+    ",.!?;:()[]{}<>\"' \n\r\t"
+)
+PERSON_INTRO_PREFIXES = (
+    "\u53eb\u505a",
+    "\u53eb\u4f5c",
+    "\u540d\u53eb",
+    "\u540d\u4e3a",
+    "\u59d3",
+    "\u53eb",
+)
+PERSON_FOLLOW_CHARS = set(
+    "\u8bf4\u95ee\u9053\u770b\u671b\u542c\u60f3\u7b11\u558a\u9a82\u70b9"
+    "\u8d70\u5750\u7ad9\u8d77\u62ff\u6253\u627e\u6293\u653e\u6447\u95ea\u8f6c"
+)
+LOCATION_SUFFIXES = set(
+    "\u57ce\u53bf\u9547\u6751\u5e02\u7701\u90e1\u8857\u5c71\u6cb3\u6c5f\u6e56"
+    "\u6d77\u8c37\u5c9b\u5dde\u5d16\u6865\u8def\u533a\u56fd\u754c\u5cad\u5cf0"
+)
+LOCATION_MARKERS_BEFORE = set(
+    "\u5728\u53bb\u56de\u5230\u79bb\u8d74\u5165\u51fa\u5411\u4ece\u7531\u5f80"
+    "\u8fc7\u7ecf\u81f3"
+)
+ORGANIZATION_SUFFIXES = (
+    "\u5b66\u9662",
+    "\u5b66\u6821",
+    "\u5927\u5b66",
+    "\u4e2d\u5b66",
+    "\u5c0f\u5b66",
+    "\u533b\u9662",
+    "\u516c\u53f8",
+    "\u96c6\u56e2",
+    "\u94f6\u884c",
+    "\u7814\u7a76\u6240",
+    "\u59d4\u5458\u4f1a",
+    "\u534f\u4f1a",
+    "\u5b97\u95e8",
+    "\u95e8\u6d3e",
+    "\u5e2e\u6d3e",
+    "\u957f\u8001\u4f1a",
+    "\u5546\u4f1a",
+    "\u519b",
+)
+ORGANIZATION_SINGLE_SUFFIXES = set("\u5b97\u6d3e\u95e8\u5bab\u9601\u5e9c\u6bbf\u5e2e")
+ENTITY_STOP_SUFFIXES = tuple(ENTITY_SUFFIX_FRAGMENTS)
+ORGANIZATION_CANDIDATE_PATTERNS = tuple(
+    re.compile(rf"[\u4e00-\u9fff]{{1,6}}{re.escape(suffix)}")
+    for suffix in sorted(ORGANIZATION_SUFFIXES + ENTITY_STOP_SUFFIXES, key=len, reverse=True)
+)
+
+
+class CorpusNameScanner:
+    """Lightweight review-only entity miner for corpus reports.
+
+    This deliberately avoids the compiled runtime DB. It is used by Template
+    Book style scans where the report needs probable names/places/orgs even
+    before a project dictionary exists.
+    """
+
+    def __init__(self, *, max_examples: int = 5):
+        self.max_examples = max_examples
+        self.stats: dict[tuple[str, str], _NameStat] = {}
+
+    def scan_text(self, text: str, *, chapter_id: str, source_path: str) -> None:
+        compact = re.sub(r"\s+", "", text or "")
+        if len(compact) < 2 or not CJK_RE.search(compact):
+            return
+        seen_spans: set[tuple[int, int, str]] = set()
+        for source, entity_type, start, end, strong in self._iter_person_candidates(compact):
+            span_key = (start, end, entity_type)
+            if span_key in seen_spans:
+                continue
+            seen_spans.add(span_key)
+            self._record(source, entity_type, compact, start, end, chapter_id, source_path, strong)
+        for source, entity_type, start, end, strong in self._iter_location_candidates(compact):
+            span_key = (start, end, entity_type)
+            if span_key in seen_spans:
+                continue
+            seen_spans.add(span_key)
+            self._record(source, entity_type, compact, start, end, chapter_id, source_path, strong)
+        for source, entity_type, start, end, strong in self._iter_organization_candidates(compact):
+            span_key = (start, end, entity_type)
+            if span_key in seen_spans:
+                continue
+            seen_spans.add(span_key)
+            self._record(source, entity_type, compact, start, end, chapter_id, source_path, strong)
+
+    def finalize(self, *, min_count: int = 2, limit: int = 200) -> list[NameCandidate]:
+        candidates: list[NameCandidate] = []
+        for (source, entity_type), stat in self.stats.items():
+            if stat.count < min_count and stat.strong_contexts == 0:
+                continue
+            confidence = self._confidence(stat)
+            if confidence < 0.55:
+                continue
+            candidates.append(
+                NameCandidate(
+                    candidate_id=stable_id(f"{entity_type}:{source}", prefix="entity"),
+                    source=source,
+                    entity_type=entity_type,
+                    frequency=stat.count,
+                    chapter_count=len(stat.chapter_ids),
+                    source_count=len(stat.source_paths),
+                    confidence=confidence,
+                    examples=stat.examples,
+                    source_paths=sorted(stat.source_paths),
+                )
+            )
+        return sorted(
+            candidates,
+            key=lambda item: (-item.confidence, -item.frequency, -item.chapter_count, item.entity_type, item.source),
+        )[:limit]
+
+    def _iter_person_candidates(self, text: str) -> Iterable[tuple[str, str, int, int, bool]]:
+        for idx in range(len(text)):
+            surname_len = self._surname_prefix_length(text, idx)
+            if surname_len == 0:
+                continue
+            if self._is_bad_start(text, idx):
+                continue
+
+            lengths = (4, 3) if surname_len == 2 else (3, 2)
+            best: tuple[str, int, int, bool] | None = None
+            for length in lengths:
+                end = idx + length
+                candidate = text[idx:end]
+                if len(candidate) != length:
+                    continue
+                if not self._looks_like_person_name(candidate, surname_len):
+                    continue
+                next_char = text[end:end + 1]
+                end_score = self._score_person_end(next_char)
+                if end_score == 0:
+                    continue
+                start_score = self._score_name_start(text, idx)
+                if start_score == 0 and end_score < 2:
+                    continue
+                strong = start_score >= 2 or end_score >= 2
+                score = start_score + end_score + length
+                if best is None or score > best[1] or (score == best[1] and length < len(best[0])):
+                    best = (candidate, score, end, strong)
+            if best:
+                candidate, _, end, strong = best
+                yield candidate, "person", idx, end, strong
+
+    def _iter_location_candidates(self, text: str) -> Iterable[tuple[str, str, int, int, bool]]:
+        for idx, ch in enumerate(text):
+            if ch not in LOCATION_SUFFIXES and ch not in ORGANIZATION_SINGLE_SUFFIXES:
+                continue
+            entity_type = "organization" if ch in ORGANIZATION_SINGLE_SUFFIXES else "location"
+            best: tuple[str, int, bool] | None = None
+            for prefix_len in (4, 3, 2, 1):
+                start = idx - prefix_len
+                if start < 0:
+                    continue
+                candidate = text[start:idx + 1]
+                if not self._looks_like_named_place_or_group(candidate):
+                    continue
+                before = text[start - 1:start] if start > 0 else ""
+                strong = before in LOCATION_MARKERS_BEFORE
+                boundary = not before or before in NAME_BOUNDARY_CHARS or strong
+                if not boundary:
+                    continue
+                score = prefix_len + (2 if strong else 0)
+                if best is None or score > best[1]:
+                    best = (candidate, score, strong)
+            if best:
+                candidate, _, strong = best
+                yield candidate, entity_type, idx + 1 - len(candidate), idx + 1, strong
+
+    def _iter_organization_candidates(self, text: str) -> Iterable[tuple[str, str, int, int, bool]]:
+        for pattern in ORGANIZATION_CANDIDATE_PATTERNS:
+            for match in pattern.finditer(text):
+                candidate = match.group(0)
+                if len(candidate) > 10 or not self._looks_like_named_place_or_group(candidate):
+                    continue
+                before = text[match.start() - 1:match.start()] if match.start() > 0 else ""
+                strong = before in LOCATION_MARKERS_BEFORE or before in NAME_BOUNDARY_CHARS or not before
+                yield candidate, "organization", match.start(), match.end(), strong
+
+    def _record(
+        self,
+        source: str,
+        entity_type: str,
+        text: str,
+        start: int,
+        end: int,
+        chapter_id: str,
+        source_path: str,
+        strong: bool,
+    ) -> None:
+        key = (source, entity_type)
+        stat = self.stats.get(key)
+        if stat is None:
+            stat = _NameStat(source=source, entity_type=entity_type)
+            self.stats[key] = stat
+        stat.count += 1
+        stat.chapter_ids.add(corpus_chapter_key(source_path, chapter_id))
+        stat.source_paths.add(source_path)
+        if strong:
+            stat.strong_contexts += 1
+        if len(stat.examples) < self.max_examples:
+            stat.examples.append(self._context(text, start, end))
+
+    @staticmethod
+    def _context(text: str, start: int, end: int, radius: int = 24) -> str:
+        left = max(0, start - radius)
+        right = min(len(text), end + radius)
+        return text[left:right]
+
+    @staticmethod
+    def _surname_prefix_length(text: str, idx: int) -> int:
+        if idx + 1 < len(text) and text[idx:idx + 2] in COMPOUND_SURNAMES:
+            return 2
+        return 1 if text[idx:idx + 1] in COMMON_SURNAMES else 0
+
+    @staticmethod
+    def _looks_like_person_name(candidate: str, surname_len: int) -> bool:
+        if len(candidate) <= surname_len or len(candidate) > surname_len + 2:
+            return False
+        if candidate in COMMON_NON_PERSON_NAME_TERMS:
+            return False
+        if any(candidate.endswith(suffix) for suffix in ("\u9053", "\u6c14", "\u754c", "\u6cd5", "\u529b")):
+            return False
+        if not all("\u4e00" <= ch <= "\u9fff" for ch in candidate):
+            return False
+        given_name = candidate[surname_len:]
+        return not any(ch in INVALID_NAME_CHARS for ch in given_name)
+
+    @staticmethod
+    def _looks_like_named_place_or_group(candidate: str) -> bool:
+        if len(candidate) < 2 or len(candidate) > 10:
+            return False
+        if candidate in COMMON_NON_PERSON_NAME_TERMS:
+            return False
+        if not all("\u4e00" <= ch <= "\u9fff" for ch in candidate):
+            return False
+        stem = candidate[:-1]
+        return bool(stem) and not any(ch in INVALID_NAME_CHARS for ch in stem)
+
+    @staticmethod
+    def _score_name_start(text: str, idx: int) -> int:
+        if idx == 0:
+            return 1
+        if any(text[max(0, idx - len(prefix)):idx] == prefix for prefix in PERSON_INTRO_PREFIXES):
+            return 2
+        if text[idx - 1:idx] in NAME_BOUNDARY_CHARS:
+            return 1
+        return 0
+
+    @staticmethod
+    def _score_person_end(next_char: str) -> int:
+        if not next_char:
+            return 1
+        if next_char in PERSON_FOLLOW_CHARS:
+            return 2
+        if next_char in NAME_BOUNDARY_CHARS:
+            return 1
+        return 0
+
+    @staticmethod
+    def _is_bad_start(text: str, idx: int) -> bool:
+        if idx > 0 and text[idx - 1:idx + 1] in {"\u5bf9\u4e8e", "\u5728\u4e8e"}:
+            return True
+        return text[idx:idx + 1] in {"\u90a3", "\u8fd9", "\u67d0", "\u8be5", "\u6b64", "\u672c"}
+
+    @staticmethod
+    def _confidence(stat: _NameStat) -> float:
+        base = {"person": 0.58, "location": 0.56, "organization": 0.57}.get(stat.entity_type, 0.52)
+        base += min(math.log10(stat.count + 1) * 0.16, 0.24)
+        base += min(len(stat.chapter_ids) * 0.015, 0.12)
+        base += min(len(stat.source_paths) * 0.02, 0.10)
+        if stat.strong_contexts:
+            base += min(stat.strong_contexts * 0.025, 0.10)
+        return round(min(base, 0.96), 3)
+
+
+def summarize_name_candidates(candidates: list[NameCandidate]) -> dict:
+    by_type: Counter[str] = Counter()
+    mentions_by_type: Counter[str] = Counter()
+    total_mentions = 0
+    for candidate in candidates:
+        by_type[candidate.entity_type] += 1
+        mentions_by_type[candidate.entity_type] += candidate.frequency
+        total_mentions += candidate.frequency
+    return {
+        "total_candidates": len(candidates),
+        "total_mentions": total_mentions,
+        "high_confidence_candidates": sum(1 for item in candidates if item.confidence >= 0.75),
+        "by_entity_type": dict(sorted(by_type.items())),
+        "mentions_by_entity_type": dict(sorted(mentions_by_type.items())),
+        "top_candidates": [
+            {
+                "source": item.source,
+                "entity_type": item.entity_type,
+                "frequency": item.frequency,
+                "chapter_count": item.chapter_count,
+                "confidence": item.confidence,
+            }
+            for item in candidates[:20]
+        ],
+    }
+
+
 KNOWN_GRAMMAR_PATTERNS: tuple[GrammarPattern, ...] = (
     GrammarPattern("condition_ruguo_jiu", "condition", "如果...就...", r"如果(?P<a>[^。！？；]{1,120}?)(?:，)?[^。！？；]{0,24}?(?:就|便|则)(?P<b>[^。！？；]{1,120})", 82),
     GrammarPattern("condition_zhiyao_jiu", "condition", "只要...就...", r"只要(?P<a>[^。！？；]{1,120}?)(?:，)?[^。！？；]{0,24}?(?:就|便)(?P<b>[^。！？；]{1,120})", 84),
@@ -265,6 +635,10 @@ WEAK_SINGLE_MARKERS = {"也", "又", "越", "既", "不是", "而是", "也不",
 def stable_id(value: str, prefix: str = "grammar") -> str:
     digest = hashlib.sha1(value.encode("utf-8", errors="ignore")).hexdigest()[:12]
     return f"{prefix}_{digest}"
+
+
+def corpus_chapter_key(source_path: str, chapter_id: str) -> str:
+    return f"{source_path}::{chapter_id}" if source_path else chapter_id
 
 
 def read_text_file(path: str | Path, *, max_bytes: int | None = None) -> tuple[str, TextSource]:
@@ -630,7 +1004,7 @@ class UnknownGrammarPatternMiner:
     def _record(self, hit: _CandidateHit, example: str, *, chapter_id: str, source_path: str) -> None:
         key = (hit.pattern_text, hit.pattern_type)
         self.counter[key] += 1
-        self.chapter_sets[key].add(chapter_id)
+        self.chapter_sets[key].add(corpus_chapter_key(source_path, chapter_id))
         if source_path:
             self.source_sets[key].add(source_path)
         if hit.guessed_category is not None:
@@ -845,6 +1219,7 @@ class GrammarAnalysisStats:
         self.by_rule: dict[str, _RuleStat] = {}
         self.by_category: Counter[str] = Counter()
         self.by_chapter: Counter[str] = Counter()
+        self.by_source: dict[str, _SourceStat] = {}
         self.noise_counts: Counter[str] = Counter()
         self.total_matches = 0
         self.total_sentences = 0
@@ -857,10 +1232,29 @@ class GrammarAnalysisStats:
     def add_source(self, source: TextSource) -> None:
         self.total_sources += 1
         self.source_chars += source.chars
+        self.by_source[source.path] = _SourceStat(
+            source_path=source.path,
+            encoding=source.encoding,
+            chars=source.chars,
+            truncated=source.truncated,
+        )
 
     def add_chapter(self, chapter: CorpusChapter) -> None:
         self.total_chapters += 1
         self.by_chapter.setdefault(chapter.chapter_id, 0)
+        self._source_stat(chapter.source_path).chapters += 1
+
+    def add_paragraph(self, source_path: str) -> None:
+        self.total_paragraphs += 1
+        self._source_stat(source_path).paragraphs += 1
+
+    def add_sentence(self, source_path: str) -> None:
+        self.total_sentences += 1
+        self._source_stat(source_path).sentences += 1
+
+    def add_clauses(self, source_path: str, count: int) -> None:
+        self.total_clauses += count
+        self._source_stat(source_path).clauses += count
 
     def add_noise(self, segment_type: str) -> None:
         self.noise_counts[segment_type] += 1
@@ -871,13 +1265,15 @@ class GrammarAnalysisStats:
             self.by_category[match.category] += 1
             if match.chapter_id:
                 self.by_chapter[match.chapter_id] += 1
+            if match.source_path:
+                self._source_stat(match.source_path).known_matches += 1
             stat = self.by_rule.get(match.rule_id)
             if stat is None:
                 stat = _RuleStat(match.rule_id, match.category, match.name)
                 self.by_rule[match.rule_id] = stat
             stat.count += 1
             if match.chapter_id:
-                stat.chapter_ids.add(match.chapter_id)
+                stat.chapter_ids.add(corpus_chapter_key(match.source_path, match.chapter_id))
             if len(stat.examples) < 5:
                 stat.examples.append(
                     {
@@ -903,7 +1299,19 @@ class GrammarAnalysisStats:
             )
         return sorted(rows, key=lambda item: (-item["count"], item["rule_id"]))
 
-    def summary(self, unknown_candidates: list[UnknownPatternCandidate]) -> dict:
+    def source_rows(self) -> list[dict]:
+        return sorted(
+            (stat.to_dict() for stat in self.by_source.values()),
+            key=lambda item: (-int(item["known_matches"]), item["source_path"]),
+        )
+
+    def summary(
+        self,
+        unknown_candidates: list[UnknownPatternCandidate],
+        name_candidates: list[NameCandidate] | None = None,
+    ) -> dict:
+        names = name_candidates or []
+        match_density = (self.total_matches / self.source_chars * 10000) if self.source_chars else 0.0
         return {
             "total_sources": self.total_sources,
             "total_chapters": self.total_chapters,
@@ -917,7 +1325,18 @@ class GrammarAnalysisStats:
             "by_chapter": dict(sorted(self.by_chapter.items())),
             "noise_counts": dict(sorted(self.noise_counts.items())),
             "unknown_candidate_count": len(unknown_candidates),
+            "name_candidate_count": len(names),
+            "name_mentions": sum(candidate.frequency for candidate in names),
+            "known_match_density_per_10k_chars": round(match_density, 3),
         }
+
+    def _source_stat(self, source_path: str) -> _SourceStat:
+        key = source_path or "<unknown>"
+        stat = self.by_source.get(key)
+        if stat is None:
+            stat = _SourceStat(source_path=key)
+            self.by_source[key] = stat
+        return stat
 
 
 class GrammarLearningPatternScanner:
@@ -935,10 +1354,14 @@ class GrammarLearningPatternScanner:
         max_bytes_per_file: int | None = None,
         max_sentences: int | None = None,
         candidate_limit: int = 200,
+        include_name_scan: bool = True,
+        name_min_count: int = 2,
+        name_candidate_limit: int = 200,
     ) -> dict:
         resolved_files = self._resolve_input_files(paths, max_files=max_files)
         stats = GrammarAnalysisStats()
         miner = UnknownGrammarPatternMiner()
+        name_scanner = CorpusNameScanner() if include_name_scan else None
         sources: list[TextSource] = []
         warnings: list[str] = []
 
@@ -955,18 +1378,27 @@ class GrammarLearningPatternScanner:
                 source_path=source.path,
                 stats=stats,
                 miner=miner,
+                name_scanner=name_scanner,
                 max_sentences=max_sentences,
             )
             if max_sentences and stats.total_sentences >= max_sentences:
                 break
 
         unknown_candidates = miner.finalize(min_count=unknown_min_count, limit=candidate_limit)
+        name_candidates = (
+            name_scanner.finalize(min_count=name_min_count, limit=name_candidate_limit)
+            if name_scanner is not None
+            else []
+        )
         report = {
-            "summary": stats.summary(unknown_candidates),
+            "summary": stats.summary(unknown_candidates, name_candidates),
             "sources": [source.to_dict() for source in sources],
+            "source_statistics": stats.source_rows(),
             "warnings": warnings,
             "known_rules": stats.known_rule_rows(),
             "unknown_candidates": [candidate.to_dict() for candidate in unknown_candidates],
+            "name_statistics": summarize_name_candidates(name_candidates),
+            "name_candidates": [candidate.to_dict() for candidate in name_candidates],
             "rule_backlog": generate_rule_backlog(stats, unknown_candidates),
             "metadata": {
                 "engine": "GrammarLearningPatternScanner",
@@ -984,9 +1416,13 @@ class GrammarLearningPatternScanner:
         unknown_min_count: int = 2,
         max_sentences: int | None = None,
         candidate_limit: int = 200,
+        include_name_scan: bool = True,
+        name_min_count: int = 2,
+        name_candidate_limit: int = 200,
     ) -> dict:
         stats = GrammarAnalysisStats()
         miner = UnknownGrammarPatternMiner()
+        name_scanner = CorpusNameScanner() if include_name_scan else None
         source = TextSource(source_path or "<memory>", "memory", len(text), False)
         stats.add_source(source)
         self._analyze_text_into_stats(
@@ -994,15 +1430,24 @@ class GrammarLearningPatternScanner:
             source_path=source.path,
             stats=stats,
             miner=miner,
+            name_scanner=name_scanner,
             max_sentences=max_sentences,
         )
         unknown_candidates = miner.finalize(min_count=unknown_min_count, limit=candidate_limit)
+        name_candidates = (
+            name_scanner.finalize(min_count=name_min_count, limit=name_candidate_limit)
+            if name_scanner is not None
+            else []
+        )
         return {
-            "summary": stats.summary(unknown_candidates),
+            "summary": stats.summary(unknown_candidates, name_candidates),
             "sources": [source.to_dict()],
+            "source_statistics": stats.source_rows(),
             "warnings": [],
             "known_rules": stats.known_rule_rows(),
             "unknown_candidates": [candidate.to_dict() for candidate in unknown_candidates],
+            "name_statistics": summarize_name_candidates(name_candidates),
+            "name_candidates": [candidate.to_dict() for candidate in name_candidates],
             "rule_backlog": generate_rule_backlog(stats, unknown_candidates),
             "metadata": {
                 "engine": "GrammarLearningPatternScanner",
@@ -1018,6 +1463,7 @@ class GrammarLearningPatternScanner:
         source_path: str,
         stats: GrammarAnalysisStats,
         miner: UnknownGrammarPatternMiner,
+        name_scanner: CorpusNameScanner | None,
         max_sentences: int | None,
     ) -> None:
         for chapter in split_chapters(text, source_path=source_path):
@@ -1027,18 +1473,20 @@ class GrammarLearningPatternScanner:
             for paragraph_index, paragraph in enumerate(split_paragraphs(chapter.text)):
                 if max_sentences and stats.total_sentences >= max_sentences:
                     return
-                stats.total_paragraphs += 1
+                stats.add_paragraph(source_path)
                 segment_type = classify_segment(paragraph)
                 if is_noise_segment(paragraph, segment_type):
                     stats.add_noise(segment_type)
                     continue
+                if name_scanner is not None:
+                    name_scanner.scan_text(paragraph, chapter_id=chapter.chapter_id, source_path=source_path)
                 paragraph_spans = detect_protected_spans(paragraph)
                 for sentence_index, sentence in enumerate(split_sentences(paragraph, paragraph_spans)):
                     if max_sentences and stats.total_sentences >= max_sentences:
                         return
                     if not CJK_RE.search(sentence):
                         continue
-                    stats.total_sentences += 1
+                    stats.add_sentence(source_path)
                     sentence_spans = detect_protected_spans(sentence)
                     known_matches = self.known_scanner.scan(
                         sentence,
@@ -1057,7 +1505,7 @@ class GrammarLearningPatternScanner:
                         source_path=source_path,
                     )
                     clauses = split_clauses(sentence, sentence_spans)
-                    stats.total_clauses += len(clauses)
+                    stats.add_clauses(source_path, len(clauses))
                     for clause in clauses:
                         miner.scan_clause(
                             clause,
@@ -1157,6 +1605,8 @@ def render_markdown_report(report: dict) -> str:
         f"- Known rules matched: {summary.get('total_rules_matched', 0)}",
         f"- Total known matches: {summary.get('total_matches', 0)}",
         f"- Unknown candidates: {summary.get('unknown_candidate_count', 0)}",
+        f"- Name candidates: {summary.get('name_candidate_count', 0)}",
+        f"- Known match density / 10k chars: {summary.get('known_match_density_per_10k_chars', 0)}",
         "",
         "## Known Categories",
         "",
@@ -1167,6 +1617,31 @@ def render_markdown_report(report: dict) -> str:
             lines.append(f"- `{category}`: {count}")
     else:
         lines.append("- No known category matches.")
+
+    lines.extend(["", "## Source Statistics", "", "| Source | Chars | Chapters | Sentences | Known Matches | Density / 10k |", "|---|---:|---:|---:|---:|---:|"])
+    for source in report.get("source_statistics", [])[:50]:
+        lines.append(
+            "| `{path}` | {chars} | {chapters} | {sentences} | {matches} | {density} |".format(
+                path=str(source.get("source_path", "")).replace("|", "\\|"),
+                chars=source.get("chars", 0),
+                chapters=source.get("chapters", 0),
+                sentences=source.get("sentences", 0),
+                matches=source.get("known_matches", 0),
+                density=source.get("known_match_density_per_10k_chars", 0),
+            )
+        )
+
+    lines.extend(["", "## Name Candidates", "", "| Source | Type | Frequency | Chapters | Confidence |", "|---|---|---:|---:|---:|"])
+    for candidate in report.get("name_candidates", [])[:50]:
+        lines.append(
+            "| `{source}` | {etype} | {freq} | {chapters} | {conf:.2f} |".format(
+                source=str(candidate.get("source", "")).replace("|", "\\|"),
+                etype=candidate.get("entity_type", ""),
+                freq=int(candidate.get("frequency", 0)),
+                chapters=int(candidate.get("chapter_count", 0)),
+                conf=float(candidate.get("confidence", 0.0)),
+            )
+        )
 
     lines.extend(["", "## Unknown Candidates", "", "| Candidate | Type | Frequency | Chapters | Confidence | Guess |", "|---|---|---:|---:|---:|---|"])
     for candidate in report.get("unknown_candidates", [])[:50]:
@@ -1219,6 +1694,51 @@ def render_known_rules_csv(report: dict) -> str:
     return output.getvalue()
 
 
+def render_name_candidates_csv(report: dict) -> str:
+    output = io.StringIO()
+    fieldnames = [
+        "candidate_id",
+        "source",
+        "entity_type",
+        "frequency",
+        "chapter_count",
+        "source_count",
+        "confidence",
+        "status",
+        "source_paths",
+        "examples",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for candidate in report.get("name_candidates", []):
+        row = {field: candidate.get(field, "") for field in fieldnames}
+        row["source_paths"] = ";".join(candidate.get("source_paths", []) or [])
+        row["examples"] = " | ".join(candidate.get("examples", []) or [])
+        writer.writerow(row)
+    return output.getvalue()
+
+
+def render_source_statistics_csv(report: dict) -> str:
+    output = io.StringIO()
+    fieldnames = [
+        "source_path",
+        "encoding",
+        "chars",
+        "truncated",
+        "chapters",
+        "paragraphs",
+        "sentences",
+        "clauses",
+        "known_matches",
+        "known_match_density_per_10k_chars",
+    ]
+    writer = csv.DictWriter(output, fieldnames=fieldnames)
+    writer.writeheader()
+    for source in report.get("source_statistics", []):
+        writer.writerow({field: source.get(field, "") for field in fieldnames})
+    return output.getvalue()
+
+
 def write_grammar_learning_report(report: dict, out_dir: str | Path, *, stem: str = "grammar_learning_report") -> dict:
     target_dir = Path(out_dir)
     target_dir.mkdir(parents=True, exist_ok=True)
@@ -1226,15 +1746,21 @@ def write_grammar_learning_report(report: dict, out_dir: str | Path, *, stem: st
     md_path = target_dir / f"{stem}.md"
     unknown_csv_path = target_dir / f"{stem}_unknown_candidates.csv"
     known_csv_path = target_dir / f"{stem}_known_rules.csv"
+    name_csv_path = target_dir / f"{stem}_name_candidates.csv"
+    source_csv_path = target_dir / f"{stem}_source_statistics.csv"
 
     json_path.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     md_path.write_text(render_markdown_report(report), encoding="utf-8")
     unknown_csv_path.write_text(render_unknown_candidates_csv(report), encoding="utf-8")
     known_csv_path.write_text(render_known_rules_csv(report), encoding="utf-8")
+    name_csv_path.write_text(render_name_candidates_csv(report), encoding="utf-8")
+    source_csv_path.write_text(render_source_statistics_csv(report), encoding="utf-8")
 
     return {
         "json": str(json_path),
         "markdown": str(md_path),
         "unknown_candidates_csv": str(unknown_csv_path),
         "known_rules_csv": str(known_csv_path),
+        "name_candidates_csv": str(name_csv_path),
+        "source_statistics_csv": str(source_csv_path),
     }

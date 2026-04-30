@@ -428,6 +428,28 @@ def test_luat_nhan_specificity_prefers_longer_overlapping_pattern():
     assert result == "LONG Lam Dong"
 
 
+def test_luat_nhan_multi_entity_placeholders_with_typed_sources():
+    engine = LuatNhanEngine()
+    rule_cls = __import__('src.core.luat_nhan_engine', fromlist=['LuatNhanRule']).LuatNhanRule
+    engine.rules = [
+        rule_cls(
+            pattern="{0:person}\u4e0e{1:person}",
+            replacement="{0} và {1}",
+            pattern_key="\u4e0e",
+            category="primary",
+        )
+    ]
+    engine.set_entity_pairs([
+        ("\u6797\u52a8", "Lam Dong", "person"),
+        ("\u7eeb\u6e05\u7af9", "Lang Thanh Truc", "person"),
+    ])
+
+    source_text = "\u6797\u52a8\u4e0e\u7eeb\u6e05\u7af9\u540c\u884c"
+
+    assert engine.apply(source_text) == "Lam Dong và Lang Thanh Truc\u540c\u884c"
+    assert engine.apply_with_source_entities(source_text) == "\u6797\u52a8 và \u7eeb\u6e05\u7af9\u540c\u884c"
+
+
 class TestDictionaryCompiler:
     def test_compile_sample(self, tmp_path):
         """Test compiling from sample MD files."""
@@ -601,6 +623,54 @@ last_compiled: "2026-01-01"
         
         assert row[0] == "tu vi high"
         assert row[1] == 4
+
+    def test_project_dictionary_overrides_global_names_even_with_legacy_priority(self, tmp_path):
+        """Project-local dictionaries should beat global names despite old YAML priority."""
+        term = "\u5929\u5b97"
+        names_dir = tmp_path / "global" / "names"
+        names_dir.mkdir(parents=True)
+        project_dir = tmp_path / "projects" / "demo"
+        project_dir.mkdir(parents=True)
+        compiled_dir = tmp_path / "_compiled"
+
+        (names_dir / "_bulk_names.md").write_text(f"""---
+type: bulk_dictionary
+priority: 4
+category: names
+entries_count: 1
+compiled_from: test
+last_compiled: "2026-01-01"
+---
+
+| source | target |
+| --- | --- |
+| {term} | global name |
+""", encoding="utf-8")
+
+        (project_dir / "vietphrase_rieng.md").write_text(f"""---
+type: bulk_dictionary
+priority: 3
+category: project_vietphrase
+entries_count: 1
+compiled_from: test
+last_compiled: "2026-01-01"
+---
+
+| source | target |
+| --- | --- |
+| {term} | project override |
+""", encoding="utf-8")
+
+        compiler = DictionaryCompiler(str(tmp_path), str(compiled_dir))
+        compiler.compile(project_name="demo")
+
+        conn = sqlite3.connect(str(compiled_dir / "trie_cache.db"))
+        c = conn.cursor()
+        c.execute("SELECT target, priority FROM entries WHERE source = ?", (term,))
+        row = c.fetchone()
+        conn.close()
+
+        assert row == ("project override", 5)
 
     def test_compile_split_bulk_files(self, tmp_path):
         """Split bulk files without _bulk_ prefix should still compile."""

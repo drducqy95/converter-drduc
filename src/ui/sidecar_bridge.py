@@ -874,6 +874,9 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 max_bytes_per_file=int(payload["max_bytes_per_file"]) if payload.get("max_bytes_per_file") not in (None, "") else None,
                 max_sentences=int(payload["max_sentences"]) if payload.get("max_sentences") not in (None, "") else None,
                 candidate_limit=int(payload.get("candidate_limit") or 200),
+                include_name_scan=str(payload.get("include_name_scan", "true")).lower() not in {"0", "false", "no", "off"},
+                name_min_count=int(payload.get("name_min_count") or 2),
+                name_candidate_limit=int(payload.get("name_candidate_limit") or 200),
             )
             out_dir = Path(str(payload.get("out_dir") or project_dir / "reports" / "grammar_learning"))
             report_paths = write_grammar_learning_report(report, out_dir)

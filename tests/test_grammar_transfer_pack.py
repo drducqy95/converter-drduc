@@ -56,6 +56,45 @@ def test_source_grammar_transfer_rewrites_mined_template_book_frames():
     assert {trace["fallback_level"] for trace in result.traces} == {"grammar_transfer"}
 
 
+def test_source_grammar_transfer_covers_additional_discourse_frames():
+    engine = GrammarTransferEngine()
+    text = (
+        "\u867d\u7136\u5929\u8272\u5df2\u665a\uff0c\u4f46\u6797\u52a8\u6ca1\u6709\u505c\u4e0b\u3002"
+        "\u56e0\u4e3a\u5c71\u8def\u96be\u884c\uff0c\u6240\u4ee5\u4ed6\u5148\u4f11\u606f\u3002"
+        "\u65e2\u7136\u4f60\u6765\u4e86\uff0c\u5c31\u4e00\u8d77\u8d70\u3002"
+        "\u4e00\u9762\u8d70\u8def\u4e00\u9762\u89c2\u5bdf\u3002"
+        "\u8fde\u738b\u5c0f\u660e\u90fd\u6c89\u9ed8\u4e86\u3002"
+        "\u5148\u6574\u7406\u884c\u56ca\uff0c\u518d\u4e0b\u5c71\u3002"
+        "\u4e0d\u4ec5\u4f1a\u5199\u5b57\uff0c\u4e5f\u4f1a\u753b\u56fe\u3002"
+    )
+
+    result = engine.rewrite_source(text)
+    reasons = {trace["reason"] for trace in result.traces}
+
+    assert {
+        "concession_suiran_dan",
+        "cause_yinwei_suoyi",
+        "conditional_jiran_jiu",
+        "concurrent_yimian",
+        "emphatic_lian",
+        "temporal_xian_zai",
+        "additive_bujin_ye",
+    }.issubset(reasons)
+    assert "\u867d\u7136" not in result.text
+    assert "\u56e0\u4e3a" not in result.text
+    assert "\u65e2\u7136" not in result.text
+    assert "\u4e00\u9762" not in result.text
+    assert "\u8fde\u738b\u5c0f\u660e\u90fd" not in result.text
+
+
+def test_source_grammar_transfer_respects_locked_entity_terms():
+    text = "\u4f55\u51b5\u5b97\u5f1f\u5b50\u5230\u4e86\u3002"
+    result = GrammarTransferEngine().rewrite_source(text, protected_terms=["\u4f55\u51b5\u5b97"])
+
+    assert result.text == text
+    assert result.traces == []
+
+
 def test_clause_segmenter_auto_protects_bracket_commas():
     text = "他获得了【龙之心脏，基因链】，如果敌人靠近，就会启动。"
     clauses = ClauseSegmenter().segment(text)
@@ -99,3 +138,55 @@ def test_rbmt_attaches_grammar_transfer_trace_before_lexical_decode():
     assert "Dù" in result.clean_text
     assert "cũng" in result.clean_text
     assert any(trace["stage"] == "grammar_transfer" for trace in result.segments[0].trace)
+
+
+def test_rbmt_runtime_proper_name_scan_extends_locked_entities():
+    translator = RBMTTranslator()
+    try:
+        result = translator.translate_text(
+            "\u6797\u52a8\u8bf4\u9053\u3002\u79e6\u4e91\u8bf4\u9053\u3002\u79e6\u4e91\u70b9\u5934\u3002",
+            config={
+                "runtime_proper_name_scan": {
+                    "enabled": True,
+                    "min_confidence": 0.72,
+                    "min_count": 1,
+                }
+            },
+        )
+    finally:
+        translator.close()
+
+    runtime_sources = {item["source"] for item in result.config.get("runtime_locked_entities", [])}
+    assert "\u6797\u52a8" in runtime_sources
+    assert "\u79e6\u4e91" in runtime_sources
+    assert any(
+        trace["stage"] == "entity_override" and trace["source"] == "\u79e6\u4e91"
+        for segment in result.segments
+        for trace in segment.trace
+    )
+
+
+def test_rbmt_grammar_transfer_keeps_locked_entity_terms_whole():
+    translator = RBMTTranslator()
+    try:
+        result = translator.translate_text(
+            "\u4f55\u51b5\u5b97\u5f1f\u5b50\u5230\u4e86\u3002",
+            config={
+                "locked_entities": [
+                    {
+                        "source": "\u4f55\u51b5\u5b97",
+                        "target": "Ha Huong Tong",
+                        "entity_type": "organization",
+                    }
+                ]
+            },
+        )
+    finally:
+        translator.close()
+
+    assert "Ha Huong Tong" in result.clean_text
+    assert not any(
+        trace["stage"] == "grammar_transfer" and trace["source"] == "\u4f55\u51b5"
+        for segment in result.segments
+        for trace in segment.trace
+    )

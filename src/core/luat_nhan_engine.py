@@ -51,23 +51,41 @@ class LuatNhanRule:
     suffix: str = ""    # Text after {0} in pattern
     placeholder: str = "{0}"
     placeholder_type: str = ""
+    placeholders: list[str] = field(init=False, repr=False)
+    placeholder_types: list[str] = field(init=False, repr=False)
     specificity: tuple[int, int, int, int] = field(init=False, repr=False)
     
     def __post_init__(self):
         # Parse where the placeholder appears in the pattern.
-        match = PLACEHOLDER_RE.search(self.pattern)
-        if match:
-            self.placeholder = match.group(0)
-            self.placeholder_type = _normalize_entity_type(match.group("typed") or match.group("named") or "")
-            self.prefix = self.pattern[:match.start()]
-            self.suffix = self.pattern[match.end():]
+        matches = list(PLACEHOLDER_RE.finditer(self.pattern))
+        self.placeholders = [match.group(0) for match in matches]
+        self.placeholder_types = [
+            _normalize_entity_type(match.group("typed") or match.group("named") or "")
+            for match in matches
+        ]
+        if matches:
+            first = matches[0]
+            self.placeholder = first.group(0)
+            self.placeholder_type = self.placeholder_types[0]
+            self.prefix = self.pattern[:first.start()]
+            self.suffix = self.pattern[first.end():]
         else:
+            self.placeholders = []
+            self.placeholder_types = []
             self.suffix = self.pattern
 
         self.specificity = self._specificity()
 
     def render(self, value: str) -> str:
-        return self.replacement.replace("{0}", value).replace(self.placeholder, value)
+        return self.render_values([value])
+
+    def render_values(self, values: list[str]) -> str:
+        rendered = self.replacement
+        for index, value in enumerate(values):
+            rendered = rendered.replace(f"{{{index}}}", value)
+        for placeholder, value in zip(self.placeholders, values):
+            rendered = rendered.replace(placeholder, value)
+        return rendered
 
     def _specificity(self) -> tuple[int, int, int, int]:
         placeholder_count = len(PLACEHOLDER_RE.findall(self.pattern))
@@ -216,37 +234,9 @@ class LuatNhanEngine:
         self._compiled_patterns = []
         
         for rule in self.rules:
-            names = [
-                source
-                for source, entity_type in source_signature
-                if self._entity_matches_rule_type(entity_type, rule.placeholder_type)
-            ]
-            name_pattern = '|'.join(re.escape(name) for name in names if name)
-            if not name_pattern:
+            regex = self._compile_rule_regex(rule, source_signature)
+            if not regex:
                 continue
-
-            if rule.prefix and rule.suffix:
-                # Pattern has text on both sides of {0}: prefix{0}suffix
-                regex = re.compile(
-                    re.escape(rule.prefix) + 
-                    f'({name_pattern})' + 
-                    re.escape(rule.suffix)
-                )
-            elif rule.prefix:
-                # Pattern has text before {0}: prefix{0}
-                regex = re.compile(
-                    re.escape(rule.prefix) + 
-                    f'({name_pattern})'
-                )
-            elif rule.suffix:
-                # Pattern has text after {0}: {0}suffix
-                regex = re.compile(
-                    f'({name_pattern})' + 
-                    re.escape(rule.suffix)
-                )
-            else:
-                continue
-            
             self._compiled_patterns.append((regex, rule))
         self._sort_compiled_patterns()
     
@@ -261,13 +251,48 @@ class LuatNhanEngine:
             return
         
         for rule in self.rules:
-            if rule.suffix:
-                regex = re.compile(
-                    f'({name_pattern})' + 
-                    re.escape(rule.suffix)
-                )
-                self._compiled_patterns.append((regex, rule))
+            if not rule.placeholders:
+                continue
+            regex_text = self._regex_from_rule_pattern(rule, [name_pattern] * len(rule.placeholders))
+            if regex_text:
+                self._compiled_patterns.append((re.compile(regex_text), rule))
         self._sort_compiled_patterns()
+
+    def _compile_rule_regex(
+        self,
+        rule: LuatNhanRule,
+        source_signature: tuple[tuple[str, str], ...],
+    ) -> re.Pattern | None:
+        if not rule.placeholders:
+            return None
+        placeholder_patterns: list[str] = []
+        for placeholder_type in rule.placeholder_types:
+            names = [
+                source
+                for source, entity_type in source_signature
+                if self._entity_matches_rule_type(entity_type, placeholder_type)
+            ]
+            name_pattern = "|".join(re.escape(name) for name in names if name)
+            if not name_pattern:
+                return None
+            placeholder_patterns.append(name_pattern)
+        regex_text = self._regex_from_rule_pattern(rule, placeholder_patterns)
+        return re.compile(regex_text) if regex_text else None
+
+    @staticmethod
+    def _regex_from_rule_pattern(rule: LuatNhanRule, placeholder_patterns: list[str]) -> str:
+        parts: list[str] = []
+        cursor = 0
+        pattern_index = 0
+        for match in PLACEHOLDER_RE.finditer(rule.pattern):
+            if pattern_index >= len(placeholder_patterns):
+                return ""
+            parts.append(re.escape(rule.pattern[cursor:match.start()]))
+            parts.append(f"({placeholder_patterns[pattern_index]})")
+            cursor = match.end()
+            pattern_index += 1
+        parts.append(re.escape(rule.pattern[cursor:]))
+        return "".join(parts)
     
     def apply(self, text: str) -> str:
         """
@@ -331,13 +356,16 @@ class LuatNhanEngine:
         applications: list[_RuleApplication] = []
         for order, (regex, rule) in enumerate(self._compiled_patterns):
             for match in regex.finditer(text):
-                entity = match.group(1)
-                value = self._entity_pairs.get(entity, entity) if translate_entity else entity
+                entities = [match.group(index + 1) for index in range(len(rule.placeholders))]
+                values = [
+                    self._entity_pairs.get(entity, entity) if translate_entity else entity
+                    for entity in entities
+                ]
                 applications.append(
                     _RuleApplication(
                         start=match.start(),
                         end=match.end(),
-                        replacement=rule.render(value),
+                        replacement=rule.render_values(values),
                         rule=rule,
                         order=order,
                     )

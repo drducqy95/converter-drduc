@@ -98,6 +98,25 @@ def test_entity_scanner_rejects_partial_and_embedded_name_false_positives():
     assert "\u6b65\u58f0" not in heuristic_sources
 
 
+def test_entity_scanner_detects_name_before_common_action_followers():
+    scanner = EntityScanner()
+    text = "\u6797\u52a8\u770b\u5411\u738b\u5c0f\u660e\u3002\u738b\u5c0f\u660e\u70b9\u5934\u3002"
+    entities = scanner.scan(text)
+    heuristic_sources = {entity.source for entity in entities if entity.source_dict == "heuristic_name_mining"}
+
+    assert "\u738b\u5c0f\u660e" in heuristic_sources
+
+
+def test_entity_scanner_rejects_name_prefix_inside_organization_suffix():
+    scanner = EntityScanner()
+    text = "\u79e6\u4e91\u516c\u53f8\u5728\u57ce\u91cc\u5f00\u4e1a\u3002\u79e6\u4e91\u516c\u53f8\u5f88\u5feb\u6269\u5f20\u3002"
+    entities = scanner.scan(text)
+    heuristic_sources = {entity.source for entity in entities if entity.source_dict == "heuristic_name_mining"}
+
+    assert "\u79e6\u4e91" not in heuristic_sources
+    assert "\u79e6\u4e91\u516c" not in heuristic_sources
+
+
 def test_entity_scanner_rejects_shifted_preposition_and_demonstrative_prefixes():
     scanner = EntityScanner()
     text = (

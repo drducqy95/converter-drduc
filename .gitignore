@@ -41,3 +41,16 @@ session.json
 *.mp4
 *.avi
 *.mkv
+
+# Local media, archives, and agent scratch artifacts
+*.mp3
+*.wav
+*.flac
+*.zip
+*.tar.gz
+*.7z
+*.patch
+*.resolved
+Converter by DrDuc.json
+python
+Name project/

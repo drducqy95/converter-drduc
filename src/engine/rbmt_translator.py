@@ -29,10 +29,12 @@ from src.engine.traditional_to_simplified import TraditionalToSimplifiedConverte
 from src.grammar.transfer_engine import GrammarTransferEngine
 from src.engine.zh_structure_rewriter import rewrite_chinese_structure
 from src.engine.vi_grammar_rewriter import rewrite_vietnamese_grammar
+from src.pipeline.entity_scanner import EntityScanner
 from src.state.translation_memory import TranslationMemory
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "dictionaries" / "_compiled" / "trie_cache.db"
+MAX_RUNTIME_ENTITY_SCAN_CHARS = 200_000
 DEFAULT_FUNCTION_TRANSLATIONS = {
     "我": "ta",
     "你": "ngươi",
@@ -286,6 +288,7 @@ class RBMTTranslator:
         self.grammar_transfer = GrammarTransferEngine()
         self.junk_filter = JunkPhraseFilter()
         self.tm = TranslationMemory(tm_db_path) if tm_db_path else None
+        self._runtime_entity_scanner: EntityScanner | None = None
         self.enable_tm_lookup = enable_tm_lookup
         self.function_translations = dict(DEFAULT_FUNCTION_TRANSLATIONS)
         self.phrase_overrides = dict(DEFAULT_PHRASE_OVERRIDES)
@@ -299,6 +302,8 @@ class RBMTTranslator:
     def close(self):
         self.accessor.close()
         self.pinyin.close()
+        if self._runtime_entity_scanner:
+            self._runtime_entity_scanner.close()
         if self.tm:
             self.tm.close()
 
@@ -309,10 +314,6 @@ class RBMTTranslator:
         config["style_context"] = style_selection["effective_context"]
         config["naturalization"] = style_selection["naturalization"]
         config["style_resolution"] = style_selection
-        self.pronoun_resolver.set_entity_graph(
-            config.get("locked_entities", []),
-            config.get("relationships", []),
-        )
         phrase_overrides, phrase_override_keys = self._resolve_phrase_overrides(config)
         preserved = self.preserver.preserve(text)
         simplified = self.converter.convert(preserved.text)
@@ -325,6 +326,11 @@ class RBMTTranslator:
         )
         working_text = source_junk_result.text
         source_junk_traces = list(source_junk_result.traces)
+        self._augment_config_with_runtime_proper_names(config, working_text)
+        self.pronoun_resolver.set_entity_graph(
+            config.get("locked_entities", []),
+            config.get("relationships", []),
+        )
 
         segments: list[SegmentTranslation] = []
         clean_sentences: list[str] = []
@@ -389,6 +395,73 @@ class RBMTTranslator:
             segments=segments,
             config=config,
         )
+
+    def _augment_config_with_runtime_proper_names(self, config: dict, text: str) -> None:
+        settings = config.get("runtime_proper_name_scan")
+        if settings is True:
+            settings = {"enabled": True}
+        if not isinstance(settings, dict) or not bool(settings.get("enabled")):
+            return
+        if not text or not any(self._is_cjk(char) for char in text):
+            return
+
+        max_chars = int(settings.get("max_chars") or MAX_RUNTIME_ENTITY_SCAN_CHARS)
+        min_confidence = float(settings.get("min_confidence") or 0.72)
+        min_count = int(settings.get("min_count") or 1)
+        scan_text = text[:max(1, max_chars)]
+        scanner = self._get_runtime_entity_scanner()
+        found_entities = scanner.scan(scan_text)
+
+        locked_entities = [
+            dict(item)
+            for item in config.get("locked_entities", [])
+            if isinstance(item, dict) and item.get("source") and item.get("target")
+        ]
+        known_sources = {item["source"] for item in locked_entities}
+        added: list[dict] = []
+        for entity in found_entities:
+            if entity.entity_type not in {"person", "location", "organization"}:
+                continue
+            if entity.source in known_sources:
+                continue
+            if entity.confidence < min_confidence or entity.count < min_count:
+                continue
+            target = str(entity.target or "").strip()
+            if not target or target == entity.source:
+                target = self.accessor.get_han_viet_for_text(entity.source)
+            if not target:
+                continue
+            payload = {
+                "source": entity.source,
+                "target": target,
+                "entity_type": entity.entity_type,
+                "source_dict": entity.source_dict,
+                "confidence": entity.confidence,
+                "count": entity.count,
+                "runtime_scan": True,
+            }
+            locked_entities.append(payload)
+            known_sources.add(entity.source)
+            added.append(payload)
+
+        if not added:
+            config.setdefault("runtime_proper_name_scan", dict(settings))["added"] = 0
+            return
+
+        config["locked_entities"] = sorted(
+            locked_entities,
+            key=lambda item: (-len(item["source"]), item["source"]),
+        )
+        config.pop("_locked_entities_sorted", None)
+        config["runtime_locked_entities"] = added
+        scan_state = dict(settings)
+        scan_state.update({"added": len(added), "scanned_chars": len(scan_text)})
+        config["runtime_proper_name_scan"] = scan_state
+
+    def _get_runtime_entity_scanner(self) -> EntityScanner:
+        if self._runtime_entity_scanner is None:
+            self._runtime_entity_scanner = EntityScanner(db_path=self.db_path)
+        return self._runtime_entity_scanner
 
     def export(self, result: TranslationResult, project_dir: str | Path, artifact_stem: str = "translated"):
         project_path = Path(project_dir)
@@ -502,16 +575,19 @@ class RBMTTranslator:
         if heading_override:
             return heading_override
 
+        locked_entities = self._get_locked_entities(config)
         grammar_traces: list[dict] = []
-        if self._should_apply_grammar_transfer(sentence, phrase_override_keys):
-            transfer_result = self.grammar_transfer.rewrite_source(sentence)
+        if self._grammar_transfer_enabled(config) and self._should_apply_grammar_transfer(sentence, phrase_override_keys):
+            transfer_result = self.grammar_transfer.rewrite_source(
+                sentence,
+                protected_terms=[item["source"] for item in locked_entities],
+            )
             sentence = transfer_result.text
             grammar_traces.extend(transfer_result.traces)
 
         # Rewrite Chinese structural patterns before lexical processing.
         sentence = rewrite_chinese_structure(sentence)
 
-        locked_entities = self._get_locked_entities(config)
         sentence_context = self.sentence_context_classifier.classify(sentence)
         dialogue_context = self.pronoun_resolver.detect_dialogue_context(
             sentence,
@@ -803,6 +879,17 @@ class RBMTTranslator:
         payload["target"] = target
         payload["length"] = len(best_key)
         return payload
+
+    @staticmethod
+    def _grammar_transfer_enabled(config: dict) -> bool:
+        settings = config.get("grammar_transfer")
+        if settings is None:
+            return True
+        if isinstance(settings, bool):
+            return settings
+        if isinstance(settings, dict):
+            return bool(settings.get("enabled", True))
+        return True
 
     @staticmethod
     def _should_apply_grammar_transfer(sentence: str, phrase_override_keys: list[str] | None) -> bool:

@@ -114,6 +114,41 @@ def test_pretranslation_pipeline_creates_project_artifacts(tmp_path):
     assert config["style_preferences"]["project_profile"] == "han_viet_balanced"
 
 
+def test_pretranslation_pipeline_builds_grammar_and_name_scan_artifacts(tmp_path):
+    source_path = tmp_path / "grammar_names.md"
+    source_path.write_text(
+        "\n".join(
+            [
+                "# \u7b2c1\u7ae0 \u8f6c\u6362",
+                "\u53ea\u8981\u6797\u52a8\u56de\u6765\uff0c\u5c31\u80fd\u7a81\u7834\u3002",
+                "\u6797\u52a8\u8bf4\u9053\u3002\u79e6\u4e91\u8bf4\u9053\u3002",
+                "\u79e6\u4e91\u70b9\u5934\uff0c\u4ece\u9752\u9633\u9547\u51fa\u53d1\u3002",
+            ]
+        ),
+        encoding="utf-8",
+    )
+    project_dir = tmp_path / "grammar_project"
+
+    pipeline = PreTranslationPipeline()
+    result = pipeline.prepare(source_path, project_dir)
+    pipeline.close()
+
+    grammar_path = project_dir / "working" / "segments" / "grammar_transfer_plan.json"
+    proper_name_path = project_dir / "working" / "entities" / "proper_name_scan.json"
+    grammar_payload = json.loads(grammar_path.read_text(encoding="utf-8"))
+    proper_name_payload = json.loads(proper_name_path.read_text(encoding="utf-8"))
+
+    assert len(result.grammar_transfer_plan or []) == len(grammar_payload)
+    assert any(item["transformed"] for item in grammar_payload)
+    assert result.config["grammar_transfer"]["segments_transformed"] >= 1
+    assert result.config["runtime_proper_name_scan"]["enabled"] is True
+    assert result.proper_name_scan == proper_name_payload
+    proper_names = {item["source"] for item in proper_name_payload["candidates"]}
+    assert "\u6797\u52a8" in proper_names
+    assert "\u79e6\u4e91" in proper_names
+    assert "\u9752\u9633\u9547" in proper_names
+
+
 def test_config_generator_detects_suspense_horror_for_modern_ghost_story(tmp_path):
     source_path = tmp_path / "ghost_story.md"
     source_path.write_text(

@@ -20,6 +20,7 @@ from src.pipeline.entity_scanner import EntityScanner
 from src.pipeline.relationship_builder import RelationshipBuilder
 from src.pipeline.segment_classifier import SegmentClassifier
 from src.pipeline.terminology_suggester import TerminologySuggester
+from src.grammar.transfer_engine import GrammarTransferEngine
 from src.parser.dependency_parser import DependencyParser
 from src.parser.morphological_analyzer import MorphologicalAnalyzer
 from src.rules.syntax_transfer_rules import SyntaxTransferRules
@@ -32,6 +33,8 @@ MAX_ENTITIES = 200            # Cap entity count to prevent O(n²) relationship 
 MAX_RELATIONSHIPS = 500       # Cap relationship edges to prevent JSON serialization OOM
 MAX_SYNTAX_SEGMENTS = 2_000   # Keep syntax artifacts bounded on large projects
 MAX_SYNTAX_TEXT_CHARS = 800
+MAX_GRAMMAR_TRANSFER_SEGMENTS = 2_000
+MAX_GRAMMAR_TRANSFER_TEXT_CHARS = 1_200
 
 
 @dataclass(slots=True)
@@ -44,6 +47,8 @@ class PreTranslationResult:
     config: dict
     segments: list[dict] | None = None
     syntax_analysis: list[dict] | None = None
+    grammar_transfer_plan: list[dict] | None = None
+    proper_name_scan: dict | None = None
     import_errors: list[dict] | None = None
 
 
@@ -65,10 +70,12 @@ class PreTranslationPipeline:
         self.morphological_analyzer = MorphologicalAnalyzer()
         self.dependency_parser = DependencyParser()
         self.syntax_transfer_rules = SyntaxTransferRules()
+        self.grammar_transfer = GrammarTransferEngine()
         self.accessor = RuntimeDictionaryAccessor(db_path) if db_path else None
 
     def close(self):
         self.pinyin.close()
+        self.scanner.close()
         self.suggester.close()
         self.config_generator.close()
         if self.accessor:
@@ -181,6 +188,7 @@ class PreTranslationPipeline:
         if len(relationships) > MAX_RELATIONSHIPS:
             relationships = sorted(relationships, key=lambda r: r.confidence, reverse=True)[:MAX_RELATIONSHIPS]
         terminology = self.suggester.suggest(entities)
+        proper_name_scan = self._build_proper_name_scan(chapters, entities)
         config = self.config_generator.generate(
             text=analysis_text,
             entities=entities,
@@ -188,14 +196,22 @@ class PreTranslationPipeline:
             terminology=terminology,
         )
         config = self._merge_external_project_metadata(config, metadata_source)
-        self.config_generator.write(config, project_dir)
         segment_packets = self._build_segment_packets(chapters)
+        grammar_transfer_plan = self._build_grammar_transfer_plan(segment_packets)
+        config = self._attach_pipeline_algorithm_config(
+            config,
+            grammar_transfer_plan=grammar_transfer_plan,
+            proper_name_scan=proper_name_scan,
+        )
+        self.config_generator.write(config, project_dir)
         syntax_analysis = self._build_syntax_analysis(segment_packets)
 
         self._write_json(project_dir, "working/entities/entities_suggested.json", [item.to_dict() for item in entities])
+        self._write_json(project_dir, "working/entities/proper_name_scan.json", proper_name_scan)
         self._write_json(project_dir, "working/relationships/relationships_suggested.json", [item.to_dict() for item in relationships])
         self._write_json(project_dir, "working/config/terminology_suggestions.json", [item.to_dict() for item in terminology])
         self._write_json(project_dir, "working/segments/segments_classified.json", segment_packets)
+        self._write_json(project_dir, "working/segments/grammar_transfer_plan.json", grammar_transfer_plan)
         self._write_json(project_dir, "working/segments/syntax_analysis.json", syntax_analysis)
         if import_errors:
             self._write_json(project_dir, "working/import_errors.json", import_errors)
@@ -209,6 +225,8 @@ class PreTranslationPipeline:
             config=config,
             segments=segment_packets,
             syntax_analysis=syntax_analysis,
+            grammar_transfer_plan=grammar_transfer_plan,
+            proper_name_scan=proper_name_scan,
             import_errors=import_errors or [],
         )
 
@@ -434,6 +452,108 @@ class PreTranslationPipeline:
                 "transformed": transfer.get("transformed", False),
             })
         return analysis_packets
+
+    def _build_grammar_transfer_plan(self, segment_packets: list[dict]) -> list[dict]:
+        plan: list[dict] = []
+        for packet in segment_packets[:MAX_GRAMMAR_TRANSFER_SEGMENTS]:
+            text = str(packet.get("normalized_text") or packet.get("raw_text") or "").strip()
+            if not text:
+                continue
+            clipped = text[:MAX_GRAMMAR_TRANSFER_TEXT_CHARS]
+            transfer = self.grammar_transfer.rewrite_source(clipped)
+            traces = [dict(trace) for trace in transfer.traces]
+            plan.append(
+                {
+                    "segment_id": packet.get("segment_id"),
+                    "trace_id": packet.get("trace_id"),
+                    "chapter_id": packet.get("chapter_id"),
+                    "position": packet.get("position"),
+                    "seg_type": packet.get("seg_type"),
+                    "source_text": clipped,
+                    "transformed_text": transfer.text,
+                    "transformed": bool(traces),
+                    "applied_rule_ids": [trace.get("reason", "") for trace in traces if trace.get("reason")],
+                    "trace": traces,
+                }
+            )
+        return plan
+
+    def _build_proper_name_scan(self, chapters: list[Chapter], entities: list) -> dict:
+        rows: list[dict] = []
+        by_type: dict[str, int] = {}
+        total_mentions = 0
+        for entity in entities:
+            if entity.entity_type not in {"person", "location", "organization"}:
+                continue
+            chapter_hits: list[dict] = []
+            for chapter in chapters:
+                chapter_text = self._compose_chapter_block(chapter)
+                count = chapter_text.count(entity.source)
+                if count <= 0:
+                    continue
+                chapter_hits.append(
+                    {
+                        "chapter_id": chapter.chapter_id,
+                        "title": chapter.title,
+                        "count": count,
+                    }
+                )
+            if not chapter_hits:
+                continue
+            total_count = sum(item["count"] for item in chapter_hits)
+            total_mentions += total_count
+            by_type[entity.entity_type] = by_type.get(entity.entity_type, 0) + 1
+            payload = entity.to_dict()
+            payload.update(
+                {
+                    "total_count": total_count,
+                    "chapter_count": len(chapter_hits),
+                    "chapter_hits": chapter_hits,
+                    "status": "locked" if entity.entity_type in {"person", "location", "organization"} else "review",
+                }
+            )
+            rows.append(payload)
+        rows.sort(key=lambda item: (-int(item.get("total_count", 0)), -len(str(item.get("source", ""))), str(item.get("source", ""))))
+        return {
+            "summary": {
+                "total_candidates": len(rows),
+                "total_mentions": total_mentions,
+                "by_entity_type": dict(sorted(by_type.items())),
+            },
+            "candidates": rows,
+        }
+
+    @staticmethod
+    def _attach_pipeline_algorithm_config(
+        config: dict,
+        *,
+        grammar_transfer_plan: list[dict],
+        proper_name_scan: dict,
+    ) -> dict:
+        merged = dict(config)
+        transformed = [item for item in grammar_transfer_plan if item.get("transformed")]
+        rule_counts: dict[str, int] = {}
+        for item in transformed:
+            for rule_id in item.get("applied_rule_ids", []):
+                rule_counts[rule_id] = rule_counts.get(rule_id, 0) + 1
+        merged["grammar_transfer"] = {
+            "enabled": True,
+            "artifact": "working/segments/grammar_transfer_plan.json",
+            "segments_analyzed": len(grammar_transfer_plan),
+            "segments_transformed": len(transformed),
+            "rule_counts": dict(sorted(rule_counts.items())),
+        }
+        merged["proper_name_scan"] = {
+            "artifact": "working/entities/proper_name_scan.json",
+            **dict(proper_name_scan.get("summary", {}) if isinstance(proper_name_scan, dict) else {}),
+        }
+        merged["runtime_proper_name_scan"] = {
+            "enabled": True,
+            "min_confidence": 0.72,
+            "min_count": 1,
+            "max_chars": MAX_ANALYSIS_CHARS,
+        }
+        return merged
 
     def _merge_external_project_metadata(self, config: dict, source_path: Path) -> dict:
         project_root = self._detect_external_project_root(source_path)

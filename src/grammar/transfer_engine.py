@@ -90,16 +90,23 @@ class GrammarTransferEngine:
     def __init__(self):
         self._rules = self._build_rules()
 
-    def rewrite_source(self, text: str) -> GrammarTransferResult:
+    def rewrite_source(self, text: str, *, protected_terms: list[str] | tuple[str, ...] | None = None) -> GrammarTransferResult:
         current = text
         traces: list[dict] = []
+        protected = tuple(sorted({term for term in (protected_terms or []) if term}, key=len, reverse=True))
         for rule in self._rules:
-            current, rule_traces = self._apply_rule(current, rule)
+            current, rule_traces = self._apply_rule(current, rule, protected_terms=protected)
             traces.extend(rule_traces)
         return GrammarTransferResult(current, traces)
 
-    def _apply_rule(self, text: str, rule: _TransferRule) -> tuple[str, list[dict]]:
-        protected_ranges = self._protected_ranges(text)
+    def _apply_rule(
+        self,
+        text: str,
+        rule: _TransferRule,
+        *,
+        protected_terms: tuple[str, ...] = (),
+    ) -> tuple[str, list[dict]]:
+        protected_ranges = self._protected_ranges(text, protected_terms=protected_terms)
         pieces: list[str] = []
         traces: list[dict] = []
         last = 0
@@ -133,7 +140,7 @@ class GrammarTransferEngine:
         return "".join(pieces), traces
 
     @staticmethod
-    def _protected_ranges(text: str) -> list[tuple[int, int]]:
+    def _protected_ranges(text: str, *, protected_terms: tuple[str, ...] = ()) -> list[tuple[int, int]]:
         patterns = (
             r"【[^】]{1,80}】",
             r"《[^》]{1,80}》",
@@ -145,6 +152,8 @@ class GrammarTransferEngine:
         ranges: list[tuple[int, int]] = []
         for pattern in patterns:
             ranges.extend(match.span() for match in re.finditer(pattern, text))
+        for term in protected_terms:
+            ranges.extend(match.span() for match in re.finditer(re.escape(term), text))
         return sorted(ranges)
 
     @staticmethod
@@ -178,6 +187,11 @@ class GrammarTransferEngine:
             clause, connector = match.groups()
             tail = "cũng phải" if connector == "也要" else "cũng không"
             return f"thà {clause} {tail}"
+
+        def concession_suiran(match: re.Match[str]) -> str:
+            clause, connector = match.groups()
+            bridge = "v\u1eabn" if connector in {"\u4ecd\u7136", "\u8fd8\u662f"} else "nh\u01b0ng"
+            return f"tuy {clause} {bridge}"
 
         fixed_map = {
             "有鉴于此": "vì vậy",
@@ -242,6 +256,13 @@ class GrammarTransferEngine:
         }
 
         rules: list[_TransferRule] = [
+            _TransferRule("conditional_jiran_jiu", re.compile(f"\u65e2\u7136{_SHORT_CLAUSE}(?:\uff0c)?\u5c31"), paired("\u0111\u00e3", " th\u00ec"), 82),
+            _TransferRule("cause_yinwei_suoyi", re.compile(f"\u56e0\u4e3a{_SHORT_CLAUSE}(?:\uff0c)?(?:\u6240\u4ee5|\u4fbf|\u5c31)"), repl("v\u00ec {0} n\u00ean"), 80),
+            _TransferRule("concession_suiran_dan", re.compile(f"(?:\u867d\u7136|\u867d\u8bf4|\u5c3d\u7ba1){_SHORT_CLAUSE}(?:\uff0c)?(\u4f46\u662f|\u4f46|\u5374|\u4ecd\u7136|\u8fd8\u662f)"), concession_suiran, 80),
+            _TransferRule("additive_bujin_ye", re.compile(f"(?:\u4e0d\u4f46|\u4e0d\u4ec5){_SHORT_CLAUSE}(?:\uff0c)?(?:\u4e5f|\u66f4)"), repl("kh\u00f4ng ch\u1ec9 {0} m\u00e0 c\u00f2n"), 76),
+            _TransferRule("concurrent_yimian", re.compile(f"\u4e00\u9762{_SHORT_CLAUSE}(?:\uff0c)?\u4e00\u9762"), repl("v\u1eeba {0} v\u1eeba"), 78),
+            _TransferRule("emphatic_lian", re.compile(f"(?<!\u5c31)\u8fde{_SHORT_CLAUSE}(?:\u4e5f|\u90fd)"), repl("ngay c\u1ea3 {0} c\u0169ng"), 78),
+            _TransferRule("temporal_xian_zai", re.compile(f"\u5148{_SHORT_CLAUSE}(?:\uff0c)?(?:\u518d|\u7136\u540e|\u624d)"), repl("tr\u01b0\u1edbc ti\u00ean {0}, r\u1ed3i"), 76),
             _TransferRule("conditional_zhiyao_jiu", re.compile(rf"只要{_SHORT_CLAUSE}(?:，)?([^，。！？；\n]{{0,16}}?)就"), paired("chỉ cần", " thì"), 82),
             _TransferRule("conditional_ruguo_jiu", re.compile(rf"如果{_SHORT_CLAUSE}(?:，)?([^，。！？；\n]{{0,16}}?)就"), paired("nếu", " thì"), 82),
             _TransferRule("conditional_yidan_jiu", re.compile(rf"一旦{_SHORT_CLAUSE}(?:，)?([^，。！？；\n]{{0,16}}?)就"), paired("một khi", " thì"), 82),
