@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState, type SyntheticEvent } from "react";
+import { useEffect, useMemo, useRef, useState, type SyntheticEvent } from "react";
 import type { EntityTargetSuggestion, ProjectOverview, QAReport, TranslationArtifacts, TranslationSegment, TranslationTrace } from "../protocol";
 import { Panel } from "../components/Panel";
 
@@ -186,6 +186,10 @@ export function TranslationWorkspaceScreen(props: {
   const [suggestingTargets, setSuggestingTargets] = useState(false);
   const [workspaceView, setWorkspaceView] = useState<WorkspaceView>("compare");
   const [selectedEntitySources, setSelectedEntitySources] = useState<Set<string>>(() => new Set());
+  const sourceCompareRef = useRef<HTMLTextAreaElement | null>(null);
+  const cleanCompareRef = useRef<HTMLTextAreaElement | null>(null);
+  const draftCompareRef = useRef<HTMLTextAreaElement | null>(null);
+  const compareScrollSyncingRef = useRef(false);
 
   useEffect(() => {
     setConfigDraft(JSON.stringify(props.overview?.config ?? {}, null, 2));
@@ -315,6 +319,34 @@ export function TranslationWorkspaceScreen(props: {
       return;
     }
     applyCompareSelection(kind, selectedText, start);
+  }
+
+  function handleCompareScroll(event: SyntheticEvent<HTMLTextAreaElement>) {
+    if (compareScrollSyncingRef.current) {
+      return;
+    }
+    const sourcePane = event.currentTarget;
+    const sourceMaxTop = Math.max(0, sourcePane.scrollHeight - sourcePane.clientHeight);
+    const sourceMaxLeft = Math.max(0, sourcePane.scrollWidth - sourcePane.clientWidth);
+    const topRatio = sourceMaxTop > 0 ? sourcePane.scrollTop / sourceMaxTop : 0;
+    const leftRatio = sourceMaxLeft > 0 ? sourcePane.scrollLeft / sourceMaxLeft : 0;
+    const panes = [sourceCompareRef.current, cleanCompareRef.current, draftCompareRef.current].filter(
+      (pane): pane is HTMLTextAreaElement => Boolean(pane),
+    );
+
+    compareScrollSyncingRef.current = true;
+    for (const targetPane of panes) {
+      if (targetPane === sourcePane) {
+        continue;
+      }
+      const targetMaxTop = Math.max(0, targetPane.scrollHeight - targetPane.clientHeight);
+      const targetMaxLeft = Math.max(0, targetPane.scrollWidth - targetPane.clientWidth);
+      targetPane.scrollTop = targetMaxTop * topRatio;
+      targetPane.scrollLeft = targetMaxLeft * leftRatio;
+    }
+    window.requestAnimationFrame(() => {
+      compareScrollSyncingRef.current = false;
+    });
   }
 
   function handleChapterSelect(chapterId: string) {
@@ -507,19 +539,35 @@ export function TranslationWorkspaceScreen(props: {
               <label className="field">
                 <span>Nguồn</span>
                 <textarea
+                  ref={sourceCompareRef}
                   className="textarea compare-textarea"
                   value={props.translationInput}
                   onChange={(event) => props.onTranslationInputChange(event.target.value)}
+                  onScroll={handleCompareScroll}
                   onSelect={(event) => handleCompareSelection("source", event)}
                 />
               </label>
               <label className="field">
                 <span>Bản sạch</span>
-                <textarea className="textarea compare-textarea" value={props.translation?.clean_text ?? ""} readOnly onSelect={(event) => handleCompareSelection("clean", event)} />
+                <textarea
+                  ref={cleanCompareRef}
+                  className="textarea compare-textarea"
+                  value={props.translation?.clean_text ?? ""}
+                  readOnly
+                  onScroll={handleCompareScroll}
+                  onSelect={(event) => handleCompareSelection("clean", event)}
+                />
               </label>
               <label className="field">
                 <span>Bản nháp chú giải</span>
-                <textarea className="textarea draft-compare-textarea" value={props.translation?.draft_text ?? ""} readOnly onSelect={(event) => handleCompareSelection("draft", event)} />
+                <textarea
+                  ref={draftCompareRef}
+                  className="textarea draft-compare-textarea"
+                  value={props.translation?.draft_text ?? ""}
+                  readOnly
+                  onScroll={handleCompareScroll}
+                  onSelect={(event) => handleCompareSelection("draft", event)}
+                />
               </label>
             </div>
             <div className="compare-selection-strip">
