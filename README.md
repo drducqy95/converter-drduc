@@ -9,7 +9,7 @@ Non-LLM translation workspace focused on `ZH -> VI` with a baseline `EN -> VI` p
 - Current baseline: Phase 00-08 implemented and tested; v23.0 core hardening foundations are in place for TM governance, trace, segment typing, protected spans, noise safety, grammar relation detection, and a conservative grammar transfer pack.
 - Python setup: `python -m pip install -e ".[dev]"`
 - Test command: `python -m pytest`
-- Task runner: `make test`, `make coverage`, `make desktop-build`, `make verify`
+- Task runner: `make compile-dictionaries`, `make test`, `make coverage`, `make desktop-build`, `make verify`
 - Desktop shell build: `cd desktop && npm run build`
 
 ## Production Boundary
@@ -22,7 +22,7 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 
 - `scripts/migrate_qt_to_md.py`: migrate Quick Translator dictionaries into Markdown-based sources.
 - `scripts/runners/`: local pipeline, translation, and coach-feedback entry points.
-- `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into SQLite with source-manifest stale detection.
+- `src/core/md_dictionary_compiler.py`: compile Markdown dictionaries into the ignored SQLite cache required by CI/runtime, with source-manifest stale detection.
 - `src/core/trie_engine.py`: runtime Trie lookup with priority handling and Viterbi segmentation.
 - `src/core/luat_nhan_engine.py`: grammar/disambiguation rule loading, typed placeholder application, and specificity-based conflict resolution.
 - `src/engine/number_converter.py`: number/date/unit conversion baseline plus semantic percent, fraction, countdown, rating, and ordinal-time frames.

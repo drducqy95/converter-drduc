@@ -23,6 +23,7 @@ class ConfigGenerator:
     def __init__(self, db_path: str | None = None):
         self.origin_detector = CulturalOriginDetector()
         self.accessor = RuntimeDictionaryAccessor(db_path)
+        self._name_reading_cache: dict[str, str] = {}
 
     def close(self):
         self.accessor.close()
@@ -95,25 +96,75 @@ class ConfigGenerator:
 
         parts: list[str] = []
         for char in source:
-            reading = self._pick_han_viet_reading(char)
+            reading = self._pick_han_viet_reading(char, name_context=True)
             if not reading:
                 return ""
             parts.append(reading)
         return self._title_case_words(" ".join(parts))
 
-    def _pick_han_viet_reading(self, source: str) -> str:
+    def _pick_han_viet_reading(self, source: str, *, name_context: bool = False) -> str:
         for record in self.accessor.get_entry_readings(source):
-            value = self._normalize_reading(record.han_viet_readings)
-            if value:
-                return value
+            candidates = self._normalize_reading_candidates(record.han_viet_readings)
+            if not candidates:
+                continue
+            if name_context:
+                contextual = self._pick_name_context_reading(source, candidates)
+                if contextual:
+                    return contextual
+            return candidates[0]
         return ""
 
     @staticmethod
-    def _normalize_reading(value: str) -> str:
+    def _normalize_reading_candidates(value: str) -> list[str]:
         if not value:
+            return []
+        candidates: list[str] = []
+        seen: set[str] = set()
+        for part in re.split(r"[|,;/]", value):
+            normalized = " ".join(part.strip().split())
+            key = normalized.lower()
+            if normalized and key not in seen:
+                candidates.append(normalized)
+                seen.add(key)
+        return candidates
+
+    def _pick_name_context_reading(self, source: str, candidates: list[str]) -> str:
+        if len(source) != 1:
             return ""
-        first = re.split(r"[|,;/]", value, maxsplit=1)[0].strip()
-        return " ".join(first.split())
+        if source in self._name_reading_cache:
+            cached = self._name_reading_cache[source]
+            return cached if cached.lower() in {item.lower() for item in candidates} else ""
+
+        candidate_map = {item.lower(): item for item in candidates}
+        votes: dict[str, int] = {}
+        rows = self.accessor._get_conn().execute(
+            """
+            SELECT source, target
+            FROM entries
+            WHERE source LIKE ?
+              AND (entity_type = 'person' OR category LIKE 'names_person%')
+            LIMIT 250
+            """,
+            (f"%{source}%",),
+        ).fetchall()
+        for row in rows:
+            name_source = str(row["source"] or "")
+            target_words = str(row["target"] or "").split()
+            if len(name_source) != len(target_words):
+                continue
+            for index, char in enumerate(name_source):
+                if char != source:
+                    continue
+                target_word = target_words[index].strip(" ,.;:()[]{}").lower()
+                if target_word in candidate_map:
+                    votes[target_word] = votes.get(target_word, 0) + 1
+
+        if not votes:
+            self._name_reading_cache[source] = ""
+            return ""
+        best = max(votes.items(), key=lambda item: item[1])[0]
+        self._name_reading_cache[source] = candidate_map[best]
+        return candidate_map[best]
 
     @staticmethod
     def _title_case_words(value: str) -> str:

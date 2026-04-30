@@ -10,7 +10,7 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 - v23.0 đã có nền tảng hardening cho TM governance, trace, segment typing, protected span, noise filter, grammar relation detection và grammar transfer pack thận trọng.
 - Cài dependency Python: `python -m pip install -e ".[dev]"`
 - Lệnh test chuẩn: `python -m pytest`
-- Task runner: `make test`, `make coverage`, `make desktop-build`, `make verify`
+- Task runner: `make compile-dictionaries`, `make test`, `make coverage`, `make desktop-build`, `make verify`
 
 ## Những Gì Đang Chạy Được
 
