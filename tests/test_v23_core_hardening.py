@@ -8,7 +8,9 @@ import pytest
 
 from src.engine.rbmt_translator import RBMTTranslator
 from src.grammar.clause_segmenter import ClauseBoundary, ClauseSegmenter
+from src.grammar.conflict_resolver import ConflictResolver
 from src.grammar.relation_detector import RelationDetector, RelationType
+from src.grammar.rule_claim import RuleClaim
 from src.pipeline.noise_filter import NoiseAction, NoiseFilter
 from src.pipeline.packet import LockLevel, ProtectedSpan, SegmentType
 from src.pipeline.protected_span_registry import ProtectedSpanRegistry
@@ -109,6 +111,72 @@ def test_tm_auto_evicts_machine_entries_when_capacity_is_configured(tmp_path):
         tm.close()
 
 
+def test_tm_policy_tiered_fuzzy_search_and_snapshot_rollback(tmp_path):
+    tm = TranslationMemory(tmp_path / "tm.sqlite")
+    try:
+        assert tm.MACHINE_TO_APPROVED_POLICY["requires_user_action"] is True
+        assert tm.MACHINE_TO_APPROVED_POLICY["auto_promote_reuse_count"] is None
+
+        tm.store_machine("abcxefg", "Machine target", quality_score=0.92)
+        tm.store_approved("abcdezz", "Approved target", reviewer="tester")
+
+        results = tm.tiered_fuzzy_search("abcdefg", threshold=0.70)
+        assert results[0].tier == "approved"
+        assert results[0].target_text == "Approved target"
+        assert results[0].weighted_score > results[0].raw_score
+
+        snapshot_path = tm.snapshot("before bad batch")
+        tm.store_machine("polluted", "Bad machine target")
+        assert tm.exists_in_machine("polluted")
+
+        tm.rollback(snapshot_path)
+        assert not tm.exists_in_machine("polluted")
+        assert tm.exists_in_approved("abcdezz")
+    finally:
+        tm.close()
+
+
+def test_conflict_resolver_is_deterministic_and_traced():
+    def claim(
+        rule_id: str,
+        span: tuple[int, int],
+        *,
+        priority: int,
+        source: str = "builtin",
+        confidence: float = 0.80,
+        protected: bool = False,
+    ) -> RuleClaim:
+        return RuleClaim(
+            rule_id=rule_id,
+            relation_type=RelationType.CONDITION,
+            source_span=span,
+            priority=priority,
+            confidence=confidence,
+            protected=protected,
+            source=source,
+        )
+
+    claims = [
+        claim("rule_b", (0, 8), priority=80),
+        claim("rule_a", (0, 8), priority=80),
+        claim("builtin_group2", (10, 18), priority=70),
+        claim("user_group2", (10, 18), priority=70, source="user", confidence=0.50),
+        claim("user_short", (20, 24), priority=60, source="user", confidence=0.99),
+        claim("builtin_long", (20, 28), priority=60, source="builtin", confidence=0.50),
+        claim("protected_rule", (30, 32), priority=100, protected=True),
+    ]
+
+    resolver = ConflictResolver()
+    accepted, traces = resolver.resolve_with_trace(list(reversed(claims)))
+
+    assert [item.rule_id for item in accepted] == ["rule_a", "user_group2", "builtin_long"]
+    assert [item.rule_id for item in resolver.resolve(claims)] == [item.rule_id for item in accepted]
+    assert accepted[0].trace is not None
+    assert accepted[0].trace.metadata["specificity"] == 8
+    assert any(trace.action == "rejected_conflict" and trace.rule_id == "rule_b" for trace in traces)
+    assert any(trace.action == "skipped_protected" and trace.rule_id == "protected_rule" for trace in traces)
+
+
 def test_segment_classifier_required_cases():
     classifier = SegmentClassifier()
     cases = [
@@ -170,6 +238,30 @@ def test_clause_segmenter_respects_protected_spans_and_detects_boundaries():
     clauses = ClauseSegmenter().segment(text, protected)
     assert all("【龙之心脏" in clause.text or "基因链】" not in clause.text for clause in clauses)
     assert any(clause.boundary == ClauseBoundary.CONDITIONAL for clause in clauses)
+
+
+def test_clause_segmenter_detects_paired_connective_boundaries():
+    cases = [
+        (
+            "\u867d\u7136\u4ed6\u5df2\u7ecf\u53cd\u590d\u786e\u8ba4\u8fd9\u6761\u8def\u6ca1\u6709\u4efb\u4f55\u9000\u8def\uff0c"
+            "\u4f46\u4ed6\u8fd8\u662f\u7ee7\u7eed\u8d70\u4e0b\u53bb\u3002",
+            ClauseBoundary.CONCESSIVE,
+        ),
+        (
+            "\u56e0\u4e3a\u4ed6\u5df2\u7ecf\u6ca1\u6709\u9000\u8def\uff0c"
+            "\u6240\u4ee5\u53ea\u80fd\u7ee7\u7eed\u524d\u8fdb\u3002",
+            ClauseBoundary.CAUSE,
+        ),
+        (
+            "\u5982\u679c\u654c\u4eba\u7ee7\u7eed\u9760\u8fd1\uff0c"
+            "\u5c31\u4f1a\u7acb\u523b\u542f\u52a8\u8b66\u62a5\u3002",
+            ClauseBoundary.CONDITIONAL,
+        ),
+    ]
+
+    for text, expected in cases:
+        clauses = ClauseSegmenter().segment(text)
+        assert clauses[0].boundary == expected
 
 
 def test_relation_detector_marker_map():

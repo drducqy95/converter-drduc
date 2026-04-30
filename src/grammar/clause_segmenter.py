@@ -49,6 +49,26 @@ MARKERS: list[tuple[ClauseBoundary, tuple[str, ...]]] = [
     (ClauseBoundary.TEMPORAL, ("当", "当时", "随后", "然后", "这时", "此时", "随着", "直到")),
 ]
 
+CONNECTIVE_PAIRS: tuple[tuple[ClauseBoundary, str, str], ...] = (
+    (ClauseBoundary.CONCESSIVE, "\u867d\u7136", "\u4f46"),  # 虽然...但
+    (ClauseBoundary.CONCESSIVE, "\u867d\u8bf4", "\u4f46"),  # 虽说...但
+    (ClauseBoundary.CONCESSIVE, "\u5c3d\u7ba1", "\u4f46"),  # 尽管...但
+    (ClauseBoundary.CONCESSIVE, "\u5373\u4fbf", "\u4e5f"),  # 即便...也
+    (ClauseBoundary.CONCESSIVE, "\u5373\u4f7f", "\u4e5f"),  # 即使...也
+    (ClauseBoundary.CONCESSIVE, "\u54ea\u6015", "\u4e5f"),  # 哪怕...也
+    (ClauseBoundary.CONCESSIVE, "\u5c31\u7b97", "\u4e5f"),  # 就算...也
+    (ClauseBoundary.CAUSE, "\u56e0\u4e3a", "\u6240\u4ee5"),  # 因为...所以
+    (ClauseBoundary.CAUSE, "\u7531\u4e8e", "\u56e0\u6b64"),  # 由于...因此
+    (ClauseBoundary.CAUSE, "\u65e2\u7136", "\u90a3\u4e48"),  # 既然...那么
+    (ClauseBoundary.CONDITIONAL, "\u5982\u679c", "\u5c31"),  # 如果...就
+    (ClauseBoundary.CONDITIONAL, "\u53ea\u8981", "\u5c31"),  # 只要...就
+    (ClauseBoundary.CONDITIONAL, "\u4e00\u65e6", "\u5c31"),  # 一旦...就
+    (ClauseBoundary.CONDITIONAL, "\u53ea\u6709", "\u624d"),  # 只有...才
+    (ClauseBoundary.CONDITIONAL, "\u9664\u975e", "\u5426\u5219"),  # 除非...否则
+)
+
+CLAUSE_CONTEXT_BREAKS = "\u3002\uff01\uff1f\uff1b\n"
+
 AUTO_PROTECTED_PATTERNS: tuple[tuple[str, str, int], ...] = (
     (r"【[^】]{1,120}】", "BRACKET_ITEM", 50),
     (r"《[^》]{1,120}》", "TITLE_OR_BOOK", 50),
@@ -92,16 +112,38 @@ class ClauseSegmenter:
 
         return self._build_clauses(text, boundaries)
 
-    @staticmethod
-    def _detect_marker_around(text: str, comma_index: int) -> Boundary | None:
-        left = text[max(0, comma_index - 14):comma_index]
-        right = text[comma_index + 1:comma_index + 15]
+    @classmethod
+    def _detect_marker_around(cls, text: str, comma_index: int) -> Boundary | None:
+        left = cls._left_clause_context(text, comma_index)
+        right = cls._right_clause_context(text, comma_index)
+        right_probe = right.lstrip()
+
+        for boundary_type, opener, closer in CONNECTIVE_PAIRS:
+            if opener in left and closer in right_probe[:32]:
+                return Boundary(comma_index, boundary_type, f"{opener}...{closer}")
+
         window = left + right
         for boundary_type, markers in MARKERS:
             for marker in markers:
                 if marker in window:
                     return Boundary(comma_index, boundary_type, marker)
         return None
+
+    @staticmethod
+    def _left_clause_context(text: str, comma_index: int, limit: int = 80) -> str:
+        start = max(0, comma_index - limit)
+        for idx in range(comma_index - 1, start - 1, -1):
+            if text[idx] in CLAUSE_CONTEXT_BREAKS:
+                return text[idx + 1:comma_index]
+        return text[start:comma_index]
+
+    @staticmethod
+    def _right_clause_context(text: str, comma_index: int, limit: int = 80) -> str:
+        end = min(len(text), comma_index + 1 + limit)
+        for idx in range(comma_index + 1, end):
+            if text[idx] in CLAUSE_CONTEXT_BREAKS:
+                return text[comma_index + 1:idx]
+        return text[comma_index + 1:end]
 
     @staticmethod
     def _should_soft_split(text: str, comma_index: int) -> bool:

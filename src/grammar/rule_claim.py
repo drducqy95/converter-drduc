@@ -20,5 +20,6 @@ class RuleClaim:
     confidence: float
     replacement_plan: dict[str, Any] = field(default_factory=dict)
     protected: bool = False
+    specificity: int = 0
+    source: str = "builtin"
     trace: TraceEvent | None = None
-

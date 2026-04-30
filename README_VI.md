@@ -18,9 +18,9 @@ Workspace dịch thuật không dùng LLM, tập trung `ZH -> VI` và có baseli
 - `src/eapee/`: emotion detector, emotion state, pronoun resolver với relationship-graph hints, expression bank.
 - `src/engine/rbmt_translator.py`: RBMT orchestrator sinh đồng thời clean output và draft annotated.
 - `src/qa/`: terminology/pronoun/emotion/structure/untranslated/length checks và QA report.
-- `src/state/`: project manager, SQLite translation memory đã tách `tm_machine`/`tm_approved`/`tm_reviewed`, candidate workflow, runtime stats, Obsidian export.
+- `src/state/`: project manager, SQLite translation memory đã tách `tm_machine`/`tm_approved`/`tm_reviewed`, tiered fuzzy search, snapshot/rollback, candidate workflow, runtime stats, Obsidian export.
 - `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: nền tảng v23 cho segment typing và an toàn noise/protected span.
-- `src/grammar/`: ClauseSegmenter, RelationDetector, GrammarTransferEngine, RuleClaim/RuleRegistry/ConflictResolver.
+- `src/grammar/`: ClauseSegmenter với paired connective boundaries, RelationDetector, GrammarTransferEngine, RuleClaim/RuleRegistry/ConflictResolver deterministic có trace.
 - `src/core/trie_engine.py`, `src/core/luat_nhan_engine.py`: Viterbi segmentation cho Trie, typed placeholder và specificity conflict resolution cho LuatNhan.
 - `src/en_vi/en_vi_translator.py`: baseline EN-VI phrase-first với passive voice và phrasal-verb rules.
 - `src/ui/`: command protocol và sidecar bridge cho desktop app.

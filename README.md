@@ -30,9 +30,9 @@ Runner scripts are under `scripts/runners/`, development utilities under `script
 - `src/eapee/`: emotion detector, emotion state machine, pronoun resolver with relationship-graph hints, expression bank.
 - `src/engine/rbmt_translator.py`: clean + draft RBMT output with ambiguity trace and TM integration.
 - `src/qa/`: terminology, pronoun, emotion, structure, untranslated, length checks, and QA reports.
-- `src/state/`: project manager, split SQLite TM governance, candidate workflow, runtime stats, Obsidian export.
+- `src/state/`: project manager, split SQLite TM governance, tiered fuzzy search, snapshot/rollback recovery, candidate workflow, runtime stats, Obsidian export.
 - `src/pipeline/segment_classifier.py`, `packet.py`, `protected_span_registry.py`, `noise_filter.py`: v23 segment typing and safety foundation.
-- `src/grammar/`: v23 clause segmentation, relation detection, source-side grammar transfer, rule claims, registry, and conflict resolver foundation.
+- `src/grammar/`: v23 clause segmentation with paired connective boundaries, relation detection, source-side grammar transfer, rule claims, registry, and deterministic conflict-resolution traces.
 - `src/en_vi/en_vi_translator.py`: phrase-first EN-VI baseline with passive voice and phrasal-verb rules.
 - `src/ui/`: sidecar command protocol for the desktop app.
 - `desktop/`: React shell, Tauri scaffold, and verified web build.

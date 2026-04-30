@@ -6,6 +6,8 @@ from __future__ import annotations
 
 import hashlib
 import json
+import re
+import shutil
 import sqlite3
 from dataclasses import dataclass
 from datetime import datetime, timezone
@@ -15,6 +17,16 @@ from pathlib import Path
 
 APPROVED_STATUSES = {"approved", "verified", "human_verified", "accepted"}
 MACHINE_STATUSES = {"machine", "draft", "rbmt", "suggestion"}
+MACHINE_TO_APPROVED_POLICY = {
+    "requires_user_action": True,
+    "auto_promote_reuse_count": None,
+    "allowed_review_statuses": sorted(APPROVED_STATUSES),
+}
+TIER_WEIGHTS = {
+    "approved": 0.15,
+    "reviewed": 0.08,
+    "machine": 0.0,
+}
 
 
 @dataclass(slots=True)
@@ -32,8 +44,18 @@ class FuzzyMatchResult(TMEntry):
     score: float
 
 
+@dataclass(slots=True)
+class TieredFuzzyMatchResult(FuzzyMatchResult):
+    tier: str
+    raw_score: float
+    weighted_score: float
+
+
 class TranslationMemory:
     """Persist approved translations separately from machine suggestions."""
+
+    MACHINE_TO_APPROVED_POLICY = MACHINE_TO_APPROVED_POLICY
+    TIER_WEIGHTS = TIER_WEIGHTS
 
     def __init__(self, db_path: str | Path, *, max_machine_entries: int | None = None):
         self.db_path = Path(db_path)
@@ -333,6 +355,53 @@ class TranslationMemory:
         ).fetchall()
         return self._best_fuzzy(source_text, machine_rows, threshold, table_name="tm_machine")
 
+    def tiered_fuzzy_search(
+        self,
+        source_text: str,
+        threshold: float = 0.75,
+        *,
+        include_reviewed: bool = True,
+        include_machine: bool = True,
+        limit: int = 10,
+    ) -> list[TieredFuzzyMatchResult]:
+        """Rank TM matches by source similarity plus explicit tier weight.
+
+        Runtime `lookup()` keeps the stricter policy: approved exact/fuzzy
+        matches first, then exact machine suggestions only. This broader search
+        is intended for review/export tooling where lower-tier ambiguity should
+        stay visible.
+        """
+
+        if limit < 1:
+            return []
+
+        results: list[TieredFuzzyMatchResult] = []
+        for tier, row in self._tiered_rows(include_reviewed=include_reviewed, include_machine=include_machine):
+            raw_score = self.similarity(source_text, row["source_text"])
+            if raw_score < threshold:
+                continue
+            weighted_score = min(1.0, raw_score + self.TIER_WEIGHTS.get(tier, 0.0))
+            results.append(
+                TieredFuzzyMatchResult(
+                    **self._entry_kwargs(row),
+                    score=weighted_score,
+                    tier=tier,
+                    raw_score=raw_score,
+                    weighted_score=weighted_score,
+                )
+            )
+
+        return sorted(
+            results,
+            key=lambda item: (
+                -item.weighted_score,
+                -item.raw_score,
+                -self.TIER_WEIGHTS.get(item.tier, 0.0),
+                item.source_text,
+                item.target_text,
+            ),
+        )[:limit]
+
     def machine_suggestion(self, source_text: str) -> TMEntry | None:
         source_hash = self.source_hash(source_text)
         row = self.conn.execute(
@@ -388,6 +457,59 @@ class TranslationMemory:
             self._touch_row(table_name, best_row_id)
         return best
 
+    def _tiered_rows(
+        self,
+        *,
+        include_reviewed: bool,
+        include_machine: bool,
+    ) -> list[tuple[str, sqlite3.Row]]:
+        tiered: list[tuple[str, sqlite3.Row]] = [
+            ("approved", row)
+            for row in self.conn.execute(
+                """
+                SELECT id, source_hash, source_text, approved_target AS target_text, confidence,
+                       provenance AS source, 'approved' AS status, hit_count
+                FROM tm_approved
+                """
+            ).fetchall()
+        ]
+
+        if include_reviewed:
+            tiered.extend(
+                ("reviewed", row)
+                for row in self.conn.execute(
+                    """
+                    SELECT id, source_hash, source_text,
+                           COALESCE(NULLIF(edited_target, ''), machine_target) AS target_text,
+                           CASE
+                               WHEN LOWER(review_status) IN ('approved', 'verified', 'human_verified', 'accepted')
+                               THEN 0.90
+                               ELSE 0.65
+                           END AS confidence,
+                           reviewer AS source,
+                           review_status AS status,
+                           0 AS hit_count
+                    FROM tm_reviewed
+                    WHERE COALESCE(NULLIF(edited_target, ''), machine_target) != ''
+                    """
+                ).fetchall()
+            )
+
+        if include_machine:
+            tiered.extend(
+                ("machine", row)
+                for row in self.conn.execute(
+                    """
+                    SELECT id, source_hash, source_text, machine_target AS target_text,
+                           quality_score AS confidence, engine_version AS source,
+                           'machine' AS status, hit_count
+                    FROM tm_machine
+                    """
+                ).fetchall()
+            )
+
+        return tiered
+
     def evict_machine_entries(self, max_entries: int) -> int:
         if max_entries < 0:
             raise ValueError("max_entries must be >= 0")
@@ -414,6 +536,27 @@ class TranslationMemory:
         self.conn.execute(f"DELETE FROM tm_machine WHERE id IN ({placeholders})", victim_ids)
         self.conn.commit()
         return len(victim_ids)
+
+    def snapshot(self, tag: str = "manual", directory: str | Path | None = None) -> Path:
+        self.conn.commit()
+        snapshot_dir = Path(directory) if directory is not None else self.db_path.parent / "tm_snapshots"
+        snapshot_dir.mkdir(parents=True, exist_ok=True)
+        safe_tag = re.sub(r"[^A-Za-z0-9_.-]+", "-", tag.strip() or "manual").strip("-") or "manual"
+        timestamp = datetime.now(timezone.utc).strftime("%Y%m%dT%H%M%S%fZ")
+        snapshot_path = snapshot_dir / f"{safe_tag}_{timestamp}.sqlite"
+        shutil.copy2(self.db_path, snapshot_path)
+        return snapshot_path
+
+    def rollback(self, snapshot_path: str | Path) -> None:
+        snapshot = Path(snapshot_path)
+        if not snapshot.exists():
+            raise FileNotFoundError(f"TM snapshot not found: {snapshot}")
+        self.conn.commit()
+        self.conn.close()
+        shutil.copy2(snapshot, self.db_path)
+        self.conn = sqlite3.connect(str(self.db_path))
+        self.conn.row_factory = sqlite3.Row
+        self._ensure_schema()
 
     @classmethod
     def similarity(cls, left: str, right: str) -> float:
