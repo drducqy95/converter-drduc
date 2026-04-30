@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Converter by DrDuc - QA &amp; Pipeline</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "display": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "heading": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined { font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24; }
+        .icon-fill { font-variation-settings: 'FILL' 1; }
+    </style>
+</head>
+<body class="bg-background text-on-surface font-body-base text-body-base h-screen w-screen overflow-hidden flex">
+<!-- SideNavBar (JSON Derived) -->
+<nav class="flex flex-col h-full fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-900 h-screen w-16 hover:w-60 transition-all duration-300 border-r border-slate-200 dark:border-slate-800 border-r border-slate-300 dark:border-slate-700 flat no shadows group overflow-hidden">
+<div class="flex items-center h-14 px-4 border-b border-slate-200 dark:border-slate-800 shrink-0">
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 truncate group-hover:w-auto w-0 opacity-0 group-hover:opacity-100 transition-opacity">TransWork</span>
+</div>
+<div class="flex-1 py-2 flex flex-col gap-1 overflow-y-auto">
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">dashboard</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Tổng quan</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">folder_open</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Project &amp; Import</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">translate</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Workspace dịch</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">book</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Từ điển</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">psychology</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Coach &amp; Review</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 bg-white dark:bg-slate-800 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">fact_check</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">QA &amp; Pipeline</span>
+</div>
+<div class="flex items-center px-4 py-3 mx-2 rounded-md cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors font-sans text-[13px] tracking-tight font-medium">
+<span class="material-symbols-outlined shrink-0 text-[20px]">settings</span>
+<span class="ml-4 whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity">Cài đặt</span>
+</div>
+</div>
+<div class="mt-auto border-t border-slate-200 dark:border-slate-800 p-4 shrink-0 flex items-center">
+<div class="w-8 h-8 rounded-full bg-slate-300 dark:bg-slate-700 shrink-0 flex items-center justify-center text-[10px] font-bold">U</div>
+<div class="ml-3 flex flex-col w-0 opacity-0 group-hover:w-auto group-hover:opacity-100 transition-all overflow-hidden">
+<span class="text-[11px] font-bold text-slate-700 dark:text-slate-300">User profile</span>
+<span class="text-[9px] text-slate-500">v1.0.4</span>
+</div>
+</div>
+</nav>
+<!-- TopNavBar (JSON Derived) -->
+<nav class="flex items-center justify-between px-3 w-full fixed top-0 z-50 ml-16 bg-white dark:bg-slate-950 h-10 w-full border-b border-slate-200 dark:border-slate-800 border-b border-slate-200 dark:border-slate-800 flat no shadows font-sans text-xs uppercase font-bold text-slate-700 dark:text-slate-300 pointer-events-auto" style="width: calc(100% - 64px);">
+<div class="flex items-center gap-6 h-full">
+<span class="text-sm font-black text-slate-900 dark:text-white mr-4">Translation IDE</span>
+<a class="h-full flex items-center px-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Nhập liệu</a>
+<a class="h-full flex items-center px-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Dịch</a>
+<a class="h-full flex items-center px-1 text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">QA</a>
+</div>
+<div class="flex items-center gap-2">
+<button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded scale-95 duration-75"><span class="material-symbols-outlined text-[18px]">hub</span></button>
+<button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded scale-95 duration-75"><span class="material-symbols-outlined text-[18px]">lan</span></button>
+<button class="w-8 h-8 flex items-center justify-center text-slate-500 hover:text-slate-900 hover:bg-slate-100 rounded scale-95 duration-75"><span class="material-symbols-outlined text-[18px]">notifications</span></button>
+<button class="ml-2 px-3 py-1.5 bg-slate-900 text-white rounded text-[10px] font-bold hover:bg-slate-800 scale-95 duration-75">Thực thi tiến trình</button>
+</div>
+</nav>
+<!-- Main Workspace -->
+<main class="flex-1 ml-16 mt-10 mb-8 flex flex-col bg-surface-container-lowest overflow-hidden">
+<!-- Top: Pipeline Stepper -->
+<section class="h-[72px] shrink-0 border-b border-surface-variant flex items-center px-6 gap-8 bg-surface-bright">
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[18px] icon-fill">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-heading text-heading text-on-surface">Biên dịch</span>
+<span class="font-label-caps text-label-caps text-primary">OK</span>
+</div>
+</div>
+<div class="w-8 h-px bg-surface-variant"></div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[18px] icon-fill">check</span>
+</div>
+<div class="flex flex-col">
+<span class="font-heading text-heading text-on-surface">Nhập liệu</span>
+<span class="font-label-caps text-label-caps text-primary">OK</span>
+</div>
+</div>
+<div class="w-8 h-px bg-secondary-fixed-dim"></div>
+<div class="flex items-center gap-3">
+<div class="w-8 h-8 rounded-full border-2 border-secondary flex items-center justify-center text-secondary">
+<span class="material-symbols-outlined text-[18px]">autorenew</span>
+</div>
+<div class="flex flex-col">
+<span class="font-heading text-heading text-on-surface">Dịch thuật</span>
+<span class="font-label-caps text-label-caps text-secondary">Đang chạy</span>
+</div>
+</div>
+<div class="w-8 h-px bg-surface-variant line-dashed"></div>
+<div class="flex items-center gap-3 opacity-50">
+<div class="w-8 h-8 rounded-full border-2 border-outline flex items-center justify-center text-outline">
+<span class="material-symbols-outlined text-[18px]">pending</span>
+</div>
+<div class="flex flex-col">
+<span class="font-heading text-heading text-outline">Kiểm lỗi</span>
+<span class="font-label-caps text-label-caps text-outline">Đang chờ</span>
+</div>
+</div>
+</section>
+<!-- Center: Split Pane -->
+<section class="flex-1 flex overflow-hidden">
+<!-- Center Left: QA Report Table -->
+<div class="flex-1 flex flex-col border-r border-surface-variant bg-surface-container-lowest">
+<div class="h-10 flex items-center px-4 border-b border-surface-variant bg-surface-container-low shrink-0 justify-between">
+<span class="font-heading text-heading text-on-surface">Báo cáo chẩn đoán</span>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps text-on-surface-variant bg-surface-variant px-2 py-0.5 rounded">1 Lỗi phát hiện</span>
+</div>
+</div>
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container font-label-caps text-label-caps text-on-surface-variant z-10 border-b border-surface-variant">
+<tr>
+<th class="py-2 px-4 font-normal w-24">Mức độ</th>
+<th class="py-2 px-4 font-normal w-32">Trình kiểm tra</th>
+<th class="py-2 px-4 font-normal">Thông báo</th>
+<th class="py-2 px-4 font-normal w-24 text-right">ID Phân đoạn</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm text-on-surface">
+<tr class="h-[32px] border-b border-outline-variant hover:bg-surface-container-low transition-colors group cursor-pointer">
+<td class="px-4 py-1">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-error-container text-on-error-container font-label-caps text-[10px] leading-tight">CẢNH BÁO</span>
+</td>
+<td class="px-4 py-1 text-on-surface-variant">Pronoun</td>
+<td class="px-4 py-1">Đại từ chưa nhất quán</td>
+<td class="px-4 py-1 text-right font-code text-code text-on-surface-variant">124</td>
+</tr>
+<tr class="h-[32px] border-b border-outline-variant hover:bg-surface-container-low transition-colors">
+<td class="px-4 py-1 opacity-50">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded-sm bg-surface-variant text-on-surface-variant font-label-caps text-[10px] leading-tight">THÔNG TIN</span>
+</td>
+<td class="px-4 py-1 text-on-surface-variant opacity-50">Terminology</td>
+<td class="px-4 py-1 opacity-50">Checking glossary matches...</td>
+<td class="px-4 py-1 text-right font-code text-code text-on-surface-variant opacity-50">-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- Center Right: Event Log Panel -->
+<div class="w-[400px] flex flex-col bg-inverse-surface shrink-0">
+<div class="h-10 flex items-center px-4 border-b border-outline shrink-0 justify-between">
+<div class="flex items-center gap-2 text-inverse-on-surface">
+<span class="material-symbols-outlined text-[16px]">terminal</span>
+<span class="font-heading text-heading">Nhật ký sự kiện</span>
+</div>
+<span class="font-label-caps text-label-caps text-tertiary-fixed-dim">Trực tiếp</span>
+</div>
+<div class="flex-1 p-4 font-code text-code text-inverse-on-surface overflow-auto flex flex-col gap-1">
+<div class="flex gap-3"><span class="text-outline">10:42:01</span><span class="text-primary-fixed-dim">[SYS]</span><span>Khởi tạo trình xử lý tiến trình node-01</span></div>
+<div class="flex gap-3"><span class="text-outline">10:42:03</span><span class="text-secondary-fixed-dim">[CMP]</span><span>Đã phân tích nguồn markdown (24 segments)</span></div>
+<div class="flex gap-3"><span class="text-outline">10:42:05</span><span class="text-secondary-fixed-dim">[IMP]</span><span>Dự án đã tải into workspace memory</span></div>
+<div class="flex gap-3"><span class="text-outline">10:42:06</span><span class="text-primary-fixed">[TRN]</span><span>Bắt đầu xử lý hàng loạt...</span></div>
+<div class="flex gap-3"><span class="text-outline">10:42:10</span><span class="text-primary-fixed">[TRN]</span><span>Segment 1-10 complete. Speed: 24t/s</span></div>
+<div class="flex gap-3"><span class="text-outline">10:42:15</span><span class="text-error-container">[QA]</span><span> Warning triggered on segment 124</span></div>
+<div class="flex gap-3 animate-pulse"><span class="text-outline">10:42:18</span><span class="text-primary-fixed">[TRN]</span><span>Đang chờ phản hồi API block 3...</span></div>
+</div>
+</div>
+</section>
+<!-- Bottom Panels -->
+<section class="h-[140px] shrink-0 border-t border-surface-variant flex bg-surface-container-low">
+<div class="flex-1 border-r border-surface-variant p-4 flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-3">Sản phẩm đã tạo</span>
+<div class="flex gap-4">
+<a class="flex flex-col items-center justify-center p-3 border border-outline-variant rounded bg-surface-container-lowest hover:bg-surface-bright transition-colors w-32" href="#">
+<span class="material-symbols-outlined text-[24px] text-secondary mb-1">description</span>
+<span class="font-body-sm text-body-sm text-on-surface">Kết quả sạch</span>
+</a>
+<a class="flex flex-col items-center justify-center p-3 border border-outline-variant rounded bg-surface-container-lowest hover:bg-surface-bright transition-colors w-32" href="#">
+<span class="material-symbols-outlined text-[24px] text-on-surface-variant mb-1">markdown</span>
+<span class="font-body-sm text-body-sm text-on-surface">Bản thảo MD</span>
+</a>
+</div>
+</div>
+<div class="flex-1 p-4 flex flex-col">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-3">Tóm tắt cảnh báo</span>
+<div class="flex-1 bg-surface-container-lowest border border-outline-variant rounded p-2 overflow-auto">
+<p class="font-body-sm text-body-sm text-error">Warning [Pronoun]: Có thể không nhất quán in formal/informal address detected in block 2.</p>
+</div>
+</div>
+</section>
+</main>
+<!-- Footer (JSON Derived) -->
+<footer class="flex items-center justify-between px-4 w-full h-8 bg-slate-100 dark:bg-slate-900 border-t border-slate-300 dark:border-slate-700 fixed bottom-0 left-0 z-50 text-slate-600 dark:text-slate-400 font-mono text-[10px] tracking-wide uppercase cursor-default">
+<div class="flex items-center gap-4">
+<span class="font-bold text-slate-800 dark:text-slate-200 hidden">System Ready</span>
+<span>System Ready</span>
+</div>
+<div class="flex items-center gap-6">
+<a class="text-slate-500 dark:text-slate-400 hover:underline" href="#">Tauri: Connected</a>
+<a class="text-slate-500 dark:text-slate-400 hover:underline" href="#">Warnings: 0</a>
+<a class="text-slate-500 dark:text-slate-400 hover:underline" href="#">Artifacts</a>
+</div>
+</footer>
+</body></html>

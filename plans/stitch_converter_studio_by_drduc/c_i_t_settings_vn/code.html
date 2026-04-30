@@ -1,0 +1,308 @@
+<!DOCTYPE html>
+
+<html lang="vi"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>TransWork - Cài đặt</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "display": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "heading": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+</head>
+<body class="bg-surface text-on-surface font-body-base h-screen overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="bg-slate-50 dark:bg-slate-900 h-screen w-16 hover:w-60 transition-all duration-300 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full fixed left-0 top-0 z-40 group">
+<div class="h-toolbar-height flex items-center justify-center border-b border-slate-300 dark:border-slate-700 px-unit">
+<span class="material-symbols-outlined text-primary" data-icon="translate">translate</span>
+<span class="ml-unit text-brand_logo font-display text-slate-800 dark:text-slate-200 opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap overflow-hidden">TransWork</span>
+</div>
+<div class="flex-1 overflow-y-auto py-unit">
+<ul class="flex flex-col gap-gutter px-unit">
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="dashboard">dashboard</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Tổng quan</span>
+</li>
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="folder_open">folder_open</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Dự án &amp; Nhập</span>
+</li>
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="translate">translate</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Không gian dịch</span>
+</li>
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="book">book</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Từ điển</span>
+</li>
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="psychology">psychology</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Huấn luyện &amp; Đánh giá</span>
+</li>
+<li class="flex items-center p-unit text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80 rounded-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="fact_check">fact_check</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Đảm bảo chất lượng</span>
+</li>
+<li class="flex items-center p-unit bg-white dark:bg-slate-800 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 transition-colors cursor-pointer active:opacity-80 rounded-r-DEFAULT">
+<span class="material-symbols-outlined w-8 h-8 flex items-center justify-center" data-icon="settings">settings</span>
+<span class="font-body-sm font-sans text-[13px] tracking-tight font-medium ml-unit opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap">Cài đặt</span>
+</li>
+</ul>
+</div>
+<div class="p-unit border-t border-slate-300 dark:border-slate-700">
+<div class="flex flex-col items-center group-hover:items-start pl-1">
+<span class="text-[10px] font-mono text-slate-500">v1.0.4</span>
+</div>
+</div>
+</nav>
+<!-- TopNavBar -->
+<header class="bg-white dark:bg-slate-950 h-10 w-full border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 w-full fixed top-0 z-30 ml-16" style="width: calc(100% - 4rem);">
+<div class="flex items-center gap-4 h-full">
+<span class="font-label-caps text-slate-900 dark:text-white uppercase">IDE Dịch thuật</span>
+<div class="h-4 w-px bg-slate-200 dark:bg-slate-800"></div>
+<nav class="flex h-full gap-4">
+<a class="flex items-center h-full px-2 font-label-caps text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Nhập</a>
+<a class="flex items-center h-full px-2 font-label-caps text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Dịch</a>
+<a class="flex items-center h-full px-2 font-label-caps text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">QA</a>
+</nav>
+</div>
+<div class="flex items-center gap-2">
+<button class="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="hub">hub</span>
+</button>
+<button class="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="lan">lan</span>
+</button>
+<button class="p-1 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="notifications">notifications</span>
+</button>
+<button class="ml-2 px-3 py-1 bg-primary text-on-primary font-label-caps rounded-DEFAULT hover:bg-on-surface-variant transition-colors border border-outline">
+                Thực thi quy trình
+            </button>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="ml-16 mt-10 mb-8 p-pane-padding w-full overflow-y-auto bg-surface-container-low" style="width: calc(100% - 4rem); height: calc(100vh - 4.5rem);">
+<div class="max-w-5xl mx-auto flex flex-col gap-unit">
+<header class="mb-4">
+<h1 class="font-display text-on-surface">Cài đặt hệ thống</h1>
+<p class="font-body-sm text-on-surface-variant">Cấu hình các biến môi trường và đường dẫn hệ thống cho Converter bởi DrDuc.</p>
+</header>
+<div class="grid grid-cols-1 md:grid-cols-2 gap-unit">
+<!-- Environment Panel -->
+<section class="bg-surface-container-lowest border border-outline-variant p-pane-padding rounded-lg flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b border-outline-variant pb-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="dns">dns</span>
+<h2 class="font-heading text-on-surface">Môi trường</h2>
+</div>
+<div class="grid grid-cols-2 gap-4 font-body-sm">
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px] uppercase tracking-wide">GIAO THỨC</span>
+<span class="font-code text-on-surface bg-surface-container px-2 py-1 rounded-DEFAULT border border-outline-variant w-fit">v1.2</span>
+</div>
+<div class="flex flex-col gap-1">
+<span class="text-on-surface-variant text-[11px] uppercase tracking-wide">PHƯƠNG THỨC TRUYỀN</span>
+<span class="font-code text-on-surface bg-surface-container px-2 py-1 rounded-DEFAULT border border-outline-variant w-fit">Tauri</span>
+</div>
+<div class="col-span-2 flex items-center justify-between bg-surface p-2 rounded-DEFAULT border border-outline-variant">
+<span class="text-on-surface-variant">Trạng thái Sidecar</span>
+<span class="flex items-center gap-1 text-secondary font-medium text-[12px]">
+<span class="w-2 h-2 rounded-full bg-secondary"></span>
+                                Đã kết nối
+                            </span>
+</div>
+</div>
+</section>
+<!-- Paths Panel -->
+<section class="bg-surface-container-lowest border border-outline-variant p-pane-padding rounded-lg flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b border-outline-variant pb-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="folder_special">folder_special</span>
+<h2 class="font-heading text-on-surface">Đường dẫn</h2>
+</div>
+<div class="flex flex-col gap-4 font-body-sm">
+<div class="flex flex-col gap-1">
+<label class="text-on-surface-variant text-[11px] uppercase tracking-wide">ĐƯỜNG DẪN DỰ ÁN</label>
+<div class="flex items-center gap-2">
+<input class="flex-1 bg-surface-container font-code text-[12px] p-2 rounded-DEFAULT border border-outline-variant focus:outline-none text-on-surface-variant" readonly="" type="text" value="/var/lib/transwork/projects/alpha"/>
+<button class="p-2 border border-outline-variant rounded-DEFAULT hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+<div class="flex flex-col gap-1">
+<label class="text-on-surface-variant text-[11px] uppercase tracking-wide">ĐƯỜNG DẪN CƠ SỞ DỮ LIỆU</label>
+<div class="flex items-center gap-2">
+<input class="flex-1 bg-surface-container font-code text-[12px] p-2 rounded-DEFAULT border border-outline-variant focus:outline-none text-on-surface-variant" readonly="" type="text" value="/var/lib/transwork/db/main.sqlite"/>
+<button class="p-2 border border-outline-variant rounded-DEFAULT hover:bg-surface-container transition-colors">
+<span class="material-symbols-outlined text-[16px]" data-icon="edit">edit</span>
+</button>
+</div>
+</div>
+</div>
+</section>
+<!-- Maintenance Panel -->
+<section class="bg-surface-container-lowest border border-outline-variant p-pane-padding rounded-lg flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b border-outline-variant pb-2">
+<span class="material-symbols-outlined text-[18px] text-on-surface-variant" data-icon="build_circle">build_circle</span>
+<h2 class="font-heading text-on-surface">Bảo trì</h2>
+</div>
+<div class="flex flex-col gap-2">
+<button class="flex items-center justify-between w-full p-2 border border-outline-variant rounded-DEFAULT hover:bg-surface-container transition-colors text-left">
+<span class="font-body-sm text-on-surface">Biên dịch từ điển</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="flex items-center justify-between w-full p-2 border border-outline-variant rounded-DEFAULT hover:bg-surface-container transition-colors text-left">
+<span class="font-body-sm text-on-surface">Xây dựng lại bộ nhớ đệm</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="arrow_forward">arrow_forward</span>
+</button>
+<button class="flex items-center justify-between w-full p-2 border border-outline-variant rounded-DEFAULT hover:bg-surface-container transition-colors text-left">
+<span class="font-body-sm text-on-surface">Xuất nhật ký</span>
+<span class="material-symbols-outlined text-[16px] text-on-surface-variant" data-icon="download">download</span>
+</button>
+</div>
+</section>
+<!-- Danger Zone Panel -->
+<section class="bg-error-container/10 border border-error p-pane-padding rounded-lg flex flex-col gap-4">
+<div class="flex items-center gap-2 border-b border-error/20 pb-2">
+<span class="material-symbols-outlined text-[18px] text-error" data-icon="warning">warning</span>
+<h2 class="font-heading text-error">Vùng nguy hiểm</h2>
+</div>
+<div class="flex flex-col gap-2">
+<div class="flex items-center justify-between p-2 border border-error/20 rounded-DEFAULT bg-surface-container-lowest">
+<div class="flex flex-col">
+<span class="font-body-sm text-on-surface font-medium">Đặt lại bộ nhớ đệm</span>
+<span class="text-[11px] text-on-surface-variant">Xóa tất cả các tệp biên dịch tạm thời.</span>
+</div>
+<button class="px-3 py-1 border border-error text-error font-label-caps rounded-DEFAULT hover:bg-error-container transition-colors">
+                                Xóa
+                            </button>
+</div>
+<div class="flex items-center justify-between p-2 border border-error/20 rounded-DEFAULT bg-surface-container-lowest">
+<div class="flex flex-col">
+<span class="font-body-sm text-on-surface font-medium">Đặt lại dự án</span>
+<span class="text-[11px] text-on-surface-variant">Không thể hoàn tác. Xóa cơ sở dữ liệu cục bộ và cài đặt.</span>
+</div>
+<button class="px-3 py-1 bg-error text-on-error font-label-caps rounded-DEFAULT hover:bg-error/90 transition-colors">
+                                Đặt lại
+                            </button>
+</div>
+</div>
+</section>
+</div>
+<!-- Structured Error Display Area -->
+<section class="mt-4 bg-surface-container-highest border border-outline-variant p-2 rounded-DEFAULT flex items-center justify-between font-code text-[12px]">
+<div class="flex items-center gap-4">
+<span class="text-on-surface-variant">Trạng thái hệ thống:</span>
+<span class="text-on-surface">lỗi_cuối: <span class="text-outline">null</span></span>
+</div>
+<div class="flex items-center gap-2">
+<span class="text-on-surface-variant">req_id:</span>
+<span class="text-on-surface bg-surface-container px-2 py-0.5 rounded-DEFAULT">8821</span>
+</div>
+</section>
+</div>
+</main>
+<!-- Footer -->
+<footer class="bg-slate-100 dark:bg-slate-900 h-8 w-full border-t border-slate-300 dark:border-slate-700 fixed bottom-0 left-0 z-50 flex items-center justify-between px-4 w-full h-8 font-mono text-[10px] tracking-wide uppercase text-slate-600 dark:text-slate-400">
+<div class="flex items-center gap-4">
+<span class="font-bold text-emerald-600 dark:text-emerald-400">Hệ thống sẵn sàng</span>
+<span class="w-px h-3 bg-slate-300 dark:bg-slate-700"></span>
+<a class="hover:underline cursor-default" href="#">Tauri: Đã kết nối</a>
+</div>
+<div class="flex items-center gap-4">
+<a class="hover:underline cursor-default" href="#">Cảnh báo: 0</a>
+<span class="w-px h-3 bg-slate-300 dark:bg-slate-700"></span>
+<a class="hover:underline cursor-default" href="#">Tài nguyên</a>
+</div>
+</footer>
+</body></html>

@@ -1,8 +1,8 @@
 # 📚 Trinity Wiki Index
 
-_Auto-generated at 2026-04-30T09:07:00. Do not edit manually._
+_Auto-generated at 2026-04-30T20:39:19. Do not edit manually._
 
-**Total Pages:** 26
+**Total Pages:** 27
 
 ## Categories
 
@@ -11,14 +11,14 @@ _Auto-generated at 2026-04-30T09:07:00. Do not edit manually._
 | entities | 2 | Modules, services, components |
 | decisions | 1 | Architecture decision records |
 | patterns | 5 | Reusable code/design patterns |
-| insights | 18 | Lessons learned, tips, gotchas |
+| insights | 19 | Lessons learned, tips, gotchas |
 
 ## Entities (2)
 
 | Page | Status | Updated | Tags |
 |---|---|---|---|
 | [Fix UI Pipeline Feature](.brain\wiki\entities\fix-ui-pipeline-feature.md) | active | 2026-04-20 | fix-ui-pipeline, auto |
-| [Project Converter by DrDuc](.brain\wiki\entities\project-converter-by-drduc.md) | active | 2026-04-30 | project, Converter by DrDuc, overview, converter_by_drduc |
+| [Project Converter by DrDuc](.brain\wiki\entities\project-converter-by-drduc.md) | active | 2026-04-30 | converter_by_drduc, Converter by DrDuc, project, overview |
 
 ## Decisions (1)
 
@@ -36,7 +36,7 @@ _Auto-generated at 2026-04-30T09:07:00. Do not edit manually._
 | [PreTranslationPipeline - ValueError Pattern](.brain\wiki\patterns\pretranslationpipeline-valueerror-pattern.md) | active | 2026-04-20 | PreTranslationPipeline, ValueError, auto-generated |
 | [Translation Engine - Chinese Structure Rewriter - RegexOverlap/TranslationAmbiguity Pattern](.brain\wiki\patterns\translation-engine-chinese-structure-rewriter-regexoverlaptranslationambiguity-pattern.md) | active | 2026-04-22 | Translation Engine - Chinese Structure Rewriter, RegexOverlap/TranslationAmbiguity, auto-generated |
 
-## Insights (18)
+## Insights (19)
 
 | Page | Status | Updated | Tags |
 |---|---|---|---|
@@ -58,3 +58,4 @@ _Auto-generated at 2026-04-30T09:07:00. Do not edit manually._
 | [Session 2026-04-30 07-13-09](.brain\wiki\insights\session-2026-04-30-07-13-09.md) | active | 2026-04-30 | session, checkpoint, converter_by_drduc |
 | [Session 2026-04-30 07-59-31](.brain\wiki\insights\session-2026-04-30-07-59-31.md) | active | 2026-04-30 | session, checkpoint, converter_by_drduc |
 | [Session 2026-04-30 09-07-00](.brain\wiki\insights\session-2026-04-30-09-07-00.md) | active | 2026-04-30 | session, checkpoint, converter_by_drduc |
+| [Session 2026-04-30 20-39-19](.brain\wiki\insights\session-2026-04-30-20-39-19.md) | active | 2026-04-30 | session, checkpoint, converter_by_drduc |

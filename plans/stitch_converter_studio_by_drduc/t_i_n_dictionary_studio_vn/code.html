@@ -1,0 +1,402 @@
+<!DOCTYPE html>
+
+<html class="h-full" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Từ điển - Converter by DrDuc</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700" }],
+                        "code": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "display": ["20px", { "lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "body-sm": ["13px", { "lineHeight": "18px", "fontWeight": "400" }],
+                        "body-base": ["14px", { "lineHeight": "20px", "fontWeight": "400" }],
+                        "heading": ["16px", { "lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 20;
+            font-size: 16px;
+        }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface font-body-base antialiased h-full overflow-hidden flex">
+<!-- SideNavBar -->
+<nav class="flex flex-col h-full fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans text-[13px] tracking-tight font-medium h-screen w-16 hover:w-60 transition-all duration-300 border-r border-slate-200 dark:border-slate-800 border-r border-slate-300 dark:border-slate-700 flat no shadows overflow-hidden group">
+<div class="flex items-center h-10 px-4 whitespace-nowrap overflow-hidden">
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 flex-shrink-0">TransWork</span>
+<span class="ml-2 text-[10px] text-slate-500 font-normal">v1.0.4</span>
+</div>
+<ul class="flex flex-col flex-1 py-4">
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">dashboard</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Tổng quan</span>
+</a>
+</li>
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">folder_open</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Dự án &amp; Nhập</span>
+</a>
+</li>
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">translate</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Không gian dịch</span>
+</a>
+</li>
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT bg-white dark:bg-slate-800 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">book</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Từ điển</span>
+</a>
+</li>
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">psychology</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Huấn luyện &amp; Đánh giá</span>
+</a>
+</li>
+<li class="px-2 py-1">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">fact_check</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">QA &amp; Luồng xử lý</span>
+</a>
+</li>
+<li class="px-2 py-1 mt-auto">
+<a class="flex items-center px-2 py-2 rounded-DEFAULT text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-800 transition-colors cursor-pointer active:opacity-80" href="#">
+<span class="material-symbols-outlined flex-shrink-0">settings</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-200 whitespace-nowrap">Cài đặt</span>
+</a>
+</li>
+</ul>
+</nav>
+<!-- TopNavBar -->
+<header class="flex items-center justify-between px-3 w-full fixed top-0 z-50 ml-16 bg-white dark:bg-slate-950 text-slate-700 dark:text-slate-300 font-sans text-xs uppercase font-bold h-10 border-b border-slate-200 dark:border-slate-800 border-b border-slate-200 dark:border-slate-800 flat no shadows" style="width: calc(100% - 64px);">
+<div class="flex items-center h-full">
+<span class="text-sm font-black text-slate-900 dark:text-white mr-6">Trình biên dịch</span>
+<!-- Search on left -->
+<div class="relative mr-6 flex items-center">
+<span class="material-symbols-outlined absolute left-2 text-outline">search</span>
+<input class="h-6 pl-8 pr-2 w-48 bg-surface-container-high border-none rounded-DEFAULT text-xs focus:ring-1 focus:ring-primary-container font-body-sm font-normal text-on-surface placeholder-on-surface-variant" placeholder="Tìm kiếm từ điển..." type="text"/>
+</div>
+<nav class="flex h-full space-x-1">
+<a class="flex items-center h-full px-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Nhập</a>
+<a class="flex items-center h-full px-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Dịch</a>
+<a class="flex items-center h-full px-3 text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">QA</a>
+</nav>
+</div>
+<div class="flex items-center space-x-2">
+<button class="w-6 h-6 flex items-center justify-center rounded-DEFAULT hover:bg-surface-container-high text-on-surface-variant scale-95 duration-75">
+<span class="material-symbols-outlined" style="font-size: 16px;">hub</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center rounded-DEFAULT hover:bg-surface-container-high text-on-surface-variant scale-95 duration-75">
+<span class="material-symbols-outlined" style="font-size: 16px;">lan</span>
+</button>
+<button class="w-6 h-6 flex items-center justify-center rounded-DEFAULT hover:bg-surface-container-high text-on-surface-variant scale-95 duration-75">
+<span class="material-symbols-outlined" style="font-size: 16px;">notifications</span>
+</button>
+<button class="h-6 px-3 bg-primary-container text-on-primary-container rounded-DEFAULT font-label-caps text-label-caps hover:opacity-90 ml-2">Chạy luồng xử lý</button>
+</div>
+</header>
+<!-- Main Workspace -->
+<main class="flex-1 flex flex-col mt-10 ml-16 mb-8 bg-surface-container-lowest overflow-hidden h-[calc(100vh-72px)]">
+<!-- Dictionary Toolbar -->
+<div class="h-toolbar-height flex items-center px-3 border-b border-outline-variant bg-surface-container-low shrink-0 gap-2">
+<div class="flex items-center bg-surface-container-highest rounded-DEFAULT p-[2px]">
+<button class="px-3 h-6 bg-surface-container-lowest text-on-surface text-body-sm font-body-sm rounded shadow-sm border border-outline-variant">Toàn cục</button>
+<button class="px-3 h-6 text-on-surface-variant text-body-sm font-body-sm rounded hover:text-on-surface">Dự án</button>
+</div>
+<div class="h-4 w-px bg-outline-variant mx-1"></div>
+<div class="flex items-center gap-1 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest h-7 px-1">
+<span class="material-symbols-outlined text-outline-variant ml-1" style="font-size: 14px;">filter_list</span>
+<select class="bg-transparent border-none text-body-sm font-body-sm text-on-surface py-0 focus:ring-0 w-24">
+<option>Tất cả từ loại</option>
+<option>NAME</option>
+<option>NOUN</option>
+<option>VERB</option>
+</select>
+</div>
+<div class="flex items-center gap-1 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest h-7 px-1">
+<select class="bg-transparent border-none text-body-sm font-body-sm text-on-surface py-0 focus:ring-0 w-28">
+<option>Tất cả thực thể</option>
+<option>Person</option>
+<option>Location</option>
+<option>Organization</option>
+</select>
+</div>
+<div class="flex items-center gap-1 border border-outline-variant rounded-DEFAULT bg-surface-container-lowest h-7 px-1">
+<select class="bg-transparent border-none text-body-sm font-body-sm text-on-surface py-0 focus:ring-0 w-24">
+<option>LuatNhan</option>
+<option>Strict</option>
+<option>Fuzzy</option>
+</select>
+</div>
+<div class="flex-1"></div>
+<button class="h-7 px-3 bg-secondary-container text-on-primary font-label-caps text-label-caps rounded-DEFAULT flex items-center gap-1 hover:opacity-90">
+<span class="material-symbols-outlined" style="font-size: 14px;">add</span>
+                Mục từ mới
+            </button>
+</div>
+<!-- Split Pane Area -->
+<div class="flex-1 flex overflow-hidden">
+<!-- Data Grid (Left) -->
+<div class="flex-1 flex flex-col bg-surface-container-lowest border-r border-outline-variant min-w-0">
+<div class="overflow-y-auto overflow-x-auto flex-1">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface-container-low z-10 shadow-[0_1px_0_#c5c6cd]">
+<tr>
+<th class="w-8 px-2 py-1 border-b border-outline-variant border-r">
+<input class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3 w-3" type="checkbox"/>
+</th>
+<th class="px-3 py-1 border-b border-outline-variant border-r text-label-caps font-label-caps text-on-surface-variant font-normal w-1/4">Nguồn</th>
+<th class="px-3 py-1 border-b border-outline-variant border-r text-label-caps font-label-caps text-on-surface-variant font-normal w-1/4">Đích</th>
+<th class="px-3 py-1 border-b border-outline-variant border-r text-label-caps font-label-caps text-on-surface-variant font-normal w-20">Từ loại</th>
+<th class="px-3 py-1 border-b border-outline-variant border-r text-label-caps font-label-caps text-on-surface-variant font-normal w-24">Thực thể</th>
+<th class="px-3 py-1 border-b border-outline-variant border-r text-label-caps font-label-caps text-on-surface-variant font-normal w-16 text-right">Ưu tiên</th>
+<th class="px-3 py-1 border-b border-outline-variant text-label-caps font-label-caps text-on-surface-variant font-normal w-20">Phạm vi</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<!-- Active Row -->
+<tr class="h-8 border-b border-outline-variant bg-surface hover:bg-surface-container-low cursor-pointer relative">
+<td class="px-2 border-r border-outline-variant text-center relative">
+<div class="absolute left-0 top-0 bottom-0 w-[2px] bg-secondary-container"></div>
+<input class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3 w-3" type="checkbox"/>
+</td>
+<td class="px-3 border-r border-outline-variant font-display text-on-surface font-medium truncate">林动</td>
+<td class="px-3 border-r border-outline-variant font-body-sm text-on-surface truncate">Lâm Động</td>
+<td class="px-3 border-r border-outline-variant text-center">
+<span class="inline-block px-1.5 py-0.5 bg-secondary-fixed text-on-secondary-fixed-variant rounded font-label-caps text-[9px] uppercase">Name</span>
+</td>
+<td class="px-3 border-r border-outline-variant text-center">
+<span class="inline-block px-1.5 py-0.5 bg-primary-fixed text-on-primary-fixed-variant rounded font-label-caps text-[9px] uppercase">Person</span>
+</td>
+<td class="px-3 border-r border-outline-variant text-right font-code text-on-surface-variant">95</td>
+<td class="px-3 text-center">
+<span class="text-[10px] text-on-surface-variant">Toàn cục</span>
+</td>
+</tr>
+<!-- Standard Rows -->
+<tr class="h-8 border-b border-outline-variant hover:bg-surface-container-low cursor-pointer">
+<td class="px-2 border-r border-outline-variant text-center"><input class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3 w-3" type="checkbox"/></td>
+<td class="px-3 border-r border-outline-variant font-display text-on-surface truncate">大炎王朝</td>
+<td class="px-3 border-r border-outline-variant font-body-sm text-on-surface truncate">Đại Viêm Vương Triều</td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded font-label-caps text-[9px] uppercase">Noun</span></td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[9px] uppercase">Location</span></td>
+<td class="px-3 border-r border-outline-variant text-right font-code text-on-surface-variant">80</td>
+<td class="px-3 text-center"><span class="text-[10px] text-on-surface-variant">Dự án</span></td>
+</tr>
+<tr class="h-8 border-b border-outline-variant hover:bg-surface-container-low cursor-pointer">
+<td class="px-2 border-r border-outline-variant text-center"><input class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3 w-3" type="checkbox"/></td>
+<td class="px-3 border-r border-outline-variant font-display text-on-surface truncate">青阳镇</td>
+<td class="px-3 border-r border-outline-variant font-body-sm text-on-surface truncate">Thanh Dương Trấn</td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-tertiary-fixed text-on-tertiary-fixed-variant rounded font-label-caps text-[9px] uppercase">Noun</span></td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[9px] uppercase">Location</span></td>
+<td class="px-3 border-r border-outline-variant text-right font-code text-on-surface-variant">80</td>
+<td class="px-3 text-center"><span class="text-[10px] text-on-surface-variant">Dự án</span></td>
+</tr>
+<tr class="h-8 border-b border-outline-variant hover:bg-surface-container-low cursor-pointer">
+<td class="px-2 border-r border-outline-variant text-center"><input class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3 w-3" type="checkbox"/></td>
+<td class="px-3 border-r border-outline-variant font-display text-on-surface truncate">淬体</td>
+<td class="px-3 border-r border-outline-variant font-body-sm text-on-surface truncate">Thối Thể</td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-error-container text-on-error-container rounded font-label-caps text-[9px] uppercase">Verb</span></td>
+<td class="px-3 border-r border-outline-variant text-center"><span class="inline-block px-1.5 py-0.5 bg-surface-container-high text-on-surface-variant rounded font-label-caps text-[9px] uppercase">Cultivation</span></td>
+<td class="px-3 border-r border-outline-variant text-right font-code text-on-surface-variant">90</td>
+<td class="px-3 text-center"><span class="text-[10px] text-on-surface-variant">Toàn cục</span></td>
+</tr>
+<!-- Fill empty rows -->
+<tr class="h-8 border-b border-outline-variant"><td colspan="7"></td></tr>
+<tr class="h-8 border-b border-outline-variant"><td colspan="7"></td></tr>
+<tr class="h-8 border-b border-outline-variant"><td colspan="7"></td></tr>
+<tr class="h-8 border-b border-outline-variant"><td colspan="7"></td></tr>
+</tbody>
+</table>
+</div>
+<!-- Bulk Action Bar -->
+<div class="h-10 bg-surface-container-high border-t border-outline-variant flex items-center px-4 justify-between shrink-0">
+<span class="text-label-caps font-label-caps text-on-surface-variant">ĐÃ CHỌN 1 MỤC</span>
+<div class="flex items-center gap-2">
+<button class="h-6 px-3 bg-surface-container-lowest text-on-surface border border-outline-variant rounded font-label-caps text-label-caps hover:bg-surface-container-low">Đặt từ loại</button>
+<button class="h-6 px-3 bg-surface-container-lowest text-on-surface border border-outline-variant rounded font-label-caps text-label-caps hover:bg-surface-container-low">Xuất bản</button>
+<button class="h-6 px-3 bg-primary-container text-on-primary-container rounded font-label-caps text-label-caps hover:opacity-90 flex items-center gap-1">
+<span class="material-symbols-outlined" style="font-size: 14px;">build</span>
+                            Biên dịch
+                        </button>
+</div>
+</div>
+</div>
+<!-- Inspector Pane (Right) -->
+<div class="w-[320px] bg-surface-container-lowest flex flex-col shrink-0">
+<div class="h-toolbar-height border-b border-outline-variant flex items-center px-4 bg-surface-container-low shrink-0">
+<span class="font-heading text-heading text-on-surface">Kiểm tra mục từ</span>
+<div class="flex-1"></div>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined" style="font-size: 16px;">close_fullscreen</span>
+</button>
+</div>
+<div class="flex-1 overflow-y-auto p-pane-padding flex flex-col gap-4">
+<!-- Identity Block -->
+<div class="border border-outline-variant rounded-DEFAULT p-3 bg-surface">
+<div class="flex justify-between items-start mb-2">
+<span class="font-display text-[24px] text-on-surface">林动</span>
+<span class="inline-block px-1.5 py-0.5 bg-secondary-fixed text-on-secondary-fixed-variant rounded font-label-caps text-[10px] uppercase">Name</span>
+</div>
+<div class="w-full bg-surface-container-lowest border border-outline-variant rounded p-2 mb-2">
+<input class="w-full bg-transparent border-none p-0 text-body-base font-body-base text-on-surface focus:ring-0" type="text" value="Lâm Động"/>
+</div>
+<div class="grid grid-cols-2 gap-2 mt-3">
+<div>
+<label class="text-label-caps font-label-caps text-on-surface-variant block mb-1">Pinyin</label>
+<span class="font-code text-code text-on-surface">lin dong</span>
+</div>
+<div>
+<label class="text-label-caps font-label-caps text-on-surface-variant block mb-1">Hán Việt</label>
+<span class="font-body-sm text-body-sm text-on-surface">Lâm Động</span>
+</div>
+</div>
+</div>
+<!-- Classification -->
+<div class="border border-outline-variant rounded-DEFAULT p-3 bg-surface">
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-2">PHÂN LOẠI</h4>
+<div class="space-y-2">
+<div class="flex justify-between items-center">
+<span class="text-body-sm font-body-sm text-on-surface">Loại thực thể</span>
+<select class="h-6 py-0 pl-2 pr-6 bg-surface-container-lowest border-outline-variant rounded text-xs font-body-sm text-on-surface">
+<option>Person</option>
+<option>Location</option>
+</select>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-body-sm font-body-sm text-on-surface">Phạm vi</span>
+<select class="h-6 py-0 pl-2 pr-6 bg-surface-container-lowest border-outline-variant rounded text-xs font-body-sm text-on-surface">
+<option>Toàn cục</option>
+<option>Dự án</option>
+</select>
+</div>
+<div class="flex justify-between items-center">
+<span class="text-body-sm font-body-sm text-on-surface">Độ ưu tiên</span>
+<input class="h-6 w-16 px-2 bg-surface-container-lowest border-outline-variant rounded text-xs font-code text-right" type="number" value="95"/>
+</div>
+</div>
+</div>
+<!-- LuatNhan Settings -->
+<div class="border border-outline-variant rounded-DEFAULT p-3 bg-surface">
+<h4 class="font-label-caps text-label-caps text-on-surface-variant mb-2">KÍCH HOẠT LUẬT NHÂN</h4>
+<div class="space-y-2">
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3.5 w-3.5" type="checkbox"/>
+<span class="text-body-sm font-body-sm text-on-surface">Viết hoa chữ cái đầu</span>
+</label>
+<label class="flex items-center gap-2 cursor-pointer">
+<input checked="" class="rounded border-outline-variant text-primary-container focus:ring-primary-container h-3.5 w-3.5" type="checkbox"/>
+<span class="text-body-sm font-body-sm text-on-surface">Bắt buộc cụm danh từ</span>
+</label>
+<div class="mt-2 pt-2 border-t border-outline-variant">
+<span class="text-label-caps font-label-caps text-on-surface-variant block mb-1">Nghĩa thay thế</span>
+<div class="bg-surface-container-lowest border border-outline-variant rounded p-1.5 flex gap-1 flex-wrap">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded bg-surface-container-high text-[10px] text-on-surface-variant border border-outline-variant">
+                                        Rừng Động <span class="material-symbols-outlined ml-1 text-[10px] cursor-pointer hover:text-on-surface">close</span>
+</span>
+<input class="bg-transparent border-none p-0 text-[10px] w-16 focus:ring-0" placeholder="Thêm..." type="text"/>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Footer -->
+<footer class="flex items-center justify-between px-4 w-full h-8 bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-mono text-[10px] tracking-wide uppercase border-t border-slate-300 dark:border-slate-700 fixed bottom-0 left-0 z-50 border-t border-slate-300 dark:border-slate-700 flat no shadows ml-16" style="width: calc(100% - 64px);">
+<div>Hệ thống sẵn sàng</div>
+<div class="flex space-x-4">
+<a class="text-slate-500 dark:text-slate-400 hover:underline cursor-default" href="#">Tauri: Đã kết nối</a>
+<a class="text-slate-500 dark:text-slate-400 hover:underline cursor-default" href="#">Cảnh báo: 0</a>
+<a class="text-slate-500 dark:text-slate-400 hover:underline cursor-default" href="#">Tạo tác</a>
+</div>
+</footer>
+</body></html>

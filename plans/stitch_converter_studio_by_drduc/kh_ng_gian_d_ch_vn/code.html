@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Workspace Dịch - TransWork</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-caps": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "code": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "display": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "body-base": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "heading": ["16px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+    </style>
+</head>
+<body class="bg-surface text-on-surface font-body-base overflow-hidden flex h-screen">
+<!-- SideNavBar (from JSON) -->
+<nav class="bg-slate-50 dark:bg-slate-900 h-screen w-16 hover:w-60 transition-all duration-300 border-r border-slate-200 dark:border-slate-800 flex flex-col h-full fixed left-0 top-0 z-40 group">
+<div class="h-16 flex items-center justify-center border-b border-slate-300 dark:border-slate-700">
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 truncate px-2 group-hover:block hidden">TransWork</span>
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 group-hover:hidden">TW</span>
+</div>
+<div class="flex-1 py-4 flex flex-col gap-2">
+<!-- Tabs -->
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative" title="Tổng quan">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="dashboard">dashboard</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Tổng quan</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative" title="Dự án &amp; Nhập liệu">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="folder_open">folder_open</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Dự án &amp; Nhập liệu</span>
+</div>
+<div class="bg-white dark:bg-slate-800 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400 cursor-pointer active:opacity-80 flex items-center px-4 py-3 relative" title="Không gian dịch">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="translate">translate</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Không gian dịch</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative" title="Từ điển">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="book">book</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Từ điển</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative" title="Huấn luyện &amp; Đánh giá">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="psychology">psychology</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Huấn luyện &amp; Đánh giá</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative" title="Kiểm định &amp; Quy trình">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="fact_check">fact_check</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Kiểm định &amp; Quy trình</span>
+</div>
+<div class="text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 cursor-pointer active:opacity-80 flex items-center px-4 py-3 border-l-2 border-transparent relative mt-auto" title="Cài đặt">
+<span class="material-symbols-outlined shrink-0 text-[20px]" data-icon="settings">settings</span>
+<span class="ml-4 font-sans text-[13px] tracking-tight font-medium truncate group-hover:opacity-100 opacity-0 transition-opacity duration-300 whitespace-nowrap absolute left-12">Cài đặt</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex-1 flex flex-col ml-16 bg-surface-container-low min-w-0">
+<!-- TopNavBar (from JSON) -->
+<header class="bg-white dark:bg-slate-950 h-10 w-full border-b border-slate-200 dark:border-slate-800 flex items-center justify-between px-3 fixed top-0 z-50 right-0 left-16 shrink-0">
+<div class="flex items-center gap-4">
+<span class="text-sm font-black text-slate-900 dark:text-white">Translation IDE</span>
+<!-- Breadcrumbs/Context -->
+<div class="flex items-center gap-2 text-on-surface-variant font-body-sm">
+<span class="material-symbols-outlined text-[16px]">folder</span>
+<span>Converter by DrDuc</span>
+<span class="material-symbols-outlined text-[16px]">chevron_right</span>
+<span class="font-heading text-on-surface">Chapter_001.txt</span>
+</div>
+</div>
+<nav class="flex items-center gap-6">
+<a class="font-sans text-xs uppercase font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Nhập liệu</a>
+<a class="font-sans text-xs uppercase font-bold text-blue-600 dark:text-blue-400 border-b-2 border-blue-600 h-10 flex items-center scale-95 duration-75" href="#">Dịch</a>
+<a class="font-sans text-xs uppercase font-bold text-slate-500 dark:text-slate-400 hover:text-slate-900 dark:hover:text-slate-100 scale-95 duration-75" href="#">Kiểm định</a>
+</nav>
+<div class="flex items-center gap-3">
+<button class="text-slate-500 hover:text-slate-900 flex items-center justify-center p-1" title="Mạng lưới">
+<span class="material-symbols-outlined text-[16px]" data-icon="hub">hub</span>
+</button>
+<button class="text-slate-500 hover:text-slate-900 flex items-center justify-center p-1" title="Kết nối">
+<span class="material-symbols-outlined text-[16px]" data-icon="lan">lan</span>
+</button>
+<button class="text-slate-500 hover:text-slate-900 flex items-center justify-center p-1" title="Thông báo">
+<span class="material-symbols-outlined text-[16px]" data-icon="notifications">notifications</span>
+</button>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps px-3 h-6 rounded flex items-center hover:bg-on-surface-variant transition-colors ml-2">
+                    Thực thi Quy trình
+                </button>
+</div>
+</header>
+<!-- Workspace Layout -->
+<main class="flex-1 flex mt-10 mb-8 overflow-hidden relative">
+<!-- Left Sidebar: Segment List -->
+<aside class="w-64 bg-surface-container-lowest border-r border-outline-variant flex flex-col shrink-0">
+<div class="h-toolbar-height border-b border-outline-variant flex items-center px-3 justify-between bg-surface-container shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">DANH SÁCH PHÂN ĐOẠN</span>
+<div class="flex gap-1">
+<button class="text-on-surface-variant hover:text-on-surface"><span class="material-symbols-outlined text-[16px]">filter_list</span></button>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto p-2 flex flex-col gap-1">
+<!-- Segments -->
+<div class="p-2 border border-outline-variant rounded bg-surface hover:bg-surface-variant cursor-pointer flex gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-emerald-500 mt-1.5 shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-code text-code text-on-surface truncate">1. 林动走进房间。</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Lâm Động bước vào phòng.</span>
+</div>
+</div>
+<div class="p-2 border border-secondary rounded bg-primary-fixed cursor-pointer flex gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-amber-500 mt-1.5 shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-code text-code text-on-surface truncate">2. 看到桌上有一封信。</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Hắn thấy trên bàn có một phong thư.</span>
+</div>
+</div>
+<div class="p-2 border border-transparent rounded hover:bg-surface-variant cursor-pointer flex gap-2">
+<div class="w-1.5 h-1.5 rounded-full bg-outline-variant mt-1.5 shrink-0"></div>
+<div class="flex flex-col min-w-0">
+<span class="font-code text-code text-on-surface truncate">3. 信封上写着他的名字。</span>
+<span class="font-body-sm text-body-sm text-outline italic truncate">Đang chờ dịch...</span>
+</div>
+</div>
+</div>
+</aside>
+<!-- Center: Editor Area -->
+<section class="flex-1 flex flex-col min-w-0 border-r border-outline-variant">
+<!-- Toolbar -->
+<div class="h-toolbar-height border-b border-outline-variant flex items-center px-pane-padding justify-between bg-surface-container shrink-0">
+<div class="flex gap-2">
+<button class="border border-outline text-on-surface font-label-caps text-label-caps px-3 h-6 rounded flex items-center gap-1 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[14px]">translate</span> Dịch
+                        </button>
+<button class="border border-outline text-on-surface font-label-caps text-label-caps px-3 h-6 rounded flex items-center gap-1 hover:bg-surface-variant transition-colors">
+<span class="material-symbols-outlined text-[14px]">fact_check</span> Kiểm lỗi
+                        </button>
+<button class="border border-outline text-on-surface font-label-caps text-label-caps px-3 h-6 rounded flex items-center gap-1 hover:bg-surface-variant transition-colors"><span class="material-symbols-outlined text-[14px]">add_circle</span> Thêm thực thể</button>
+</div>
+<div class="flex items-center gap-2">
+<span class="bg-secondary-container text-on-secondary-container font-label-caps text-label-caps px-1.5 py-0.5 rounded">Độ khớp TM: 85%</span>
+</div>
+</div>
+<!-- Top: Source Text -->
+<div class="flex-1 p-pane-padding bg-surface-container-lowest border-b border-outline-variant overflow-y-auto relative">
+<span class="absolute top-2 right-2 font-label-caps text-label-caps text-on-surface-variant bg-surface px-1 border border-outline-variant rounded">NGUỒN</span>
+<div class="font-display text-display text-on-surface leading-relaxed mt-4">
+<span class="bg-secondary-fixed-dim/30 border-b-2 border-secondary px-1 cursor-pointer">林动</span>走进房间。看到桌上有一封信。
+                    </div>
+</div>
+<!-- Bottom: Target Text & Annotated Draft -->
+<div class="flex-1 flex flex-col bg-surface">
+<div class="p-pane-padding flex-1 relative bg-surface-container-lowest border-l-2 border-secondary">
+<span class="absolute top-2 right-2 font-label-caps text-label-caps text-on-surface-variant bg-surface px-1 border border-outline-variant rounded">ĐÍCH</span>
+<div class="font-display text-display text-on-surface mt-4 outline-none" contenteditable="true">
+<span class="bg-secondary-fixed-dim/30 border-b-2 border-secondary px-1">Lâm Động</span> bước vào phòng. Hắn thấy trên bàn có một phong thư.
+                        </div>
+</div>
+<!-- Annotated Draft Pane -->
+<div class="h-32 bg-surface-container border-t border-outline-variant p-pane-padding overflow-y-auto">
+<span class="font-label-caps text-label-caps text-on-surface-variant mb-2 block">CHÚ THÍCH BẢN THẢO</span>
+<div class="font-code text-code text-on-surface-variant">
+                            [<span class="text-secondary font-medium">Lâm Động</span>: <span class="text-outline text-[11px]">Thực thể: Người</span>] bước vào phòng. Hắn thấy trên bàn có một phong thư.
+                        </div>
+</div>
+</div>
+</section>
+<!-- Right Inspector -->
+<aside class="w-80 bg-surface-container-lowest flex flex-col shrink-0">
+<div class="h-toolbar-height border-b border-outline-variant flex items-center px-3 bg-surface-container shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant">TRÌNH KIỂM TRA</span>
+</div>
+<div class="p-pane-padding flex flex-col gap-4 overflow-y-auto">
+<!-- Segment Details -->
+<div class="border border-outline-variant rounded p-3 bg-surface">
+<h3 class="font-heading text-heading text-on-surface mb-2">Phân đoạn 2</h3>
+<div class="grid grid-cols-2 gap-2 font-body-sm text-body-sm">
+<span class="text-on-surface-variant">Trạng thái:</span>
+<span class="text-amber-600 font-medium flex items-center gap-1"><span class="w-2 h-2 rounded-full bg-amber-500"></span> Cần xem lại</span>
+<span class="text-on-surface-variant">Số ký tự:</span>
+<span class="text-on-surface">12 / 34</span>
+</div>
+</div>
+<!-- Trace Evidence -->
+<div class="border border-outline-variant rounded p-3 bg-surface">
+<h3 class="font-heading text-heading text-on-surface mb-2 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">account_tree</span> Bằng chứng truy vết</h3>
+<div class="bg-surface-container p-2 rounded mb-2">
+<div class="flex justify-between font-label-caps text-label-caps mb-1">
+<span class="text-on-surface-variant">Luật dự phòng</span>
+<span class="text-secondary">thực thể_dự án</span>
+</div>
+<div class="w-full bg-outline-variant h-1 rounded-full">
+<div class="bg-secondary h-1 rounded-full" style="width: 98%"></div>
+</div>
+<span class="font-code text-[10px] text-on-surface-variant mt-1 block">Độ tin cậy: 98%</span>
+</div>
+</div>
+<!-- Entity Editor -->
+<div class="border border-outline-variant rounded p-3 bg-surface-variant">
+<h3 class="font-heading text-heading text-on-surface mb-3 flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">edit_note</span> Trình sửa thực thể</h3>
+<div class="flex flex-col gap-3">
+<div>
+<label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Nguồn</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-secondary" readonly="" type="text" value="林动"/>
+</div>
+<div>
+<label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Đích</label>
+<input class="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-secondary" type="text" value="Lâm Động"/>
+</div>
+<div>
+<label class="font-label-caps text-label-caps text-on-surface-variant block mb-1">Loại</label>
+<select class="w-full bg-surface-container-lowest border border-outline-variant rounded px-2 py-1 font-body-sm text-body-sm text-on-surface focus:outline-none focus:border-secondary">
+<option>Người</option>
+<option>Địa điểm</option>
+<option>Tổ chức</option>
+</select>
+</div>
+<button class="bg-primary text-on-primary font-label-caps text-label-caps py-1.5 rounded hover:bg-on-surface-variant transition-colors mt-2">Cập nhật thực thể</button>
+</div>
+</div>
+</div>
+</aside>
+</main>
+<!-- Footer (from JSON) -->
+<footer class="bg-slate-100 dark:bg-slate-900 h-8 w-full border-t border-slate-300 dark:border-slate-700 fixed bottom-0 left-0 z-50 flex items-center justify-between px-4 ml-16 pr-20 shrink-0">
+<span class="font-mono text-[10px] tracking-wide uppercase text-slate-600 dark:text-slate-400">Hệ thống sẵn sàng</span>
+<div class="flex gap-4">
+<a class="font-mono text-[10px] tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:underline cursor-default" href="#">Tauri: Đã kết nối</a>
+<a class="font-mono text-[10px] tracking-wide uppercase text-emerald-600 dark:text-emerald-400 font-bold hover:underline cursor-default" href="#">Cảnh báo: 0</a>
+<a class="font-mono text-[10px] tracking-wide uppercase text-slate-500 dark:text-slate-400 hover:underline cursor-default" href="#">Tạo tác</a>
+</div>
+</footer>
+</div>
+</body></html>

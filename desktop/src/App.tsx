@@ -6,9 +6,11 @@ import { CoachScreen } from "./screens/CoachScreen";
 import { DashboardScreen } from "./screens/DashboardScreen";
 import { DictionaryEditorScreen } from "./screens/DictionaryEditorScreen";
 import { PipelineMonitorScreen } from "./screens/PipelineMonitorScreen";
+import { ProjectImportScreen } from "./screens/ProjectImportScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { TranslationWorkspaceScreen } from "./screens/TranslationWorkspaceScreen";
 import { createPreferredTransport } from "./transport";
+import { PROTOCOL_VERSION } from "./protocol";
 import type {
   CandidateEntry,
   CandidateRule,
@@ -346,7 +348,7 @@ export function App() {
     await refreshProjects();
     startTransition(() => {
       setSelectedProjectId(data.project_id);
-      setScreen("Dashboard");
+      setScreen("Project Import");
     });
   }
 
@@ -815,6 +817,28 @@ export function App() {
             onOpenDictionaryEntry={(entry) => void handleOpenDictionaryEntry(entry)}
           />
         );
+      case "Project Import":
+        return (
+          <ProjectImportScreen
+            busy={busy}
+            backendAvailable={backendAvailable}
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            createProjectId={createProjectId}
+            workspaceBaseDir={workspaceBaseDir}
+            importPath={importPath}
+            overview={overview}
+            onCreateProjectIdChange={setCreateProjectId}
+            onWorkspaceBaseDirChange={setWorkspaceBaseDir}
+            onSelectProject={(projectId) => startTransition(() => setSelectedProjectId(projectId))}
+            onCreateProject={handleCreateProject}
+            onImportPathChange={setImportPath}
+            onPickImportPath={(kind) => void pickImportPath(kind)}
+            onImport={() => void handleImport()}
+            onSelectChapter={(chapterId, chapterText) => void handleSelectChapter(chapterId, chapterText)}
+            onRunStage={(stageId) => void handleRunPipelineStage(stageId)}
+          />
+        );
       case "Dictionary Editor":
         return (
           <DictionaryEditorScreen
@@ -936,8 +960,105 @@ export function App() {
     }
   }
 
+  const railCodes: Record<ScreenKey, string> = {
+    Dashboard: "OV",
+    "Project Import": "PI",
+    "Translation Workspace": "WS",
+    "Dictionary Editor": "DI",
+    "Translation Coach": "CR",
+    "Pipeline Monitor": "QA",
+    Settings: "ST",
+  };
+  const commandChapters = overview?.chapters ?? [];
+  const recentEvents = events.slice(-8).reverse();
+  const activeOutputPath = translation?.paths.clean || overview?.artifacts.output_path || "Chưa có output";
+
   return (
     <div className="app-shell">
+      <aside className="app-rail" aria-label="Studio navigation">
+        <button className="rail-brand" type="button" onClick={() => startTransition(() => setScreen("Dashboard"))}>
+          <span>DD</span>
+          <strong>DrDuc Studio</strong>
+        </button>
+        <nav className="rail-nav">
+          {SCREENS.map((item) => (
+            <button
+              key={item}
+              className={`rail-button ${item === screen ? "active" : ""}`}
+              type="button"
+              onClick={() => startTransition(() => setScreen(item))}
+              title={SCREEN_LABELS[item]}
+            >
+              <span>{railCodes[item]}</span>
+              <strong>{SCREEN_LABELS[item]}</strong>
+            </button>
+          ))}
+        </nav>
+      </aside>
+
+      <header className="command-bar">
+        <div className="command-brand">
+          <span className="brand-kicker">Converter Studio</span>
+          <strong>{SCREEN_LABELS[screen]}</strong>
+        </div>
+        <div className="command-group project-picker">
+          <label className="command-field">
+            <span>Project</span>
+            <select
+              className="command-select"
+              value={selectedProjectId}
+              onChange={(event) => startTransition(() => setSelectedProjectId(event.target.value))}
+            >
+              <option value="">Chọn project</option>
+              {projects.map((project) => (
+                <option key={project.project_id} value={project.project_id}>
+                  {project.project_id}
+                </option>
+              ))}
+            </select>
+          </label>
+          <label className="command-field">
+            <span>Chapter</span>
+            <select
+              className="command-select"
+              value={activeChapter?.chapter_id ?? ""}
+              onChange={(event) => {
+                const chapter = commandChapters.find((item) => item.chapter_id === event.target.value);
+                if (chapter) {
+                  void handleSelectChapter(chapter.chapter_id, chapter.text);
+                }
+              }}
+              disabled={!commandChapters.length || busy}
+            >
+              <option value="">Chưa chọn</option>
+              {commandChapters.map((chapter) => (
+                <option key={chapter.chapter_id} value={chapter.chapter_id}>
+                  {chapter.title || chapter.chapter_id}
+                </option>
+              ))}
+            </select>
+          </label>
+        </div>
+        <div className="command-actions">
+          <button className="button ghost" type="button" onClick={() => startTransition(() => setScreen("Project Import"))}>
+            Import
+          </button>
+          <button className="button primary" type="button" onClick={() => void handleTranslate()} disabled={busy || !backendAvailable || !currentProjectId}>
+            Dịch
+          </button>
+          <button className="button" type="button" onClick={() => void handleRunQa()} disabled={busy || !backendAvailable || !currentProjectId}>
+            QA
+          </button>
+          <button className="button" type="button" onClick={() => void handleRunPipelineStage("compile")} disabled={busy || !backendAvailable}>
+            Compile
+          </button>
+        </div>
+        <div className="runtime-badges">
+          <span className={`pill ${busy ? "busy" : "success"}`}>{busy ? "Đang chạy" : "Ready"}</span>
+          <span className="pill subtle">{transport?.mode ?? "loading"}</span>
+          <span className="pill subtle">{PROTOCOL_VERSION}</span>
+        </div>
+      </header>
       <header className="top-bar">
         <div className="top-brand">
           <span className="brand-kicker">DrDuc</span>
@@ -989,7 +1110,7 @@ export function App() {
         <div className="brand">
           <span className="brand-kicker">Pipeline UI</span>
           <h1>DrDuc Translator</h1>
-          <p>Glassmorphism UI được tách module hóa thành 6 screen có dictionary CRUD và pipeline monitor.</p>
+          <p>Studio UI mật độ cao cho import, dịch, QA, coach và dictionary CRUD.</p>
         </div>
 
         <nav className="nav-stack">
@@ -1049,7 +1170,7 @@ export function App() {
         </div>
       </aside>
 
-      <main className={`workspace ${screen === "Dashboard" ? "dashboard-mode" : ""}`}>
+      <main className={`workspace ${screen === "Dashboard" ? "dashboard-mode" : ""} ${screen === "Translation Workspace" ? "workspace-focus-mode" : ""}`}>
         <header className="hero">
           <div>
             <span className="brand-kicker">Slice đang mở</span>
@@ -1109,6 +1230,42 @@ export function App() {
         </section>
         ) : null}
       </main>
+      <aside className={`event-drawer ${screen === "Translation Workspace" ? "workspace-hidden" : ""}`} aria-label="Command timeline">
+        <header className="drawer-head">
+          <div>
+            <span className="brand-kicker">Runtime</span>
+            <h3>Command Timeline</h3>
+          </div>
+          <span className={`pill ${warnings.length ? "warning" : "success"}`}>{warnings.length} warning</span>
+        </header>
+        <div className="drawer-section">
+          <InfoLine label="Project" value={currentProjectId || "Chưa chọn"} />
+          <InfoLine label="Active chapter" value={activeChapter?.chapter_id ?? "Chưa chọn"} />
+          <InfoLine label="Output" value={activeOutputPath} />
+        </div>
+        <div className="timeline-list">
+          {recentEvents.length ? (
+            recentEvents.map((event, index) => (
+              <article key={`${event.stage}-${index}`} className="timeline-row">
+                <span className="timeline-progress">{event.progress}%</span>
+                <div>
+                  <strong>{event.stage}</strong>
+                  <p>{event.message}</p>
+                </div>
+              </article>
+            ))
+          ) : (
+            <p className="empty-state">Chưa có event lệnh.</p>
+          )}
+        </div>
+      </aside>
+
+      <footer className="status-strip">
+        <span>{statusMessage}</span>
+        <strong>{overview?.counts.segments ?? 0} segments</strong>
+        <strong>{overview?.counts.qa_issues ?? 0} QA issues</strong>
+        <strong>{activeOutputPath}</strong>
+      </footer>
     </div>
   );
 }

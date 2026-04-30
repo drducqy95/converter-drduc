@@ -517,11 +517,11 @@ export function TranslationWorkspaceScreen(props: {
                 <span>Bản sạch</span>
                 <textarea className="textarea compare-textarea" value={props.translation?.clean_text ?? ""} readOnly onSelect={(event) => handleCompareSelection("clean", event)} />
               </label>
+              <label className="field">
+                <span>Bản nháp chú giải</span>
+                <textarea className="textarea draft-compare-textarea" value={props.translation?.draft_text ?? ""} readOnly onSelect={(event) => handleCompareSelection("draft", event)} />
+              </label>
             </div>
-            <label className="field">
-              <span>Bản nháp chú giải</span>
-              <textarea className="textarea draft-compare-textarea" value={props.translation?.draft_text ?? ""} readOnly onSelect={(event) => handleCompareSelection("draft", event)} />
-            </label>
             <div className="compare-selection-strip">
               <div>
                 <span>Entity nháp</span>

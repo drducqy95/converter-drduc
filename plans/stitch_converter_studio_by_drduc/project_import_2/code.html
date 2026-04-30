@@ -1,0 +1,325 @@
+<!DOCTYPE html>
+
+<html lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Dự án &amp; Nhập liệu - Converter by DrDuc</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    "fontFamily": {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    "fontSize": {
+                        "label-caps": ["11px", {"lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "700"}],
+                        "code": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "display": ["20px", {"lineHeight": "28px", "letterSpacing": "-0.01em", "fontWeight": "600"}],
+                        "body-sm": ["13px", {"lineHeight": "18px", "fontWeight": "400"}],
+                        "body-base": ["14px", {"lineHeight": "20px", "fontWeight": "400"}],
+                        "heading": ["16px", {"lineHeight": "24px", "letterSpacing": "-0.01em", "fontWeight": "600"}]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        body { font-family: 'Inter', sans-serif; }
+    </style>
+</head>
+<body class="bg-surface-container-lowest text-on-surface h-screen w-screen overflow-hidden flex flex-col font-body-base">
+<!-- TopNavBar -->
+<nav class="flex items-center justify-between px-3 w-full fixed top-0 z-50 ml-16 bg-surface-container-lowest h-[40px] border-b border-surface-container-high">
+<div class="flex items-center gap-4">
+<span class="text-sm font-black text-on-surface">Translation IDE</span>
+<div class="flex items-center gap-4 ml-6">
+<div class="flex items-center gap-1 text-secondary border-b-2 border-secondary pb-[14px] pt-[14px] cursor-pointer">
+<span class="font-label-caps text-label-caps uppercase">Import</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface pb-[14px] pt-[14px] cursor-pointer scale-95 duration-75">
+<span class="font-label-caps text-label-caps uppercase">Dịch</span>
+</div>
+<div class="flex items-center gap-1 text-on-surface-variant hover:text-on-surface pb-[14px] pt-[14px] cursor-pointer scale-95 duration-75">
+<span class="font-label-caps text-label-caps uppercase">QA</span>
+</div>
+</div>
+</div>
+<div class="flex items-center gap-4">
+<div class="flex items-center gap-3 text-on-surface-variant">
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-on-surface transition-colors" data-icon="hub">hub</span>
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-on-surface transition-colors" data-icon="lan">lan</span>
+<span class="material-symbols-outlined text-[16px] cursor-pointer hover:text-on-surface transition-colors" data-icon="notifications">notifications</span>
+</div>
+<button class="bg-secondary text-on-secondary px-3 py-1 rounded text-label-caps font-label-caps uppercase hover:bg-secondary-fixed transition-colors h-[24px] flex items-center">
+                Execute Pipeline
+            </button>
+</div>
+</nav>
+<!-- SideNavBar -->
+<aside class="flex flex-col h-full fixed left-0 top-0 z-40 bg-surface-container-low text-on-surface font-sans text-[13px] tracking-tight font-medium h-screen w-16 hover:w-60 transition-all duration-300 border-r border-surface-container-high border-r border-surface-container-high group overflow-hidden">
+<div class="h-[40px] flex items-center px-4 border-b border-surface-container-high shrink-0 overflow-hidden whitespace-nowrap">
+<div class="w-8 h-8 rounded bg-primary-container text-on-primary-container flex items-center justify-center shrink-0">
+<span class="material-symbols-outlined text-[18px]">translate</span>
+</div>
+<div class="ml-3 flex flex-col opacity-0 group-hover:opacity-100 transition-opacity duration-300">
+<span class="text-lg font-bold tracking-tighter text-on-surface leading-tight">TransWork</span>
+<span class="text-[10px] text-on-surface-variant">v1.0.4</span>
+</div>
+</div>
+<div class="flex-1 py-2 overflow-y-auto overflow-x-hidden flex flex-col gap-1 px-2">
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="dashboard">dashboard</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Tổng quan</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded bg-surface-container-lowest border-l-2 border-secondary text-secondary cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="folder_open">folder_open</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Dự án &amp; Nhập liệu</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="translate">translate</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Workspace dịch</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="book">book</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Từ điển</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="psychology">psychology</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Coach &amp; Review</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="fact_check">fact_check</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">QA &amp; Pipeline</span>
+</div>
+<div class="flex items-center px-2 py-2 rounded text-on-surface-variant hover:bg-surface-container-high hover:bg-surface-container-high transition-colors cursor-pointer active:opacity-80 whitespace-nowrap overflow-hidden">
+<span class="material-symbols-outlined text-[20px] shrink-0" data-icon="settings">settings</span>
+<span class="ml-3 opacity-0 group-hover:opacity-100 transition-opacity duration-300">Cài đặt</span>
+</div>
+</div>
+</aside>
+<!-- Main Workspace -->
+<main class="flex-1 ml-16 mt-[40px] mb-[32px] flex overflow-hidden bg-surface-container-low gap-gutter">
+<!-- Left Pane: Project List -->
+<section class="flex flex-col w-[300px] bg-surface-container-lowest border-r border-surface-container-high shrink-0 flex">
+<header class="h-[40px] flex items-center px-3 border-b border-surface-container-high bg-surface-container-lowest shrink-0 justify-between">
+<span class="font-heading text-heading text-on-surface">Dự án</span>
+<button class="text-on-surface-variant hover:text-on-surface">
+<span class="material-symbols-outlined text-[16px]" data-icon="add">add</span>
+</button>
+</header>
+<div class="p-2 border-b border-surface-container-high">
+<div class="relative">
+<span class="material-symbols-outlined absolute left-2 top-1.5 text-[16px] text-on-surface-variant" data-icon="search">search</span>
+<input class="w-full h-7 pl-8 pr-2 bg-surface-container text-body-sm font-body-sm rounded border-none focus:ring-1 focus:ring-secondary text-on-surface placeholder-on-surface-variant" placeholder="Lọc dự án..." type="text"/>
+</div>
+</div>
+<div class="flex-1 overflow-y-auto">
+<ul class="flex flex-col">
+<li class="flex flex-col px-3 py-2 border-b border-surface-container-high bg-surface-container-lowest hover:bg-surface-container-low cursor-pointer border-l-2 border-secondary">
+<div class="flex justify-between items-center mb-1">
+<span class="font-body-base text-body-base font-semibold text-on-surface">hong-hoang-lich</span>
+<span class="bg-secondary-container text-on-secondary-container px-1.5 rounded text-label-caps font-label-caps">ĐÃ DỊCH</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant text-body-sm font-body-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">translate</span> zh -&gt; vi</span>
+<span>Chapter 001</span>
+</div>
+</li>
+<li class="flex flex-col px-3 py-2 border-b border-surface-container-high bg-surface-container-lowest hover:bg-surface-container-low cursor-pointer border-l-2 border-transparent">
+<div class="flex justify-between items-center mb-1">
+<span class="font-body-base text-body-base font-semibold text-on-surface">tieu-ngao-giang-ho</span>
+<span class="bg-surface-container-high text-on-surface-variant px-1.5 rounded text-label-caps font-label-caps">HOÀN THÀNH</span>
+</div>
+<div class="flex justify-between items-center text-on-surface-variant text-body-sm font-body-sm">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">translate</span> zh -&gt; vi</span>
+<span>Chapter 142</span>
+</div>
+</li>
+</ul>
+</div>
+</section>
+<!-- Center Pane: Import & Detail -->
+<section class="flex-1 flex flex-col bg-surface-container-lowest min-w-0">
+<header class="h-[40px] flex items-center px-3 border-b border-surface-container-high bg-surface-container-lowest shrink-0">
+<span class="font-heading text-heading text-on-surface flex items-center gap-2">
+<span class="material-symbols-outlined text-[18px]">folder</span>
+                    hong-hoang-lich
+                </span>
+</header>
+<div class="flex-1 overflow-y-auto p-4 flex flex-col gap-4">
+<!-- Import Panel -->
+<div class="border border-surface-container-high rounded bg-surface-container-lowest p-4 flex flex-col gap-4">
+<h3 class="font-heading text-heading text-on-surface border-b border-surface-container-high pb-2">Nhập tệp nguồn</h3>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant">ĐƯỜNG DẪN NGUỒN</label>
+<div class="flex gap-2">
+<input class="flex-1 h-8 px-2 bg-surface-container-low text-code font-code rounded border border-surface-container-high focus:ring-1 focus:ring-secondary text-on-surface" type="text" value="/workspace/novels/hong-hoang-lich/raw/"/>
+<button class="bg-surface-container-high hover:bg-surface-container text-on-surface px-3 py-1 rounded text-body-sm font-body-sm h-8 border border-surface-container-high">Duyệt</button>
+</div>
+</div>
+<div class="flex flex-col gap-2">
+<label class="font-label-caps text-label-caps text-on-surface-variant">PHÁT HIỆN ĐỊNH DẠNG</label>
+<div class="flex gap-3">
+<div class="flex items-center gap-1 px-2 py-1 rounded border border-secondary bg-surface-container-low text-secondary cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">description</span>
+<span class="text-body-sm font-body-sm">.txt</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-1 rounded border border-surface-container-high bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">markdown</span>
+<span class="text-body-sm font-body-sm">.md</span>
+</div>
+<div class="flex items-center gap-1 px-2 py-1 rounded border border-surface-container-high bg-surface-container-lowest text-on-surface-variant hover:bg-surface-container-low cursor-pointer">
+<span class="material-symbols-outlined text-[16px]">html</span>
+<span class="text-body-sm font-body-sm">.html</span>
+</div>
+</div>
+</div>
+<div class="flex justify-end mt-2">
+<button class="bg-secondary text-on-secondary px-4 py-1.5 rounded text-body-sm font-body-sm hover:bg-secondary-fixed transition-colors flex items-center gap-2"><span class="material-symbols-outlined text-[16px]">download</span> Nhập &amp; Chuẩn bị</button>
+</div>
+</div>
+<!-- Chapter Table -->
+<div class="border border-surface-container-high rounded bg-surface-container-lowest flex flex-col flex-1 min-h-[300px]">
+<header class="h-[32px] flex items-center px-3 border-b border-surface-container-high bg-surface-container-low shrink-0 justify-between">
+<span class="font-label-caps text-label-caps text-on-surface-variant">MỤC LỤC CHƯƠNG</span>
+</header>
+<div class="flex-1 overflow-auto">
+<table class="w-full text-left border-collapse">
+<thead>
+<tr class="bg-surface-container-lowest border-b border-surface-container-high text-on-surface-variant font-label-caps text-label-caps uppercase h-[32px]">
+<th class="px-3 font-normal font-label-caps w-16">ID</th>
+<th class="px-3 font-normal font-label-caps">Tiêu đề</th>
+<th class="px-3 font-normal font-label-caps w-24 text-right">Số ký tự</th>
+<th class="px-3 font-normal font-label-caps w-32">Trạng thái</th>
+<th class="px-3 font-normal font-label-caps w-24">QA</th>
+</tr>
+</thead>
+<tbody class="text-body-sm font-body-sm text-on-surface">
+<tr class="border-b border-surface-container-high hover:bg-surface-container-low h-[32px] bg-surface-container-lowest">
+<td class="px-3 font-code">001</td>
+<td class="px-3 font-medium truncate max-w-[200px]">Hắc Dạ Chi Tâm</td>
+<td class="px-3 text-right font-code text-on-surface-variant">4,500</td>
+<td class="px-3">
+<span class="bg-secondary-container text-on-secondary-container px-1.5 rounded text-label-caps font-label-caps">ĐÃ DỊCH</span>
+</td>
+<td class="px-3">
+<span class="text-error flex items-center gap-1 text-[11px]"><span class="material-symbols-outlined text-[14px]">warning</span> 2 vấn đề</span>
+</td>
+</tr>
+<tr class="border-b border-surface-container-high hover:bg-surface-container-low h-[32px] bg-surface-container-lowest">
+<td class="px-3 font-code">002</td>
+<td class="px-3 font-medium truncate max-w-[200px]">Khởi Đầu Mới</td>
+<td class="px-3 text-right font-code text-on-surface-variant">5,120</td>
+<td class="px-3">
+<span class="bg-primary-container text-on-primary-container px-1.5 rounded text-label-caps font-label-caps">ĐANG THỰC HIỆN</span>
+</td>
+<td class="px-3 text-on-surface-variant">-</td>
+</tr>
+<tr class="border-b border-surface-container-high hover:bg-surface-container-low h-[32px] bg-surface-container-lowest">
+<td class="px-3 font-code">003</td>
+<td class="px-3 font-medium truncate max-w-[200px]">Gặp Gỡ</td>
+<td class="px-3 text-right font-code text-on-surface-variant">4,800</td>
+<td class="px-3">
+<span class="bg-surface-container-high text-on-surface-variant px-1.5 rounded text-label-caps font-label-caps">CHỜ XỬ LÝ</span>
+</td>
+<td class="px-3 text-on-surface-variant">-</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+</div>
+</section>
+<!-- Right Pane: Inspector / Summary -->
+<aside class="w-[260px] bg-surface-container-lowest border-l border-surface-container-high shrink-0 flex flex-col">
+<header class="h-[40px] flex items-center px-3 border-b border-surface-container-high bg-surface-container-lowest shrink-0">
+<span class="font-heading text-heading text-on-surface">Trình kiểm tra</span>
+</header>
+<div class="flex-1 p-3 overflow-y-auto flex flex-col gap-4">Đã phân tích trong 1.2 giây</div>
+</aside>
+</main>
+<!-- Footer -->
+<footer class="flex items-center justify-between px-4 w-full h-8 bg-surface-container-low text-on-surface-variant font-mono text-[10px] tracking-wide uppercase h-8 w-full border-t border-surface-container-high fixed bottom-0 left-0 z-50">
+<div class="flex items-center gap-4">
+<span class="cursor-default text-on-surface font-bold">System Ready</span>
+<span class="hover:underline cursor-pointer">Tauri: Connected</span>
+<span class="hover:underline cursor-pointer">Warnings: 0</span>
+<span class="hover:underline cursor-pointer">Artifacts</span>
+</div>
+<div class="flex items-center gap-2 text-on-surface-variant">
+<span>Converter by DrDuc</span>
+</div>
+</footer>
+</body></html>

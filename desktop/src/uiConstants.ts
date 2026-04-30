@@ -1,7 +1,8 @@
 export const SCREENS = [
   "Dashboard",
-  "Dictionary Editor",
+  "Project Import",
   "Translation Workspace",
+  "Dictionary Editor",
   "Translation Coach",
   "Pipeline Monitor",
   "Settings",
@@ -11,10 +12,11 @@ export type ScreenKey = (typeof SCREENS)[number];
 
 export const SCREEN_LABELS: Record<ScreenKey, string> = {
   Dashboard: "Tổng quan",
-  "Dictionary Editor": "Từ điển",
+  "Project Import": "Project & Import",
   "Translation Workspace": "Workspace dịch",
-  "Translation Coach": "Coach dịch",
-  "Pipeline Monitor": "Pipeline",
+  "Dictionary Editor": "Từ điển",
+  "Translation Coach": "Coach & Review",
+  "Pipeline Monitor": "QA & Pipeline",
   Settings: "Cài đặt",
 };
 

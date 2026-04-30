@@ -1,0 +1,348 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Converter by DrDuc - Coach &amp; Review</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "on-surface-variant": "#45474c",
+                        "tertiary-fixed": "#fadfb8",
+                        "inverse-primary": "#bcc7de",
+                        "error": "#ba1a1a",
+                        "surface-container-lowest": "#ffffff",
+                        "surface-container-highest": "#e4e2e3",
+                        "on-tertiary-fixed": "#271902",
+                        "secondary-fixed-dim": "#b4c5ff",
+                        "secondary-container": "#316bf3",
+                        "tertiary-fixed-dim": "#ddc39d",
+                        "on-secondary-fixed-variant": "#003ea8",
+                        "tertiary-container": "#35260c",
+                        "outline": "#75777d",
+                        "inverse-on-surface": "#f3f0f2",
+                        "on-background": "#1b1b1d",
+                        "primary-fixed": "#d8e3fb",
+                        "surface-tint": "#545f73",
+                        "primary-container": "#1e293b",
+                        "on-primary-fixed": "#111c2d",
+                        "surface-container-low": "#f5f3f4",
+                        "on-tertiary": "#ffffff",
+                        "primary": "#091426",
+                        "tertiary": "#1e1200",
+                        "inverse-surface": "#303032",
+                        "primary-fixed-dim": "#bcc7de",
+                        "surface": "#fbf8fa",
+                        "secondary": "#0051d5",
+                        "surface-variant": "#e4e2e3",
+                        "on-secondary-fixed": "#00174b",
+                        "on-secondary": "#ffffff",
+                        "on-primary-container": "#8590a6",
+                        "on-primary-fixed-variant": "#3c475a",
+                        "surface-container-high": "#eae7e9",
+                        "background": "#fbf8fa",
+                        "on-primary": "#ffffff",
+                        "on-surface": "#1b1b1d",
+                        "on-error": "#ffffff",
+                        "error-container": "#ffdad6",
+                        "surface-bright": "#fbf8fa",
+                        "on-tertiary-container": "#a38c6a",
+                        "surface-container": "#f0edef",
+                        "on-tertiary-fixed-variant": "#564427",
+                        "outline-variant": "#c5c6cd",
+                        "surface-dim": "#dcd9db",
+                        "on-error-container": "#93000a",
+                        "secondary-fixed": "#dbe1ff",
+                        "on-secondary-container": "#fefcff"
+                    },
+                    borderRadius: {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    spacing: {
+                        "sidebar-width": "260px",
+                        "unit": "4px",
+                        "pane-padding": "12px",
+                        "gutter": "1px",
+                        "toolbar-height": "40px"
+                    },
+                    fontFamily: {
+                        "label-caps": ["Inter"],
+                        "code": ["monospace"],
+                        "display": ["Inter"],
+                        "body-sm": ["Inter"],
+                        "body-base": ["Inter"],
+                        "heading": ["Inter"]
+                    },
+                    fontSize: {
+                        "label-caps": ["11px", { lineHeight: "16px", letterSpacing: "0.05em", fontWeight: "700" }],
+                        "code": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "display": ["20px", { lineHeight: "28px", letterSpacing: "-0.01em", fontWeight: "600" }],
+                        "body-sm": ["13px", { lineHeight: "18px", fontWeight: "400" }],
+                        "body-base": ["14px", { lineHeight: "20px", fontWeight: "400" }],
+                        "heading": ["16px", { lineHeight: "24px", letterSpacing: "-0.01em", fontWeight: "600" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        [data-weight="fill"] {
+            font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+        }
+        /* IDE Layout Resets */
+        html, body { height: 100%; margin: 0; overflow: hidden; background-color: #fbf8fa; color: #1b1b1d; }
+    </style>
+</head>
+<body class="bg-background text-on-background font-body-base antialiased flex">
+<!-- JSON: SideNavBar -->
+<nav class="flex flex-col h-full fixed left-0 top-0 z-40 bg-slate-50 dark:bg-slate-900 text-slate-900 dark:text-slate-100 font-sans text-[13px] tracking-tight font-medium h-screen w-16 hover:w-60 transition-all duration-300 border-r border-slate-200 dark:border-slate-800 border-r border-slate-300 dark:border-slate-700 flat no shadows group overflow-hidden shrink-0">
+<div class="h-toolbar-height flex items-center justify-center group-hover:justify-start group-hover:px-4 border-b border-outline-variant/30">
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 group-hover:block hidden truncate">TransWork</span>
+<span class="text-lg font-bold tracking-tighter text-slate-800 dark:text-slate-200 group-hover:hidden block">TW</span>
+</div>
+<div class="flex-1 py-4 flex flex-col gap-1 overflow-y-auto overflow-x-hidden">
+<!-- T\u1ed5ng quan -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="dashboard">dashboard</span>
+<span class="group-hover:block hidden whitespace-nowrap">Dự án &amp; Nhập liệu</span>
+</div>
+<!-- Project & Import -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="folder_open">folder_open</span>
+<span class="group-hover:block hidden whitespace-nowrap">Dự án &amp; Nhập liệu</span>
+</div>
+<!-- Workspace d\u1ecbch -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="translate">translate</span>
+<span class="group-hover:block hidden whitespace-nowrap">Không gian dịch</span>
+</div>
+<!-- T\u1eeb \u0111i\u1ec3n -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="book">book</span>
+<span class="group-hover:block hidden whitespace-nowrap">Dự án &amp; Nhập liệu</span>
+</div>
+<!-- Coach & Review (ACTIVE) -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 bg-white dark:bg-slate-800 border-l-2 border-blue-600 dark:border-blue-400 text-blue-600 dark:text-blue-400">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="psychology">psychology</span>
+<span class="group-hover:block hidden whitespace-nowrap">Huấn luyện &amp; Đánh giá</span>
+</div>
+<!-- QA & Pipeline -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="fact_check">fact_check</span>
+<span class="group-hover:block hidden whitespace-nowrap">QA &amp; Quy trình</span>
+</div>
+<!-- C\u00e0i \u0111\u1eb7t -->
+<div class="flex items-center px-4 py-2 cursor-pointer active:opacity-80 text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800 mt-auto">
+<span class="material-symbols-outlined mr-3 text-lg" data-icon="settings">settings</span>
+<span class="group-hover:block hidden whitespace-nowrap">Dự án &amp; Nhập liệu</span>
+</div>
+</div>
+</nav>
+<!-- Main Content Area -->
+<div class="flex flex-col flex-1 ml-16 h-screen overflow-hidden bg-surface-container-lowest">
+<!-- JSON: TopNavBar (Suppressed due to context, but keeping header structural element for layout) -->
+<header class="flex items-center justify-between px-3 w-full h-toolbar-height border-b border-outline-variant/30 bg-surface-container-low shrink-0">
+<div class="flex items-center gap-4">
+<span class="font-heading text-heading text-on-surface">Converter by DrDuc</span>
+<div class="h-4 w-px bg-outline-variant"></div>
+<span class="font-body-sm text-body-sm text-on-surface-variant flex items-center gap-1"><span class="material-symbols-outlined text-[16px]">psychology</span> Huấn luyện &amp; Đánh giá</span>
+</div>
+<div class="flex items-center gap-2">
+<button class="h-6 px-2 flex items-center justify-center border border-outline-variant rounded hover:bg-surface-container-high transition-colors text-on-surface">
+<span class="material-symbols-outlined text-[16px]">tune</span>
+</button>
+</div>
+</header>
+<!-- Main Workspace: Three Columns -->
+<main class="flex-1 flex overflow-hidden p-[1px] gap-[1px] bg-outline-variant/50">
+<!-- Left Column: Natural Feedback Form -->
+<div class="flex-[1.2] bg-surface-container-lowest flex flex-col min-w-0">
+<div class="h-toolbar-height flex items-center px-3 border-b border-outline-variant/30 bg-surface shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Ngữ cảnh hiện tại</span>
+</div>
+<div class="p-pane-padding flex-1 overflow-y-auto">
+<div class="mb-4">
+<div class="flex items-center gap-2 mb-2">
+<span class="font-label-caps text-label-caps bg-secondary-fixed text-on-secondary-fixed px-1.5 py-0.5 rounded uppercase">Ngữ cảnh hiện tại</span>
+<span class="font-body-sm text-body-sm text-on-surface">Chapter 001</span>
+</div>
+<div class="flex items-center gap-2">
+<span class="font-label-caps text-label-caps bg-error-container text-on-error-container px-1.5 py-0.5 rounded uppercase">Ngữ cảnh hiện tại</span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">"Nghịch ngữ"</span>
+</div>
+</div>
+<div class="border border-outline-variant/50 rounded p-3 mb-4 bg-surface-container-low">
+<span class="font-label-caps text-label-caps text-outline block mb-1">Source Snippet</span>
+<p class="font-body-base text-body-base text-on-surface font-code">
+                            他微微一笑，说道：“这件事，我们就先放到一边吧。”
+                        </p>
+</div>
+<div class="border border-secondary-container/30 rounded p-3 bg-surface">
+<span class="font-label-caps text-label-caps text-secondary block mb-1">Proposed Translation</span>
+<textarea class="w-full bg-surface-container-lowest border border-outline-variant rounded p-2 font-body-base text-body-base text-on-surface focus:outline-none focus:border-secondary focus:ring-1 focus:ring-secondary resize-none h-24" placeholder="Enter translated text here...">Hắn mỉm cười nói: "Chuyện này, chúng ta tạm gác lại đi."</textarea>
+</div>
+</div>
+</div>
+<!-- Middle Column: Suggestions & Confidence -->
+<div class="flex-[1.5] bg-surface-container-lowest flex flex-col min-w-0">
+<div class="h-toolbar-height flex items-center justify-between px-3 border-b border-outline-variant/30 bg-surface shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Gợi ý AI</span>
+<span class="font-label-caps text-label-caps bg-primary-fixed text-on-primary-fixed px-1.5 py-0.5 rounded">3 Pending</span>
+</div>
+<div class="flex-1 overflow-y-auto p-pane-padding flex flex-col gap-unit">
+<!-- Suggestion Card 1 -->
+<div class="border border-outline-variant/50 rounded bg-surface hover:bg-surface-container-low transition-colors cursor-pointer flex flex-col">
+<div class="p-3 border-b border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-secondary">psychology</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Grammar Structure</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-code text-code text-secondary font-semibold">85%</span>
+<span class="font-label-caps text-label-caps text-outline">Confidence</span>
+</div>
+</div>
+<div class="p-3">
+<p class="font-body-sm text-body-sm text-on-surface mb-2">Consider restructuring to better fit Vietnamese natural phrasing while maintaining the "Nghịch ngữ" rule constraints.</p>
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded p-2 font-body-sm text-body-sm text-on-surface-variant line-through mb-1">
+                                Hắn hơi cười một chút, nói ra: "Việc này, chúng ta liền trước đặt vào một bên đi."
+                            </div>
+<div class="bg-secondary-fixed/20 border border-secondary/30 rounded p-2 font-body-sm text-body-sm text-on-surface font-medium">
+                                Hắn mỉm cười nói: "Chuyện này, chúng ta tạm gác lại đi."
+                            </div>
+</div>
+<div class="px-3 py-2 border-t border-outline-variant/30 bg-surface-container-low flex justify-end gap-2 rounded-b">
+<button class="h-6 px-3 flex items-center justify-center bg-surface-container-lowest border border-outline-variant rounded hover:bg-error-container hover:text-on-error-container hover:border-error-container transition-colors text-on-surface font-label-caps text-label-caps uppercase">Từ chối</button>
+<button class="h-6 px-3 flex items-center justify-center bg-secondary text-on-secondary rounded hover:bg-on-secondary-fixed transition-colors font-label-caps text-label-caps uppercase shadow-sm">Áp dụng</button>
+</div>
+</div>
+<!-- Suggestion Card 2 -->
+<div class="border border-outline-variant/50 rounded bg-surface hover:bg-surface-container-low transition-colors cursor-pointer flex flex-col opacity-75 hover:opacity-100">
+<div class="p-3 border-b border-outline-variant/30 flex justify-between items-center">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-[16px] text-tertiary-fixed-dim">translate</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant">Terminology Match</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="font-code text-code text-outline font-semibold">62%</span>
+<span class="font-label-caps text-label-caps text-outline">Confidence</span>
+</div>
+</div>
+<div class="p-3">
+<div class="bg-surface-container-lowest border border-outline-variant/30 rounded p-2 font-body-sm text-body-sm text-on-surface font-medium">
+                                Hắn cười nhạt bảo: "Việc này để sau hãy nói."
+                            </div>
+</div>
+</div>
+</div>
+</div>
+<!-- Right Column: Timeline & Stats -->
+<div class="flex-[1] bg-surface-container-lowest flex flex-col min-w-0">
+<div class="h-toolbar-height flex items-center px-3 border-b border-outline-variant/30 bg-surface shrink-0">
+<span class="font-label-caps text-label-caps text-on-surface-variant uppercase">Tiến trình học tập</span>
+</div>
+<div class="flex-1 overflow-y-auto">
+<!-- Stats Grid -->
+<div class="grid grid-cols-2 gap-unit p-pane-padding border-b border-outline-variant/30">
+<div class="bg-surface-container-low rounded p-3 flex flex-col items-center justify-center border border-outline-variant/30">
+<span class="font-display text-display text-secondary">24</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center mt-1">QA Issues<br/>Fixed</span>
+</div>
+<div class="bg-surface-container-low rounded p-3 flex flex-col items-center justify-center border border-outline-variant/30">
+<span class="font-display text-display text-primary">156</span>
+<span class="font-label-caps text-label-caps text-on-surface-variant text-center mt-1">Recs.<br/>Applied</span>
+</div>
+</div>
+<!-- Timeline -->
+<div class="p-pane-padding">
+<span class="font-label-caps text-label-caps text-outline block mb-4">Sự kiện huấn luyện gần đây</span>
+<div class="relative pl-6 border-l-2 border-outline-variant/30 space-y-6 pb-4 ml-2">
+<!-- Event 1 -->
+<div class="relative">
+<div class="absolute -left-[29px] top-0.5 w-3 h-3 rounded-full bg-secondary ring-4 ring-surface-container-lowest"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline mb-0.5">10:42 AM</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Rule Adjusted: "Nghịch ngữ"</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1">System learned to prefer "tạm gác lại" over "đặt vào một bên" for conversational contexts.</span>
+</div>
+</div>
+<!-- Event 2 -->
+<div class="relative">
+<div class="absolute -left-[29px] top-0.5 w-3 h-3 rounded-full bg-outline-variant ring-4 ring-surface-container-lowest"></div>
+<div class="flex flex-col">
+<span class="font-label-caps text-label-caps text-outline mb-0.5">09:15 AM</span>
+<span class="font-body-sm text-body-sm text-on-surface font-medium">Candidate Added</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant mt-1">Source: "小白" -&gt; Target: "Tiểu Bạch"</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+</main>
+<!-- Bottom Tabs Panel -->
+<div class="h-48 border-t border-outline-variant/50 bg-surface-container-lowest shrink-0 flex flex-col">
+<!-- Tabs Header -->
+<div class="flex items-center h-8 bg-surface-container-low border-b border-outline-variant/30 px-2 gap-1 shrink-0">
+<button class="h-full px-4 flex items-center bg-surface-container-lowest border-t border-x border-outline-variant/30 font-label-caps text-label-caps text-on-surface border-b-2 border-b-secondary">Mục từ đề xuất</button>
+<button class="h-full px-4 flex items-center font-label-caps text-label-caps text-outline hover:text-on-surface transition-colors">Luật đề xuất</button>
+<button class="h-full px-4 flex items-center font-label-caps text-label-caps text-outline hover:text-on-surface transition-colors">Cấu trúc ngữ pháp</button>
+</div>
+<!-- Tab Content (Data Grid) -->
+<div class="flex-1 overflow-auto bg-surface-container-lowest">
+<table class="w-full text-left border-collapse">
+<thead class="sticky top-0 bg-surface z-10 shadow-[0_1px_0_rgba(203,213,225,1)]">
+<tr>
+<th class="py-1 px-3 font-label-caps text-label-caps text-on-surface-variant font-medium w-1/4">Source</th>
+<th class="py-1 px-3 font-label-caps text-label-caps text-on-surface-variant font-medium w-1/4">Target</th>
+<th class="py-1 px-3 font-label-caps text-label-caps text-on-surface-variant font-medium w-1/4">Context/Type</th>
+<th class="py-1 px-3 font-label-caps text-label-caps text-on-surface-variant font-medium w-1/4">Status</th>
+</tr>
+</thead>
+<tbody class="font-body-sm text-body-sm">
+<!-- Row 1 -->
+<tr class="h-8 border-b border-outline-variant/20 hover:bg-surface-container-low cursor-default">
+<td class="px-3 font-code">小白</td>
+<td class="px-3">Tiểu Bạch</td>
+<td class="px-3 text-on-surface-variant">Name/Character</td>
+<td class="px-3">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-tertiary-fixed-dim text-on-tertiary-fixed-variant">Candidate</span>
+</td>
+</tr>
+<!-- Row 2 -->
+<tr class="h-8 border-b border-outline-variant/20 hover:bg-surface-container-low cursor-default">
+<td class="px-3 font-code">放到一边</td>
+<td class="px-3">gác lại</td>
+<td class="px-3 text-on-surface-variant">Action/Phrase</td>
+<td class="px-3">
+<span class="inline-flex items-center px-1.5 py-0.5 rounded text-[10px] font-bold tracking-wide uppercase bg-secondary-fixed text-on-secondary-fixed-variant">Verified</span>
+</td>
+</tr>
+</tbody>
+</table>
+</div>
+</div>
+<!-- JSON: Footer -->
+<footer class="bg-slate-100 dark:bg-slate-900 text-slate-600 dark:text-slate-400 font-mono text-[10px] tracking-wide uppercase h-8 w-full border-t border-slate-300 dark:border-slate-700 fixed bottom-0 left-0 z-50 border-t border-slate-300 dark:border-slate-700 flat no shadows cursor-default flex items-center justify-between px-4 w-full h-8 ml-16" style="width: calc(100% - 64px);">
+<span>System Ready</span>
+<div class="flex items-center gap-4">
+<span class="hover:underline cursor-pointer">Tauri: Connected</span>
+<span class="hover:underline cursor-pointer">Warnings: 0</span>
+<span class="hover:underline cursor-pointer">Artifacts</span>
+</div>
+</footer>
+</div>
+</body></html>
