@@ -84,28 +84,28 @@
 ### Vật phẩm phong ấn (Sealed Artifacts)
 * 0級封印物 = 0 Cấp Phong Ấn Vật
 * 1級 ~ 3級 = 1 Cấp ~ 3 Cấp
-* 0-08: 阿勒蘇霍德之筆 = A Lặc Tô Hoắc Đức Chi Bút
-* 2-049: 安提哥努斯家族的笔记 = Antigonus Family's Notebook
+* 0-08: 阿勒蘇霍德之筆 = Cây bút của Althus
+* 2-049: 安提哥努斯家族的笔记 = Sổ ghi chép gia tộc Antigonus
 
 ---
 
 ### Vũ khí / Vật phẩm thần kỳ
-* 陽炎符咒 = Dương Viêm Phù Chú = Flaring Sun Charm
-* 喪鐘 = Tang Chung = Death Knell (Súng lục)
-* 爬行者 = Ba Hành Giả = Creeping Hunger (Bao tay da của Klein)
+* 陽炎符咒 = Bùa mặt trời rực cháy = Flaring Sun Charm
+* 喪鐘 = Chuông tang = Death Knell (Súng lục)
+* 爬行者 = Kẻ bò trườn = Creeping Hunger (Bao tay da của Klein)
 
 ---
 
 ### Công pháp + Chiêu thức (Kỹ năng phi phàm)
 * 占 cảnh = Chiêm bốc
-* 靈體線 = Linh Thể Tuyến
+* 靈體線 = Đường chỉ linh thể
 * 奇蹟暖暖 (Sai - Trò chơi) -> 奇蹟 = Kỳ Tích = Miracles (Từ cụm từ 'Thầy phù thủy kỳ tích')
 
 ---
 
 ### Các thuật ngữ khác
 * 失控 (Hóa điên)
-* 錨 = Miêu (Tín đồ/Tính nhân văn giúp giữ lý trí)
-* 唯一性 = Duy Nhất Tính
-* 源質 = Nguyên Chất
+* 錨 = Neo (Tín đồ/Tính nhân văn giúp giữ lý trí)
+* 唯一性 = Duy nhất tính
+* 源質 = Nguyên chất
 * 墮落 (Đọa lạc)

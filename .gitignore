@@ -29,6 +29,8 @@ coverage.xml
 
 # Diagnostic, generated, and local state output
 *.jsonl
+!data/term_bank/
+!data/term_bank/**/*.jsonl
 all_global_errors*
 cedict_seeding_debug.txt
 diagnose_results*.json

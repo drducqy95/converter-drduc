@@ -278,7 +278,7 @@ class RuntimeDictionaryAccessor:
             ch_hv = ""
             for record in self.get_entry_readings(ch):
                 if record.han_viet_readings:
-                    ch_hv = record.han_viet_readings.split(",")[0].strip().title()
+                    ch_hv = re.split(r"[|,;/]", record.han_viet_readings, maxsplit=1)[0].strip().title()
                     break
             parts.append(ch_hv or ch)
         return " ".join(parts).strip()

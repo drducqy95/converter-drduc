@@ -21,6 +21,7 @@ from src.engine.style_profiles import STYLE_PROFILES, default_style_preferences,
 from src.learning.grammar_pattern_scanner import GrammarLearningPatternScanner, write_grammar_learning_report
 from src.learning.natural_feedback_engine import NaturalFeedbackEngine
 from src.learning.project_learning_engine import ProjectLearningEngine
+from src.pipeline.name_reading import HanVietNameResolver
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
 from src.qa.report_generator import QAReportGenerator
 from src.state.project_manager import ProjectManager
@@ -534,9 +535,18 @@ def handle_request(request: CommandRequest) -> CommandResponse:
             source = str(payload.get("source") or "").strip()
             if not source:
                 raise ValueError("source is required")
+            project_id = str(payload.get("project_id") or payload.get("project_name") or "").strip()
+            project_dir = None
+            if payload.get("project_dir"):
+                project_dir = Path(str(payload.get("project_dir")))
             accessor = RuntimeDictionaryAccessor(_resolve_db_path(payload, allow_missing=False))
             try:
-                suggestions = _build_entity_target_suggestions(accessor, source)
+                suggestions = _build_entity_target_suggestions(
+                    accessor,
+                    source,
+                    project_id=project_id or None,
+                    project_dir=project_dir,
+                )
             finally:
                 accessor.close()
             events.append(_event("entity_targets_suggested", "Generated entity target suggestions", 100))
@@ -1751,15 +1761,24 @@ def _delete_project_entities(project_dir: Path, sources: list[str], *, sync_lock
     }
 
 
-def _build_entity_target_suggestions(accessor: RuntimeDictionaryAccessor, source: str) -> list[dict]:
+def _build_entity_target_suggestions(
+    accessor: RuntimeDictionaryAccessor,
+    source: str,
+    *,
+    project_id: str | None = None,
+    project_dir: Path | None = None,
+) -> list[dict]:
     suggestions: list[dict] = []
-    seen: set[tuple[str, str]] = set()
+    seen: set[str] = set()
+    from src.pipeline.term_bank import TermBank
+
+    name_resolver = HanVietNameResolver(accessor, TermBank(project_id=project_id, project_dir=project_dir))
 
     def add(kind: str, label: str, value: str, detail: str, confidence: float):
         normalized = " ".join(str(value or "").split()).strip()
         if not normalized:
             return
-        key = (kind, normalized.casefold())
+        key = normalized.casefold()
         if key in seen:
             return
         seen.add(key)
@@ -1771,7 +1790,17 @@ def _build_entity_target_suggestions(accessor: RuntimeDictionaryAccessor, source
             "confidence": round(confidence, 3),
         })
 
-    direct_hv = _pick_han_viet_reading(accessor, source)
+    stored_target = name_resolver.resolve_stored_keyword(source)
+    if stored_target:
+        add(
+            "stored_keyword",
+            "Từ khóa lưu sẵn",
+            stored_target,
+            "Target lấy từ mục tên/entity đã có trong dictionary.",
+            0.98,
+        )
+
+    direct_hv = name_resolver.pick_han_viet_reading(source)
     if direct_hv:
         add(
             "han_viet_dictionary",
@@ -1781,7 +1810,7 @@ def _build_entity_target_suggestions(accessor: RuntimeDictionaryAccessor, source
             0.96,
         )
 
-    word_hv = _resolve_han_viet_word_by_word(accessor, source)
+    word_hv = name_resolver.resolve_word_by_word(source)
     if word_hv:
         add(
             "han_viet_word",
@@ -1799,6 +1828,16 @@ def _build_entity_target_suggestions(accessor: RuntimeDictionaryAccessor, source
             value,
             "Tên phương Tây lấy từ dictionary.",
             0.92,
+        )
+
+    latin_generated = name_resolver.resolve_latin_target(source, allow_phonetic=True)
+    if latin_generated:
+        add(
+            "latin_name",
+            "Latinh proper name",
+            latin_generated,
+            "Tên Latin lấy từ term bank, reference hoặc phiên âm tên Tây.",
+            0.88,
         )
 
     latin_from_source = _extract_latin_name(source)

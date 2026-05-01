@@ -5,7 +5,6 @@
 from __future__ import annotations
 
 import json
-import re
 from dataclasses import asdict
 from pathlib import Path
 
@@ -14,6 +13,7 @@ from src.engine.cultural_origin_detector import CulturalOriginDetector
 from src.engine.style_profiles import default_style_preferences
 from src.pipeline.entity_scanner import EntitySuggestion
 from src.pipeline.relationship_builder import RelationshipEdge
+from src.pipeline.name_reading import HanVietNameResolver, title_case_words
 from src.pipeline.terminology_suggester import TerminologySuggestion
 
 
@@ -23,7 +23,7 @@ class ConfigGenerator:
     def __init__(self, db_path: str | None = None):
         self.origin_detector = CulturalOriginDetector()
         self.accessor = RuntimeDictionaryAccessor(db_path)
-        self._name_reading_cache: dict[str, str] = {}
+        self.name_resolver = HanVietNameResolver(self.accessor)
 
     def close(self):
         self.accessor.close()
@@ -83,92 +83,22 @@ class ConfigGenerator:
         (target / "translation_config.json").write_text(json.dumps(config, ensure_ascii=False, indent=2), encoding="utf-8")
 
     def _resolve_locked_target(self, entity: EntitySuggestion) -> str:
-        if entity.entity_type == "person" and entity.target == entity.source and self._is_cjk_text(entity.source):
-            han_viet = self._resolve_han_viet_name(entity.source)
-            if han_viet:
-                return han_viet
-        return entity.target
+        return self.name_resolver.resolve_entity_target(
+            entity.source,
+            entity_type=entity.entity_type,
+            source_dict=entity.source_dict,
+            current_target=entity.target,
+        )
 
     def _resolve_han_viet_name(self, source: str) -> str:
-        direct = self._pick_han_viet_reading(source)
-        if direct:
-            return self._title_case_words(direct)
-
-        parts: list[str] = []
-        for char in source:
-            reading = self._pick_han_viet_reading(char, name_context=True)
-            if not reading:
-                return ""
-            parts.append(reading)
-        return self._title_case_words(" ".join(parts))
+        return self.name_resolver.resolve_stored_keyword(source, "person") or self.name_resolver.resolve_word_by_word(source)
 
     def _pick_han_viet_reading(self, source: str, *, name_context: bool = False) -> str:
-        for record in self.accessor.get_entry_readings(source):
-            candidates = self._normalize_reading_candidates(record.han_viet_readings)
-            if not candidates:
-                continue
-            if name_context:
-                contextual = self._pick_name_context_reading(source, candidates)
-                if contextual:
-                    return contextual
-            return candidates[0]
-        return ""
-
-    @staticmethod
-    def _normalize_reading_candidates(value: str) -> list[str]:
-        if not value:
-            return []
-        candidates: list[str] = []
-        seen: set[str] = set()
-        for part in re.split(r"[|,;/]", value):
-            normalized = " ".join(part.strip().split())
-            key = normalized.lower()
-            if normalized and key not in seen:
-                candidates.append(normalized)
-                seen.add(key)
-        return candidates
-
-    def _pick_name_context_reading(self, source: str, candidates: list[str]) -> str:
-        if len(source) != 1:
-            return ""
-        if source in self._name_reading_cache:
-            cached = self._name_reading_cache[source]
-            return cached if cached.lower() in {item.lower() for item in candidates} else ""
-
-        candidate_map = {item.lower(): item for item in candidates}
-        votes: dict[str, int] = {}
-        rows = self.accessor._get_conn().execute(
-            """
-            SELECT source, target
-            FROM entries
-            WHERE source LIKE ?
-              AND (entity_type = 'person' OR category LIKE 'names_person%')
-            LIMIT 250
-            """,
-            (f"%{source}%",),
-        ).fetchall()
-        for row in rows:
-            name_source = str(row["source"] or "")
-            target_words = str(row["target"] or "").split()
-            if len(name_source) != len(target_words):
-                continue
-            for index, char in enumerate(name_source):
-                if char != source:
-                    continue
-                target_word = target_words[index].strip(" ,.;:()[]{}").lower()
-                if target_word in candidate_map:
-                    votes[target_word] = votes.get(target_word, 0) + 1
-
-        if not votes:
-            self._name_reading_cache[source] = ""
-            return ""
-        best = max(votes.items(), key=lambda item: item[1])[0]
-        self._name_reading_cache[source] = candidate_map[best]
-        return candidate_map[best]
+        return self.name_resolver.pick_han_viet_reading(source, name_context=name_context)
 
     @staticmethod
     def _title_case_words(value: str) -> str:
-        return " ".join(part[:1].upper() + part[1:] for part in value.split() if part)
+        return title_case_words(value)
 
     @staticmethod
     def _is_cjk_text(value: str) -> bool:

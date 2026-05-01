@@ -9,6 +9,13 @@ from pathlib import Path
 
 from src.core.runtime_support import RuntimeDictionaryAccessor
 from src.core.trie_engine import TrieEngine
+from src.pipeline.name_reading import (
+    HanVietNameResolver,
+    first_target_variant,
+    has_cjk,
+    looks_like_latin_transliteration_source,
+)
+from src.pipeline.term_bank import PROPER_ENTITY_TYPES, TermBank, TermBankRecord
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "dictionaries" / "_compiled" / "trie_cache.db"
@@ -42,12 +49,24 @@ NAME_INTRO_PREFIXES = {
     "\u540d\u53eb",
     "\u540d\u4e3a",
 }
+NAME_TITLE_FOLLOWERS = {
+    "\u9662\u58eb",  # 院士
+    "\u5c40\u957f",  # 局长
+    "\u79d8\u4e66",  # 秘书
+    "\u5c45\u58eb",  # 居士
+    "\u5927\u4eba",  # 大人
+    "\u65bd\u4e3b",  # 施主
+    "\u4e66\u751f",  # 书生
+    "\u771f\u4eba",  # 真人
+    "\u79d1\u957f",  # 科长
+}
 STRONG_NAME_FOLLOW_CHARS = set(
     "\u8bf4\u95ee\u770b\u8d70\u5750\u7ad9\u53eb\u558a\u7b11\u671b\u542c\u60f3\u62ff\u6253\u627e\u6293\u653e"
     "\u70b9\u6447\u62ac\u76b1\u53f9\u54ac\u63a5\u8f6c\u51b2"
 )
 INVALID_NAME_CHARS = set(
     "\u7684\u4e00\u662f\u5728\u4e0d\u4e86\u6709\u548c\u4e0e\u53ca\u5e76\u6216\u4f46\u5c31\u53c8\u4e5f\u5f88\u8fd8\u5148\u518d\u5c06\u628a\u88ab\u8ba9\u7ed9\u8ddf\u4ece\u5230\u6765\u53bb\u8bf4\u95ee\u9053\u770b\u542c\u60f3\u4f1a\u80fd\u53ef\u56e0\u6240\u5982\u800c\u4e14\u53ea\u4ec0\u600e\u4e48\u54ea\u5417\u5462\u554a\u5440\u5427\u5566\u4e48\u5f97\u5730\u8fc7\u91cc\u90fd"
+    "\u5bf9\u5fcd\u76f4\u6487\u8d76\u7d27\u522b\u5750\u5b83\u5f31"
     "\u62ff\u672c\u8fd9\u90a3\u4e9b\u6ca1\u89c9\u4ef6\u4e2a"
     # Common verbs/adjectives that follow names but are NOT part of the name
     "\u9762"  # 面 (face/surface)
@@ -63,6 +82,7 @@ INVALID_NAME_CHARS = set(
     "\u80cc"  # 背 (back)
     "\u76b1"  # 皱 (wrinkle)
     "\u4ed6"  # 他 (he)
+    "\u6211"  # 我 (I/me)
     "\u4f60"  # 你 (you)
     "\u63a5"  # 接 (receive)
     "\u6478"  # 摸 (touch)
@@ -104,9 +124,20 @@ COMMON_WORD_PREFIXES = {
     "\u4e8e",  # 于 (at/in)
     "\u5f80",  # 往 (toward)
     "\u671d",  # 朝 (toward/dynasty) — often prefix in 朝着
+    "\u65f6",  # 时 (temporal marker) — avoids swallowing 这时/同时 before a name
     "\u901a\u77e5",  # 通知 (notify)
     "\u4eca\u5929",  # 今天 (today)
     "\u77e5\u9053",  # 知道 (know)
+    "\u6210\u4e3a",  # 成为 (become)
+    "\u5bb9\u6613",  # 容易 (easy)
+    "\u6bd5\u7adf",  # 毕竟 (after all)
+    "\u597d\u50cf",  # 好像 (seems like)
+    "\u8ba1\u5176",  # 计其 (as in 不计其数)
+    "\u7518\u793a",  # 甘示 (as in 不甘示弱)
+    "\u8f66\u4e4b",  # 车之 (as in 前车之鉴)
+    "\u5374",  # 却 (but/yet)
+    "\u90fd",  # 都 (all)
+    "\u522b",  # 别 (do not/other)
 }
 ENTITY_SUFFIX_FRAGMENTS = (
     "\u5b50\u5b66\u9662",
@@ -177,7 +208,63 @@ COMMON_NON_PERSON_NAME_TERMS = {
     "\u5929\u4e0b",
     "\u9ed1\u6697",
     "\u5149\u660e",
+    "\u8111\u6d1e",
 }
+DICTIONARY_ENTITY_TYPE_OVERRIDES = {
+    "\u5730\u7403": "location",  # 地球
+    "\u6606\u4ed1": "location",  # 昆仑
+    "\u5357\u5b8b": "location",  # 南宋
+    "\u987b\u5f25": "location",  # 须弥
+}
+DICTIONARY_NON_ENTITY_SOURCES = {
+    "\u6587\u6b66",  # 文武
+    "\u957f\u751f",  # 长生
+    "\u96f7\u9706",  # 雷霆
+}
+LOCATION_COMMON_PHRASES = {
+    "\u8111\u6d1e",  # 脑洞
+    "\u4e16\u754c\u5404\u56fd",  # 世界各国
+    "\u4e94\u5ea7\u795e\u5c71",  # 五座神山
+    "\u56db\u4f4d\u5b97",  # 四位宗
+    "\u65e5\u6708\u661f",  # 日月星
+    "\u4e8c\u5341\u516b\u661f",  # 二十八星
+    "\u5b9e\u4e16\u754c",  # 实世界
+    "\u6d6e\u7a7a\u57ce\u5e02",  # 浮空城市
+    "\u6d9b\u6d9b\u51a5\u6cb3",  # 涛涛冥河
+}
+FALLBACK_PERSON_ENTITY_SOURCES = {
+    "\u592a\u767d\u91d1\u661f",  # 太白金星
+}
+CHINESE_NUMERAL_CHARS = set("\u4e00\u4e8c\u4e09\u56db\u4e94\u516d\u4e03\u516b\u4e5d\u5341\u767e\u5343\u4e07\u4e24")
+LOCATION_CLASSIFIER_CHARS = set("\u5ea7\u4f4d")
+PERSON_TITLE_SUFFIXES = tuple(NAME_TITLE_FOLLOWERS)
+PERSON_NON_NAME_SUFFIXES = (
+    "\u65f6\u95f4",  # 时间
+    "\u5c40",  # 局
+    "\u5c71",  # 山
+    "\u53f0",  # 台
+    "\u699c",  # 榜
+    "\u9600",  # 阀
+    "\u7bad",  # 箭
+    "\u836f",  # 药
+    "\u5178",  # 典
+)
+LOCATION_SUFFIXES = {"\u57ce", "\u53bf", "\u9547", "\u6751", "\u5e02", "\u7701", "\u90e1", "\u8857", "\u5c71", "\u6cb3", "\u6c5f", "\u6e56", "\u6d77", "\u8c37", "\u5c9b", "\u5dde", "\u5d16", "\u6865", "\u8def", "\u533a", "\u56fd", "\u661f", "\u754c", "\u5b97", "\u6d3e", "\u95e8", "\u5e99", "\u6d1e", "\u5e9c", "\u6bbf", "\u9601"}
+ORGANIZATION_SUFFIXES = {"\u5c40", "\u9662", "\u5bfa", "\u6559", "\u4f1a", "\u76df", "\u90e8", "\u53f8"}
+LOCATION_BAD_PREFIXES = (
+    "\u5bf9\u7740",  # 对着
+    "\u5f00\u8f9f",  # 开辟
+    "\u597d\u50cf",  # 好像
+    "\u4e16\u754c\u5404",  # 世界各
+    "\u6d9b\u6d9b",  # 涛涛
+    "\u603b\u7406",  # 总理
+    "\u603b\u7edf",  # 总统
+    "\u4e07\u519b",  # 万军
+    "\u4e3b\u5bb0",  # 主宰
+    "\u6267\u638c",  # 执掌
+)
+LOCATION_INVALID_START_CHARS = set("\u65f6\u6211\u4f60\u4ed6\u5979\u5b83\u8fd9\u90a3\u6b64\u4e3a\u4ece\u968f\u5c31\u90fd\u5bf9\u7740\u5f00\u597d\u5904\u4f4d\u65b9")
+LOCATION_INVALID_INTERIOR_CHARS = set("\u6211\u4f60\u4ed6\u5979\u5b83\u4eec")
 
 
 @dataclass(slots=True)
@@ -198,16 +285,23 @@ class EntitySuggestion:
 class EntityScanner:
     """Scan for high-priority names and candidate terminology."""
 
-    def __init__(self, db_path: str | None = None):
+    def __init__(self, db_path: str | None = None, *, project_id: str | None = None, project_dir: str | Path | None = None):
         self.db_path = str(db_path or DEFAULT_DB_PATH)
         self.trie = TrieEngine.from_shared_sqlite(self.db_path, enable_number_converter=False)
         self.accessor = RuntimeDictionaryAccessor(self.db_path)
+        self.term_bank = TermBank(project_id=project_id, project_dir=project_dir)
+        self.name_resolver = HanVietNameResolver(self.accessor, self.term_bank)
+
+    def set_project_context(self, *, project_id: str | None = None, project_dir: str | Path | None = None) -> None:
+        self.term_bank.set_project_context(project_id=project_id, project_dir=project_dir)
+        self.name_resolver.set_term_bank(self.term_bank)
 
     def close(self):
         self.accessor.close()
 
     def scan(self, text: str) -> list[EntitySuggestion]:
         found: dict[str, EntitySuggestion] = {}
+        self._scan_term_bank(text, found)
         idx = 0
         while idx < len(text):
             match = self.trie.lookup(text, idx)
@@ -221,15 +315,21 @@ class EntityScanner:
                 idx += max(match.length, 1)
                 continue
 
-            entity_type = self._map_entity_type(category)
+            entity_type = self._map_entity_type(match.source, category)
             ambiguity = ";" in match.target
             confidence = 0.98 if match.priority >= 4 else 0.75
             existing = found.get(match.source)
-            raw_target = match.target.split(";", 1)[0].strip()
-            if any("\u4e00" <= ch <= "\u9fff" for ch in raw_target):
-                mapped_target = self.accessor.get_han_viet_for_text(raw_target)
-            else:
-                mapped_target = raw_target
+            if existing is not None and "term_bank" in existing.source_dict:
+                idx += match.length
+                continue
+            raw_target = first_target_variant(match.target)
+            mapped_target = self.name_resolver.resolve_word_by_word(raw_target) if has_cjk(raw_target) else raw_target
+            mapped_target = self.name_resolver.resolve_entity_target(
+                match.source,
+                entity_type=entity_type,
+                source_dict=category or f"priority_{match.priority}",
+                current_target=mapped_target,
+            )
                 
             if existing is None:
                 found[match.source] = EntitySuggestion(
@@ -249,6 +349,7 @@ class EntityScanner:
 
         self._fallback_name_mining(text, found)
         self._fallback_location_mining(text, found)
+        self._drop_shadowed_term_bank_prefixes(found)
         return sorted(found.values(), key=lambda item: (-item.confidence, -item.count, item.source))
 
     def _fallback_name_mining(self, text: str, found: dict[str, EntitySuggestion]):
@@ -276,6 +377,8 @@ class EntityScanner:
                     continue
                 if not self._looks_like_person_name(candidate, surname_len):
                     continue
+                if self._looks_like_non_person_entity_shape(candidate):
+                    continue
                 if self._is_known_non_name(candidate):
                     continue
                 if self._looks_like_common_non_person_phrase(candidate):
@@ -283,8 +386,7 @@ class EntityScanner:
                 if self._looks_like_embedded_named_term(text, idx, candidate):
                     continue
 
-                next_char = text[idx + length:idx + length + 1]
-                end_score = self._score_name_end(next_char)
+                end_score = self._score_name_end(text, idx + length)
                 if end_score == 0:
                     continue
 
@@ -316,24 +418,107 @@ class EntityScanner:
                 continue
             if self._looks_like_common_non_person_phrase(source):
                 continue
+            latin_target = self.name_resolver.resolve_latin_target(
+                source,
+                allow_phonetic=looks_like_latin_transliteration_source(source),
+                entity_type="person",
+            )
+            source_dict = "heuristic_latin_name_mining" if latin_target else "heuristic_name_mining"
             found[source] = EntitySuggestion(
                 source=source,
-                target=self.accessor.get_han_viet_for_text(source),
+                target=latin_target or self.name_resolver.resolve_entity_target(
+                    source,
+                    entity_type="person",
+                    source_dict=source_dict,
+                    current_target=source,
+                ),
                 entity_type="person",
                 confidence=0.72,
-                source_dict="heuristic_name_mining",
+                source_dict=source_dict,
                 ambiguity_flag=False,
                 count=len(positions),
                 positions=list(positions),
             )
 
+    def _scan_term_bank(self, text: str, found: dict[str, EntitySuggestion]) -> None:
+        for record in self.term_bank.iter_active():
+            if record.entity_type not in PROPER_ENTITY_TYPES and record.entity_type != "term":
+                continue
+            positions = self._find_all_positions(text, record.source)
+            if not positions:
+                continue
+            self._add_term_bank_suggestion(found, record, positions)
+            for alias in record.aliases:
+                alias_positions = self._find_all_positions(text, alias)
+                if alias_positions:
+                    self._add_term_bank_suggestion(found, record, alias_positions, source=alias)
+
+    def _add_term_bank_suggestion(
+        self,
+        found: dict[str, EntitySuggestion],
+        record: TermBankRecord,
+        positions: list[int],
+        *,
+        source: str | None = None,
+    ) -> None:
+        source_text = source or record.source
+        existing = found.get(source_text)
+        if existing is not None:
+            existing.count += len(positions)
+            existing.positions.extend(positions)
+            return
+        found[source_text] = EntitySuggestion(
+            source=source_text,
+            target=record.target,
+            entity_type=record.entity_type,
+            confidence=max(0.72, min(record.confidence, 0.99)),
+            source_dict=record.source_dict,
+            ambiguity_flag=False,
+            count=len(positions),
+            positions=list(positions),
+        )
+
+    @staticmethod
+    def _find_all_positions(text: str, source: str) -> list[int]:
+        if not source:
+            return []
+        positions: list[int] = []
+        start = 0
+        while True:
+            idx = text.find(source, start)
+            if idx < 0:
+                break
+            positions.append(idx)
+            start = idx + max(len(source), 1)
+        return positions
+
+    @staticmethod
+    def _drop_shadowed_term_bank_prefixes(found: dict[str, EntitySuggestion]) -> None:
+        term_bank_items = [
+            item for item in found.values()
+            if "term_bank" in item.source_dict and item.entity_type in PROPER_ENTITY_TYPES
+        ]
+        if not term_bank_items:
+            return
+        for source, item in list(found.items()):
+            if "term_bank" in item.source_dict:
+                continue
+            if item.entity_type not in PROPER_ENTITY_TYPES:
+                continue
+            for protected in term_bank_items:
+                if len(protected.source) <= len(source) or not protected.source.startswith(source):
+                    continue
+                if set(item.positions).issubset(set(protected.positions)):
+                    found.pop(source, None)
+                    break
+
     def _fallback_location_mining(self, text: str, found: dict[str, EntitySuggestion]):
-        LOCATION_SUFFIXES = {"城", "县", "镇", "村", "市", "省", "郡", "街", "山", "河", "江", "湖", "海", "谷", "岛", "州", "崖", "桥", "路", "区", "国", "星", "界", "宗", "派", "门", "庙", "洞", "府", "殿", "阁"}
         LOCATION_MARKERS_BEFORE = {"在", "去", "回", "到", "离", "赴", "入", "出", "向", "从", "由", "往", "过", "经", "是", "和", "让", "与"}
+        entity_suffixes = LOCATION_SUFFIXES | ORGANIZATION_SUFFIXES
         
         candidates: dict[str, dict[str, object]] = {}
         for idx in range(len(text)):
-            if text[idx] not in LOCATION_SUFFIXES:
+            if text[idx] not in entity_suffixes:
                 continue
                 
             best_candidate: tuple[str, int, int] | None = None
@@ -358,8 +543,19 @@ class EntityScanner:
                     
                 if start_score == 0:
                     continue
+                title_tail = text[idx:idx + 3]
+                if any(title_tail.startswith(title) for title in NAME_TITLE_FOLLOWERS):
+                    continue
                     
                 candidate = text[start_idx:idx + 1]
+                if any(candidate.startswith(prefix) for prefix in LOCATION_BAD_PREFIXES):
+                    continue
+                if candidate[0] in LOCATION_INVALID_START_CHARS:
+                    continue
+                if any(ch in LOCATION_INVALID_INTERIOR_CHARS for ch in candidate):
+                    continue
+                if self._looks_like_bad_location_candidate(candidate):
+                    continue
                 if self._is_known_non_name(candidate):
                     continue
                     
@@ -384,12 +580,19 @@ class EntityScanner:
             positions = payload["positions"]
             if len(positions) < 2 and not payload["strong_context"]:
                 continue
+            entity_type = self._map_fallback_place_entity_type(source)
+            source_dict = "heuristic_name_mining" if entity_type == "person" else "heuristic_location_mining"
             found[source] = EntitySuggestion(
                 source=source,
-                target=self.accessor.get_han_viet_for_text(source),
-                entity_type="location",
+                target=self.name_resolver.resolve_entity_target(
+                    source,
+                    entity_type=entity_type,
+                    source_dict=source_dict,
+                    current_target=source,
+                ),
+                entity_type=entity_type,
                 confidence=0.72,
-                source_dict="heuristic_location_mining",
+                source_dict=source_dict,
                 ambiguity_flag=False,
                 count=len(positions),
                 positions=list(positions),
@@ -408,6 +611,16 @@ class EntityScanner:
         given_name = candidate[surname_len:]
         return not any(ch in INVALID_NAME_CHARS for ch in given_name)
 
+    @staticmethod
+    def _looks_like_non_person_entity_shape(candidate: str) -> bool:
+        if candidate.endswith(PERSON_TITLE_SUFFIXES):
+            return True
+        if candidate.endswith(PERSON_NON_NAME_SUFFIXES):
+            return True
+        if len(candidate) == 2 and candidate.endswith("\u56fd"):
+            return True
+        return False
+
     def _score_name_start(self, text: str, idx: int) -> int:
         if idx <= 0:
             return 1
@@ -417,7 +630,11 @@ class EntityScanner:
             return 1
         return 0
 
-    def _score_name_end(self, next_char: str) -> int:
+    def _score_name_end(self, text: str, next_idx: int) -> int:
+        tail = text[next_idx:next_idx + 3]
+        if any(tail.startswith(title) for title in NAME_TITLE_FOLLOWERS):
+            return 2
+        next_char = text[next_idx:next_idx + 1]
         if not next_char:
             return 1
         if next_char in STRONG_NAME_FOLLOW_CHARS:
@@ -449,6 +666,24 @@ class EntityScanner:
         category = (record.category if record else "").lower()
         return any(marker in category for marker in ("org", "loc", "company", "school", "building"))
 
+    @staticmethod
+    def _map_fallback_place_entity_type(source: str) -> str:
+        if source in FALLBACK_PERSON_ENTITY_SOURCES:
+            return "person"
+        return "organization" if source.endswith(tuple(ORGANIZATION_SUFFIXES)) else "location"
+
+    @staticmethod
+    def _looks_like_bad_location_candidate(candidate: str) -> bool:
+        if candidate in FALLBACK_PERSON_ENTITY_SOURCES:
+            return False
+        if candidate in LOCATION_COMMON_PHRASES:
+            return True
+        if any(candidate.startswith(prefix) for prefix in LOCATION_BAD_PREFIXES):
+            return True
+        if len(candidate) >= 2 and candidate[0] in CHINESE_NUMERAL_CHARS and candidate[1] in LOCATION_CLASSIFIER_CHARS:
+            return True
+        return False
+
     def _looks_like_false_name_prefix(self, text: str, idx: int, start_score: int) -> bool:
         if start_score < 2 and text[idx] in DEMONSTRATIVE_NAME_PREFIX_CHARS:
             return True
@@ -459,13 +694,17 @@ class EntityScanner:
     def _is_entity_candidate(self, source: str, category: str, priority: int) -> bool:
         if len(source) < 2:
             return False
+        if source in DICTIONARY_NON_ENTITY_SOURCES:
+            return False
         if self._looks_like_common_non_person_phrase(source):
             return False
         if "names" in category or priority >= 4:
             return True
         return category in {"cultivation", "realm", "items", "techniques"}
 
-    def _map_entity_type(self, category: str) -> str:
+    def _map_entity_type(self, source: str, category: str) -> str:
+        if source in DICTIONARY_ENTITY_TYPE_OVERRIDES:
+            return DICTIONARY_ENTITY_TYPE_OVERRIDES[source]
         if "person" in category:
             return "person"
         if "loc" in category:

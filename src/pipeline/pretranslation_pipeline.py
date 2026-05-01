@@ -179,6 +179,8 @@ class PreTranslationPipeline:
         # Cap text for entity/relationship analysis to prevent OOM on large imports
         analysis_text = normalized_text[:MAX_ANALYSIS_CHARS] if len(normalized_text) > MAX_ANALYSIS_CHARS else normalized_text
 
+        project_path = Path(project_dir)
+        self.scanner.set_project_context(project_id=project_path.name, project_dir=project_path)
         entities = self.scanner.scan(analysis_text)
         # Cap entities to prevent O(n²) explosion in relationship builder
         if len(entities) > MAX_ENTITIES:

@@ -7,6 +7,7 @@ from __future__ import annotations
 from dataclasses import asdict, dataclass
 
 from src.core.runtime_support import RuntimeDictionaryAccessor
+from src.pipeline.name_reading import HanVietNameResolver, is_ascii_latin_phrase
 from src.pipeline.entity_scanner import COMMON_WORD_PREFIXES, INVALID_NAME_CHARS, EntitySuggestion
 
 
@@ -27,11 +28,11 @@ class TerminologySuggester:
     """Attach reading and ambiguity hints to entity suggestions."""
 
     def __init__(self, db_path: str | None = None):
-        self.accessor = RuntimeDictionaryAccessor(db_path) if db_path else None
+        self.accessor = RuntimeDictionaryAccessor(db_path)
+        self.name_resolver = HanVietNameResolver(self.accessor)
 
     def close(self):
-        if self.accessor:
-            self.accessor.close()
+        self.accessor.close()
 
     def suggest(self, entities: list[EntitySuggestion]) -> list[TerminologySuggestion]:
         suggestions: list[TerminologySuggestion] = []
@@ -44,24 +45,32 @@ class TerminologySuggester:
 
             han_viet = ""
             pinyin = ""
-            if self.accessor:
-                refs = self.accessor.lookup_reference(entity.source)
-                for ref in refs:
-                    if not han_viet:
-                        hv = str(ref.metadata.get("han_viet_readings", "") or "").split("|", 1)[0].strip()
-                        if hv:
-                            han_viet = hv
-                    if not pinyin:
-                        py = str(ref.metadata.get("pinyin", "") or "").split("|", 1)[0].strip()
-                        if py:
-                            pinyin = py
-                    if han_viet and pinyin:
-                        break
-
+            refs = self.accessor.lookup_reference(entity.source)
+            for ref in refs:
                 if not han_viet:
-                    han_viet = self.accessor.get_han_viet_for_text(entity.source)
+                    hv = str(ref.metadata.get("han_viet_readings", "") or "").split("|", 1)[0].strip()
+                    if hv:
+                        han_viet = hv
                 if not pinyin:
-                    pinyin = self.accessor.get_pinyin_for_text(entity.source)
+                    py = str(ref.metadata.get("pinyin", "") or "").split("|", 1)[0].strip()
+                    if py:
+                        pinyin = py
+                if han_viet and pinyin:
+                    break
+
+            if not han_viet:
+                if entity.entity_type in {"person", "location", "organization"} and (
+                    entity.source_dict.startswith("heuristic_latin_")
+                    or "term_bank" in entity.source_dict
+                    or is_ascii_latin_phrase(entity.target)
+                ):
+                    han_viet = entity.target
+                elif entity.entity_type in {"person", "location", "organization"}:
+                    han_viet = self.name_resolver.resolve_word_by_word(entity.source)
+                else:
+                    han_viet = self.accessor.get_han_viet_for_text(entity.source)
+            if not pinyin:
+                pinyin = self.accessor.get_pinyin_for_text(entity.source)
 
             recommendation = "lock"
             if entity.ambiguity_flag:

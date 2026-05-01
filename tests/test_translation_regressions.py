@@ -18,6 +18,8 @@ from src.pipeline.chapter_splitter import ChapterSplitter
 from src.pipeline.config_generator import ConfigGenerator
 from src.pipeline.entity_scanner import EntityScanner, EntitySuggestion
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
+from src.pipeline.term_bank import TermBank
+from src.pipeline.terminology_suggester import TerminologySuggester
 from src.qa.emotion_consistency_checker import EmotionConsistencyChecker
 from src.qa.length_checker import LengthChecker
 from src.qa.pronoun_checker import PronounChecker
@@ -213,6 +215,265 @@ def test_config_generator_transliterates_person_locked_entities():
     locked_targets = {item["source"]: item["target"] for item in config["locked_entities"]}
     assert locked_targets["\u590f\u5929\u9a90"] == "H\u1ea1 Thi\u00ean K\u1ef3"
     assert locked_targets["\u5f20\u5c0f\u987a"] == "Tr\u01b0\u01a1ng Ti\u1ec3u Thu\u1eadn"
+
+
+def test_heuristic_name_targets_use_contextual_han_viet_word_by_word():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u8fd9\u65f6\u515a\u4e3a\u56fd\u5ffd\u7136\u5f00\u53e3\u3002"
+            "\u515a\u4e3a\u56fd\u8bf4\u9053\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert by_source["\u515a\u4e3a\u56fd"].target == "\u0110\u1ea3ng Vi Qu\u1ed1c"
+    assert "\u65f6\u515a\u4e3a\u56fd" not in by_source
+
+
+def test_entity_scanner_rejects_function_word_suffix_false_names():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u8d75\u5947\u5bf9\u7740\u8eab\u5f71\u8bf4\u9053\u3002"
+            "\u8d75\u5947\u5fcd\u4e0d\u4f4f\u611f\u53f9\u3002"
+            "\u8d75\u5947\u76f4\u63a5\u8d70\u4e86\u8fc7\u6765\u3002"
+            "\u8d75\u5947\u8bf4\u9053\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert "\u8d75\u5947" in by_source
+    assert "\u8d75\u5947\u5bf9" not in by_source
+    assert "\u8d75\u5947\u5fcd" not in by_source
+    assert "\u8d75\u5947\u76f4" not in by_source
+
+
+def test_entity_scanner_filters_common_phrase_starts_and_locations():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u8fd9\u5c31\u6210\u4e3a\u95ee\u9898\u3002"
+            "\u5927\u5bb6\u90fd\u8d76\u7d27\u8d70\u3002"
+            "\u4ed6\u5bf9\u7740\u8def\u8fb9\u770b\u53bb\u3002"
+            "\u8fd9\u5c31\u6210\u4e3a\u95ee\u9898\u3002"
+            "\u6240\u6709\u4eba\u90fd\u8d76\u7d27\u8d70\u3002"
+            "\u4ed6\u5bf9\u7740\u8def\u8fb9\u770b\u53bb\u3002"
+        )
+    finally:
+        scanner.close()
+
+    sources = {entity.source for entity in entities}
+    assert "\u6210\u4e3a" not in sources
+    assert "\u90fd\u8d76\u7d27" not in sources
+    assert "\u7740\u8def" not in sources
+
+
+def test_entity_scanner_classifies_country_org_and_name_before_title():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u534e\u56fd\u90a3\u91cc\u4f20\u6765\u6d88\u606f\u3002\u534e\u56fd\u7684\u53cd\u5e94\u5f88\u5feb\u3002"
+            "\u56fd\u5b89\u5c40\u6c14\u6c1b\u6c89\u91cd\u3002\u56fd\u5b89\u5c40\u51e0\u4eba\u6c89\u9ed8\u3002"
+            "\u8d75\u957f\u6cb3\u9662\u58eb\u6447\u5934\u3002\u8d75\u957f\u6cb3\u9662\u58eb\u53c8\u53f9\u4e86\u53e3\u6c14\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert by_source["\u534e\u56fd"].entity_type == "location"
+    assert by_source["\u56fd\u5b89\u5c40"].entity_type == "organization"
+    assert by_source["\u8d75\u957f\u6cb3"].entity_type == "person"
+
+
+def test_entity_scanner_filters_project001_common_entity_false_positives():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u4e16\u754c\u5404\u56fd\u90fd\u5728\u89c2\u671b\u3002\u4e16\u754c\u5404\u56fd\u518d\u6b21\u6c89\u9ed8\u3002"
+            "\u5730\u7403\u4eba\u7684\u8111\u6d1e\u5f88\u5927\u3002\u8111\u6d1e\u518d\u600e\u4e48\u5927\u4e5f\u4e0d\u662f\u5730\u540d\u3002"
+            "\u4e94\u5ea7\u795e\u5c71\u540c\u65f6\u9707\u52a8\u3002\u4e94\u5ea7\u795e\u5c71\u4e0d\u662f\u4e00\u4e2a\u4e13\u540d\u3002"
+            "\u56db\u4f4d\u5b97\u95e8\u957f\u8001\u8d70\u6765\u3002\u56db\u4f4d\u5b97\u95e8\u957f\u8001\u70b9\u5934\u3002"
+            "\u592a\u767d\u91d1\u661f\u8bf4\u9053\u3002\u592a\u767d\u91d1\u661f\u70b9\u5934\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert "\u4e16\u754c\u5404\u56fd" not in by_source
+    assert "\u8111\u6d1e" not in by_source
+    assert "\u4e94\u5ea7\u795e\u5c71" not in by_source
+    assert "\u56db\u4f4d\u5b97" not in by_source
+    assert by_source["\u592a\u767d\u91d1\u661f"].entity_type == "person"
+    assert by_source["\u592a\u767d\u91d1\u661f"].target == "Th\u00e1i B\u1ea1ch Kim Tinh"
+
+
+def test_entity_scanner_reclassifies_or_drops_polluted_dictionary_names():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u5730\u7403\u53d1\u751f\u4e86\u53d8\u5316\u3002\u5730\u7403\u4e0a\u6240\u6709\u4eba\u90fd\u77e5\u9053\u3002"
+            "\u6606\u4ed1\u6df1\u5904\u6709\u4eba\u7b49\u5019\u3002\u6606\u4ed1\u7684\u4f20\u8bf4\u5f88\u591a\u3002"
+            "\u96f7\u9706\u6eda\u6eda\u800c\u6765\u3002\u96f7\u9706\u5728\u4e91\u5c42\u4e2d\u70b8\u54cd\u3002"
+            "\u6587\u6b66\u767e\u5b98\u90fd\u5df2\u7ecf\u5230\u9f50\u3002\u6587\u6b66\u4e4b\u9053\u4e0d\u540c\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert by_source["\u5730\u7403"].entity_type == "location"
+    assert by_source["\u6606\u4ed1"].entity_type == "location"
+    assert "\u96f7\u9706" not in by_source
+    assert "\u6587\u6b66" not in by_source
+
+
+def test_heuristic_name_targets_avoid_vietphrase_gloss_readings():
+    scanner = EntityScanner()
+    try:
+        entities = scanner.scan(
+            "\u6768\u5e7f\u8bf4\u9053\u3002\u6768\u5e7f\u70b9\u5934\u3002"
+            "\u9648\u9526\u8bf4\u9053\u3002\u9648\u9526\u70b9\u5934\u3002"
+            "\u7c73\u8fe6\u52d2\u8bf4\u9053\u3002\u7c73\u8fe6\u52d2\u70b9\u5934\u3002"
+            "\u8c37\u4f73\u4f73\u8bf4\u9053\u3002\u8c37\u4f73\u4f73\u70b9\u5934\u3002"
+            "\u51cc\u7fd4\u8bf4\u9053\u3002\u51cc\u7fd4\u70b9\u5934\u3002"
+            "\u4f55\u51ef\u8bf4\u9053\u3002\u4f55\u51ef\u70b9\u5934\u3002"
+            "\u738b\u9ebb\u5b50\u8bf4\u9053\u3002\u738b\u9ebb\u5b50\u70b9\u5934\u3002"
+        )
+    finally:
+        scanner.close()
+
+    targets = {entity.source: entity.target for entity in entities}
+    assert targets["\u6768\u5e7f"] == "D\u01b0\u01a1ng Qu\u1ea3ng"
+    assert targets["\u9648\u9526"] == "Tr\u1ea7n C\u1ea9m"
+    assert targets["\u7c73\u8fe6\u52d2"] == "Michael"
+    assert targets["\u8c37\u4f73\u4f73"] == "C\u1ed1c Giai Giai"
+    assert targets["\u51cc\u7fd4"] == "L\u0103ng T\u01b0\u1eddng"
+    assert targets["\u4f55\u51ef"] == "H\u00e0 Kh\u1ea3i"
+    assert targets["\u738b\u9ebb\u5b50"] == "V\u01b0\u01a1ng Ma T\u1eed"
+
+
+def test_entity_scanner_uses_global_and_private_latin_term_bank():
+    scanner = EntityScanner(project_id="project-001")
+    try:
+        entities = scanner.scan(
+            "\u5c24\u91d1\u8bf4\u9053\u3002\u5c24\u91d1\u70b9\u5934\u3002"
+            "\u6c64\u59c6\u8bf4\u9053\u3002\u6c64\u59c6\u70b9\u5934\u3002"
+            "\u5bc7\u62c9\u65af\u8bf4\u9053\u3002\u5bc7\u62c9\u65af\u70b9\u5934\u3002"
+            "\u5c24\u745f\u8bf4\u9053\u3002\u5c24\u745f\u70b9\u5934\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert by_source["\u5c24\u91d1"].target == "Eugene"
+    assert by_source["\u5c24\u91d1"].source_dict.startswith("global_term_bank")
+    assert by_source["\u6c64\u59c6"].target == "Tom"
+    assert by_source["\u5bc7\u62c9\u65af"].target == "Kolas"
+    assert by_source["\u5bc7\u62c9\u65af"].source_dict.startswith("private_term_bank")
+    assert by_source["\u5c24\u745f"].target == "Yuse"
+
+
+def test_entity_scanner_uses_global_cross_project_terms_and_filters_generic_locations():
+    scanner = EntityScanner(project_id="project-001")
+    try:
+        entities = scanner.scan(
+            "\u8bf8\u845b\u5367\u9f99\u8bf4\u9053\u3002\u8bf8\u845b\u5367\u9f99\u70b9\u5934\u3002"
+            "\u96f7\u795e\u8bf4\u9053\u3002\u96f7\u795e\u70b9\u5934\u3002"
+            "\u7ebd\u7ea6\u5e02\u51fa\u73b0\u4e86\u5f02\u8c61\u3002\u7ebd\u7ea6\u5e02\u518d\u6b21\u9707\u52a8\u3002"
+            "\u68b5\u8482\u5188\u57ce\u4f20\u6765\u6d88\u606f\u3002\u68b5\u8482\u5188\u57ce\u4f20\u6765\u6d88\u606f\u3002"
+            "\u4f17\u4eba\u8fdb\u5165\u6d1b\u9633\u5185\u57ce\u3002\u6d1b\u9633\u5185\u57ce\u5b88\u536b\u68ee\u4e25\u3002"
+            "\u9b54\u95e8\u9ad8\u624b\u73b0\u8eab\u3002\u9b54\u95e8\u518d\u6b21\u9690\u53bb\u3002"
+            "\u8fd9\u662f\u4e00\u5ea7\u6d6e\u7a7a\u57ce\u5e02\u3002\u90a3\u5ea7\u6d6e\u7a7a\u57ce\u5e02\u6b63\u5728\u4e0b\u964d\u3002"
+        )
+    finally:
+        scanner.close()
+
+    by_source = {entity.source: entity for entity in entities}
+    assert by_source["\u8bf8\u845b\u5367\u9f99"].target == "Ch\u01b0 C\u00e1t Ng\u1ecda Long"
+    assert by_source["\u96f7\u795e"].target == "L\u00f4i Th\u1ea7n"
+    assert by_source["\u7ebd\u7ea6\u5e02"].target == "New York City"
+    assert by_source["\u68b5\u8482\u5188\u57ce"].target == "Vatican City"
+    assert by_source["\u6d1b\u9633\u5185\u57ce"].target == "L\u1ea1c D\u01b0\u01a1ng N\u1ed9i Th\u00e0nh"
+    assert by_source["\u9b54\u95e8"].target == "Ma M\u00f4n"
+    assert "\u6d6e\u7a7a\u57ce\u5e02" not in by_source
+
+
+def test_term_bank_keeps_private_annotations_for_interconnected_works():
+    bank = TermBank(project_id="project-001")
+    record = bank.best("\u5bc7\u62c9\u65af")
+
+    assert record is not None
+    assert record.scope == "private"
+    assert record.work == "\u8bf8\u795e\u5927\u9053"
+    assert record.franchise == "\u8bf8\u795e\u5927\u9053"
+    assert "project-001" in record.tags
+
+
+def test_config_generator_rewrites_legacy_slash_targets_for_heuristic_names():
+    config = ConfigGenerator().generate(
+        text="\u515a\u4e3a\u56fd\u8bf4\u9053\u3002",
+        entities=[
+            EntitySuggestion(
+                source="\u515a\u4e3a\u56fd",
+                target="\u0110\u1ea3ng L\u00e0/V\u00ec/L\u00e0m/Vi/V\u00ec L\u00e0/Th\u00e0nh N\u01b0\u1edbc/Qu\u1ed1c",
+                entity_type="person",
+                confidence=0.72,
+                source_dict="heuristic_name_mining",
+                ambiguity_flag=False,
+                count=2,
+                positions=[0, 5],
+            )
+        ],
+        relationships=[],
+        terminology=[],
+    )
+
+    locked_targets = {item["source"]: item["target"] for item in config["locked_entities"]}
+    assert locked_targets["\u515a\u4e3a\u56fd"] == "\u0110\u1ea3ng Vi Qu\u1ed1c"
+
+
+def test_entity_target_suggestions_use_stored_keyword_or_han_viet_name():
+    from src.ui.sidecar_bridge import _build_entity_target_suggestions
+
+    accessor = RuntimeDictionaryAccessor()
+    try:
+        generated = _build_entity_target_suggestions(accessor, "\u515a\u4e3a\u56fd")
+        stored = _build_entity_target_suggestions(accessor, "\u7ebd\u7ea6")
+        private_latin = _build_entity_target_suggestions(accessor, "\u5bc7\u62c9\u65af", project_id="project-001")
+    finally:
+        accessor.close()
+
+    assert generated[0]["value"] == "\u0110\u1ea3ng Vi Qu\u1ed1c"
+    assert generated[0]["kind"] == "han_viet_word"
+    assert stored[0]["value"] == "New York"
+    assert stored[0]["kind"] == "stored_keyword"
+    assert private_latin[0]["value"] == "Kolas"
+    assert private_latin[0]["kind"] == "stored_keyword"
+
+
+def test_terminology_suggester_uses_default_dictionary_for_han_viet_names():
+    suggester = TerminologySuggester()
+    try:
+        suggestions = suggester.suggest(
+            [
+                EntitySuggestion(
+                    source="\u515a\u4e3a\u56fd",
+                    target="\u0110\u1ea3ng Vi Qu\u1ed1c",
+                    entity_type="person",
+                    confidence=0.72,
+                    source_dict="heuristic_name_mining",
+                    ambiguity_flag=False,
+                    count=2,
+                    positions=[0, 5],
+                )
+            ]
+        )
+    finally:
+        suggester.close()
+
+    assert suggestions[0].han_viet == "\u0110\u1ea3ng Vi Qu\u1ed1c"
 
 
 def test_luat_nhan_keeps_locked_entity_whole_for_late_override():

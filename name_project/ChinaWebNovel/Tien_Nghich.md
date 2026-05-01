@@ -113,8 +113,8 @@
 ---
 
 ### Công pháp + Chiêu thức + Cấp bậc
-* 殘夜 = Tàn Dạ (Chiêu thức kinh điển: Mặt trời mọc ở biển đông)
-* 流月 = Lưu Nguyệt (Thao túng thời gian)
+* 殘夜 = Tàn Dạ
+* 流月 = Lưu Nguyệt
 * 呼風喚雨 = Hô Phong Hoán Vũ
 * 撒豆成兵 = Tán Đậu Thành Binh
 * 黃泉指 = Hoàng Tuyền Chỉ
