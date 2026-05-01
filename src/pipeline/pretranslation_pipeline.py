@@ -20,6 +20,7 @@ from src.pipeline.entity_scanner import EntityScanner
 from src.pipeline.relationship_builder import RelationshipBuilder
 from src.pipeline.segment_classifier import SegmentClassifier
 from src.pipeline.terminology_suggester import TerminologySuggester
+from src.pipeline.universe import resolve_project_universe_id
 from src.grammar.transfer_engine import GrammarTransferEngine
 from src.parser.dependency_parser import DependencyParser
 from src.parser.morphological_analyzer import MorphologicalAnalyzer
@@ -180,7 +181,8 @@ class PreTranslationPipeline:
         analysis_text = normalized_text[:MAX_ANALYSIS_CHARS] if len(normalized_text) > MAX_ANALYSIS_CHARS else normalized_text
 
         project_path = Path(project_dir)
-        self.scanner.set_project_context(project_id=project_path.name, project_dir=project_path)
+        universe_id = resolve_project_universe_id(project_id=project_path.name, project_dir=project_path)
+        self.scanner.set_project_context(project_id=project_path.name, project_dir=project_path, universe_id=universe_id)
         entities = self.scanner.scan(analysis_text)
         # Cap entities to prevent O(n²) explosion in relationship builder
         if len(entities) > MAX_ENTITIES:
@@ -197,6 +199,8 @@ class PreTranslationPipeline:
             relationships=relationships,
             terminology=terminology,
         )
+        config["universe_id"] = universe_id
+        config["universe_title"] = project_path.name
         config = self._merge_external_project_metadata(config, metadata_source)
         segment_packets = self._build_segment_packets(chapters)
         grammar_transfer_plan = self._build_grammar_transfer_plan(segment_packets)

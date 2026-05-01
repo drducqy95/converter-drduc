@@ -21,11 +21,18 @@ jobs:
         run: python -m src.core.md_dictionary_compiler --dict-root data/dictionaries
       - name: Run tests with coverage
         run: python -m pytest --cov=src --cov-report=term-missing --cov-report=xml
+      - name: Run production regression gate
+        run: python scripts/run_regression_gate.py --strict
       - name: Upload coverage XML
         uses: actions/upload-artifact@v4
         with:
           name: coverage-xml
           path: coverage.xml
+      - name: Upload regression report
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-gate-report
+          path: reports/regression_gate_report.json
 
   desktop-build:
     runs-on: ubuntu-latest

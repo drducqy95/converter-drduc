@@ -16,6 +16,7 @@ from src.pipeline.name_reading import (
     looks_like_latin_transliteration_source,
 )
 from src.pipeline.term_bank import PROPER_ENTITY_TYPES, TermBank, TermBankRecord
+from src.pipeline.universe import resolve_project_universe_id, slugify_universe_id
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "dictionaries" / "_compiled" / "trie_cache.db"
@@ -277,6 +278,13 @@ class EntitySuggestion:
     ambiguity_flag: bool
     count: int = 0
     positions: list[int] = field(default_factory=list)
+    universe: str = ""
+    work: str = ""
+    review_status: str = "pending"
+    enrichment_ready: bool = False
+    suggested_tags: list[str] = field(default_factory=list)
+    suggested_context_markers: list[str] = field(default_factory=list)
+    qa_flags: list[str] = field(default_factory=list)
 
     def to_dict(self) -> dict:
         return asdict(self)
@@ -285,23 +293,51 @@ class EntitySuggestion:
 class EntityScanner:
     """Scan for high-priority names and candidate terminology."""
 
-    def __init__(self, db_path: str | None = None, *, project_id: str | None = None, project_dir: str | Path | None = None):
+    def __init__(
+        self,
+        db_path: str | None = None,
+        *,
+        project_id: str | None = None,
+        project_dir: str | Path | None = None,
+        universe_id: str | None = None,
+    ):
         self.db_path = str(db_path or DEFAULT_DB_PATH)
         self.trie = TrieEngine.from_shared_sqlite(self.db_path, enable_number_converter=False)
         self.accessor = RuntimeDictionaryAccessor(self.db_path)
         self.term_bank = TermBank(project_id=project_id, project_dir=project_dir)
         self.name_resolver = HanVietNameResolver(self.accessor, self.term_bank)
+        self.default_universe_id = slugify_universe_id(universe_id) or resolve_project_universe_id(
+            project_id=project_id,
+            project_dir=project_dir,
+        )
 
-    def set_project_context(self, *, project_id: str | None = None, project_dir: str | Path | None = None) -> None:
+    def set_project_context(
+        self,
+        *,
+        project_id: str | None = None,
+        project_dir: str | Path | None = None,
+        universe_id: str | None = None,
+    ) -> None:
         self.term_bank.set_project_context(project_id=project_id, project_dir=project_dir)
         self.name_resolver.set_term_bank(self.term_bank)
+        self.default_universe_id = slugify_universe_id(universe_id) or resolve_project_universe_id(
+            project_id=project_id,
+            project_dir=project_dir,
+        )
 
     def close(self):
         self.accessor.close()
 
     def scan(self, text: str) -> list[EntitySuggestion]:
         found: dict[str, EntitySuggestion] = {}
-        self._scan_term_bank(text, found)
+        active_universes = [
+            universe
+            for universe, confidence in self.term_bank.detect_universe(text)
+            if confidence >= 0.5
+        ]
+        if self.default_universe_id and self.default_universe_id not in active_universes:
+            active_universes.append(self.default_universe_id)
+        self._scan_term_bank(text, found, active_universes=active_universes)
         idx = 0
         while idx < len(text):
             match = self.trie.lookup(text, idx)
@@ -440,18 +476,45 @@ class EntityScanner:
                 positions=list(positions),
             )
 
-    def _scan_term_bank(self, text: str, found: dict[str, EntitySuggestion]) -> None:
+    def detect_universe(self, text: str) -> list[tuple[str, float]]:
+        return self.term_bank.detect_universe(text)
+
+    def _scan_term_bank(self, text: str, found: dict[str, EntitySuggestion], *, active_universes: list[str] | None = None) -> None:
+        sources: dict[str, str] = {}
+        active_set = {slugify_universe_id(item) for item in (active_universes or []) if item}
+        active_set.discard("unknown")
         for record in self.term_bank.iter_active():
+            if record.scope == "universe" and active_set and slugify_universe_id(record.universe) not in active_set:
+                continue
             if record.entity_type not in PROPER_ENTITY_TYPES and record.entity_type != "term":
                 continue
-            positions = self._find_all_positions(text, record.source)
+            sources.setdefault(record.source, record.entity_type)
+            for alias in record.aliases:
+                sources.setdefault(alias, record.entity_type)
+
+        for source_text, entity_type in sorted(sources.items(), key=lambda item: len(item[0]), reverse=True):
+            positions = self._find_all_positions(text, source_text)
             if not positions:
                 continue
-            self._add_term_bank_suggestion(found, record, positions)
-            for alias in record.aliases:
-                alias_positions = self._find_all_positions(text, alias)
-                if alias_positions:
-                    self._add_term_bank_suggestion(found, record, alias_positions, source=alias)
+            context_window = self._context_window(text, positions)
+            ranked = self.term_bank.rank_with_context(
+                source_text,
+                context_window=context_window,
+                entity_type=entity_type if entity_type in PROPER_ENTITY_TYPES else None,
+                active_universes=active_universes,
+            )
+            if not ranked:
+                continue
+            selected, selected_score = ranked[0]
+            ambiguity = len(ranked) > 1 and abs(selected_score - ranked[1][1]) < 0.0001
+            self._add_term_bank_suggestion(
+                found,
+                selected,
+                positions,
+                source=source_text,
+                ambiguity=ambiguity,
+                context_window=context_window,
+            )
 
     def _add_term_bank_suggestion(
         self,
@@ -460,22 +523,38 @@ class EntityScanner:
         positions: list[int],
         *,
         source: str | None = None,
+        ambiguity: bool = False,
+        context_window: str = "",
     ) -> None:
         source_text = source or record.source
         existing = found.get(source_text)
         if existing is not None:
             existing.count += len(positions)
             existing.positions.extend(positions)
+            if ambiguity and "ambiguous_entity_resolution" not in existing.qa_flags:
+                existing.ambiguity_flag = True
+                existing.qa_flags.append("ambiguous_entity_resolution")
             return
+        qa_flags = ["ambiguous_entity_resolution"] if ambiguity else []
         found[source_text] = EntitySuggestion(
             source=source_text,
             target=record.target,
             entity_type=record.entity_type,
             confidence=max(0.72, min(record.confidence, 0.99)),
             source_dict=record.source_dict,
-            ambiguity_flag=False,
+            ambiguity_flag=ambiguity,
             count=len(positions),
             positions=list(positions),
+            universe=record.universe,
+            work=record.work,
+            enrichment_ready=record.active,
+            suggested_tags=list(record.tags),
+            suggested_context_markers=[
+                marker
+                for marker in [*record.context_markers, *record.co_occurring_entities]
+                if marker and marker in context_window
+            ],
+            qa_flags=qa_flags,
         )
 
     @staticmethod
@@ -491,6 +570,15 @@ class EntityScanner:
             positions.append(idx)
             start = idx + max(len(source), 1)
         return positions
+
+    @staticmethod
+    def _context_window(text: str, positions: list[int], *, radius: int = 200) -> str:
+        windows: list[str] = []
+        for position in positions[:5]:
+            start = max(0, position - radius)
+            end = min(len(text), position + radius)
+            windows.append(text[start:end])
+        return "\n".join(windows)
 
     @staticmethod
     def _drop_shadowed_term_bank_prefixes(found: dict[str, EntitySuggestion]) -> None:

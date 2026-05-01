@@ -1,0 +1,9 @@
+{
+  "iterations": 1,
+  "chars": 32,
+  "avg_ms": 18.716,
+  "min_ms": 18.716,
+  "max_ms": 18.716,
+  "chars_per_second": 1709.776,
+  "segments": 4
+}

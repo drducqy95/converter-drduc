@@ -1,0 +1,96 @@
+{
+  "passed": true,
+  "metrics": [
+    {
+      "name": "term_bank_jsonl_valid",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "all JSONL rows loaded"
+    },
+    {
+      "name": "term_bank_no_duplicate_keys",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "0 duplicate key(s)"
+    },
+    {
+      "name": "universe_detection_accuracy_seed",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "4/4 seed cases; accuracy=1.0000"
+    },
+    {
+      "name": "same_name_resolution_seed",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "context=Thor; default=Lôi Thần"
+    },
+    {
+      "name": "tm_split_available",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "trace_foundation_available",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "segment_packet_available",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "grammar_transfer_available",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "entity_enrichment_available",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "docs_complete",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "missing=[]"
+    },
+    {
+      "name": "ci_regression_step",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": ""
+    },
+    {
+      "name": "no_universe_tag_seed_output",
+      "passed": true,
+      "value": true,
+      "threshold": true,
+      "detail": "Áo đinh hẹn gặp Thor."
+    },
+    {
+      "name": "performance_seed_ms",
+      "passed": true,
+      "value": 8.337,
+      "threshold": 2000.0,
+      "detail": "seed translation wall time"
+    }
+  ]
+}

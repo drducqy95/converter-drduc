@@ -21,8 +21,11 @@ from src.engine.style_profiles import STYLE_PROFILES, default_style_preferences,
 from src.learning.grammar_pattern_scanner import GrammarLearningPatternScanner, write_grammar_learning_report
 from src.learning.natural_feedback_engine import NaturalFeedbackEngine
 from src.learning.project_learning_engine import ProjectLearningEngine
+from src.pipeline.entity_enrichment import EntityEnrichmentManager
+from src.pipeline.entity_scanner import EntityScanner, EntitySuggestion
 from src.pipeline.name_reading import HanVietNameResolver
 from src.pipeline.pretranslation_pipeline import PreTranslationPipeline
+from src.pipeline.universe import resolve_project_universe_id, slugify_universe_id
 from src.qa.report_generator import QAReportGenerator
 from src.state.project_manager import ProjectManager
 from src.tools.pos_seeder import POSSeeder
@@ -48,6 +51,11 @@ SUPPORTED_COMMANDS = {
     "delete_project_entity",
     "delete_project_entities",
     "suggest_entity_targets",
+    "entity_scan_review",
+    "entity_approve",
+    "entity_reject",
+    "entity_save_to_term_bank",
+    "entity_export_report",
     "search_dictionary_entries",
     "list_dictionary_entries",
     "update_dictionary_entry",
@@ -555,6 +563,123 @@ def handle_request(request: CommandRequest) -> CommandResponse:
                 data={
                     "source": source,
                     "suggestions": suggestions,
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "entity_scan_review":
+            manager, project_id, project_dir = _resolve_project(payload, create_if_missing=True)
+            chapter_id = payload.get("chapter_id") or manager.open_project(project_id).active_chapter
+            text = str(payload.get("text") or _load_project_source_text(project_dir, chapter_id) or "")
+            if not text:
+                raise ValueError("text or project source text is required")
+            universe_id = resolve_project_universe_id(project_id=project_id, project_dir=project_dir)
+            scanner = EntityScanner(project_id=project_id, project_dir=project_dir, universe_id=universe_id)
+            try:
+                detected_universes = scanner.detect_universe(text)
+                entities = scanner.scan(text)
+            finally:
+                scanner.close()
+            enrichment = EntityEnrichmentManager(project_id=project_id, project_dir=project_dir)
+            reviewed = enrichment.prepare_for_review(
+                entities,
+                detected_universes=detected_universes,
+                context=text,
+            )
+            queue_path = _entity_review_queue_path(project_dir)
+            _write_json(queue_path, [entity.to_dict() for entity in reviewed])
+            events.append(_event("entity_review_ready", "Prepared entity review queue", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "chapter_id": chapter_id,
+                    "universe_id": universe_id,
+                    "detected_universes": detected_universes,
+                    "entities": [entity.to_dict() for entity in reviewed],
+                    "queue_path": str(queue_path),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command in {"entity_approve", "entity_reject"}:
+            manager, project_id, project_dir = _resolve_project(payload)
+            source = str(payload.get("source") or "").strip()
+            incoming_entity = payload.get("entity")
+            queue = _load_entity_review_queue(project_dir)
+            if incoming_entity:
+                queue = _upsert_entity_review_queue(queue, _entity_from_payload(incoming_entity))
+            if not source and incoming_entity:
+                source = str(incoming_entity.get("source") or "").strip()
+            if not source:
+                raise ValueError("source or entity.source is required")
+            updated = _set_entity_review_status(queue, source, status="approved" if command == "entity_approve" else "rejected")
+            queue_path = _entity_review_queue_path(project_dir)
+            _write_json(queue_path, [entity.to_dict() for entity in updated])
+            events.append(_event("entity_review_updated", f"Updated review status for `{source}`", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "source": source,
+                    "entities": [entity.to_dict() for entity in updated],
+                    "queue_path": str(queue_path),
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "entity_save_to_term_bank":
+            manager, project_id, project_dir = _resolve_project(payload)
+            entities_payload = payload.get("entities")
+            if isinstance(entities_payload, list):
+                entities = [_entity_from_payload(item) for item in entities_payload if isinstance(item, dict)]
+            else:
+                entities = _load_entity_review_queue(project_dir)
+            target_scope = str(payload.get("target_scope") or "universe").strip() or "universe"
+            enrichment = EntityEnrichmentManager(project_id=project_id, project_dir=project_dir)
+            saved_count = enrichment.save_to_term_bank(entities, target_scope=target_scope)
+            saved_entities = [
+                entity.to_dict()
+                for entity in entities
+                if entity.review_status in {"approved", "saved"} and entity.enrichment_ready
+            ]
+            events.append(_event("entity_term_bank_saved", "Saved approved entities to term bank", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "target_scope": target_scope,
+                    "saved_count": saved_count,
+                    "saved_entities": saved_entities,
+                    "overview": manager.get_project_overview(project_id),
+                },
+                warnings=warnings,
+                events=events,
+            )
+
+        if command == "entity_export_report":
+            manager, project_id, project_dir = _resolve_project(payload)
+            entities_payload = payload.get("entities")
+            if isinstance(entities_payload, list):
+                entities = [_entity_from_payload(item) for item in entities_payload if isinstance(item, dict)]
+            else:
+                entities = _load_entity_review_queue(project_dir)
+            markdown = EntityEnrichmentManager.export_review_report(entities)
+            report_path = project_dir / "reports" / "entity_enrichment_review.md"
+            report_path.parent.mkdir(parents=True, exist_ok=True)
+            report_path.write_text(markdown, encoding="utf-8")
+            events.append(_event("entity_report_exported", "Exported entity review report", 100))
+            return CommandResponse.success(
+                request,
+                data={
+                    "project_id": project_id,
+                    "markdown": markdown,
+                    "report_path": str(report_path),
+                    "overview": manager.get_project_overview(project_id),
                 },
                 warnings=warnings,
                 events=events,
@@ -1563,6 +1688,74 @@ def _normalize_project_entity(payload: dict) -> dict:
         "count": max(1, int(_coerce_float(payload.get("count"), 1))),
         "positions": [int(item) for item in positions if isinstance(item, (int, float))],
     }
+
+
+def _entity_review_queue_path(project_dir: Path) -> Path:
+    return project_dir / "working" / "entities" / "entity_review_queue.json"
+
+
+def _entity_from_payload(payload: dict) -> EntitySuggestion:
+    positions = payload.get("positions")
+    if not isinstance(positions, list):
+        positions = []
+    return EntitySuggestion(
+        source=str(payload.get("source") or "").strip(),
+        target=str(payload.get("target") or "").strip(),
+        entity_type=str(payload.get("entity_type") or "term").strip() or "term",
+        confidence=_coerce_float(payload.get("confidence"), 0.75),
+        source_dict=str(payload.get("source_dict") or "user_review").strip() or "user_review",
+        ambiguity_flag=bool(payload.get("ambiguity_flag", False)),
+        count=max(1, int(_coerce_float(payload.get("count"), 1))),
+        positions=[int(item) for item in positions if isinstance(item, (int, float))],
+        universe=slugify_universe_id(str(payload.get("universe") or "").strip()),
+        work=str(payload.get("work") or "").strip(),
+        review_status=str(payload.get("review_status") or "pending").strip() or "pending",
+        enrichment_ready=bool(payload.get("enrichment_ready", bool(payload.get("source") and payload.get("target")))),
+        suggested_tags=[str(item).strip() for item in payload.get("suggested_tags", []) if str(item).strip()]
+        if isinstance(payload.get("suggested_tags"), list) else [],
+        suggested_context_markers=[
+            str(item).strip()
+            for item in payload.get("suggested_context_markers", [])
+            if str(item).strip()
+        ] if isinstance(payload.get("suggested_context_markers"), list) else [],
+        qa_flags=[str(item).strip() for item in payload.get("qa_flags", []) if str(item).strip()]
+        if isinstance(payload.get("qa_flags"), list) else [],
+    )
+
+
+def _load_entity_review_queue(project_dir: Path) -> list[EntitySuggestion]:
+    payload = _load_json(_entity_review_queue_path(project_dir), [])
+    if not isinstance(payload, list):
+        return []
+    return [_entity_from_payload(item) for item in payload if isinstance(item, dict)]
+
+
+def _upsert_entity_review_queue(queue: list[EntitySuggestion], entity: EntitySuggestion) -> list[EntitySuggestion]:
+    updated: list[EntitySuggestion] = []
+    replaced = False
+    for item in queue:
+        if item.source == entity.source:
+            updated.append(entity)
+            replaced = True
+        else:
+            updated.append(item)
+    if not replaced:
+        updated.append(entity)
+    return updated
+
+
+def _set_entity_review_status(queue: list[EntitySuggestion], source: str, *, status: str) -> list[EntitySuggestion]:
+    if not any(entity.source == source for entity in queue):
+        raise ValueError(f"Unknown entity source in review queue: {source}")
+    updated: list[EntitySuggestion] = []
+    for entity in queue:
+        if entity.source != source:
+            updated.append(entity)
+        elif status == "approved":
+            updated.append(EntityEnrichmentManager.approve_entity(entity))
+        else:
+            updated.append(EntityEnrichmentManager.reject_entity(entity))
+    return updated
 
 
 def _coerce_float(value: object, default: float) -> float:

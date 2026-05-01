@@ -1,0 +1,11 @@
+{
+  "regression_gate": {
+    "passed": true,
+    "metrics": []
+  },
+  "docs": true,
+  "changelog": true,
+  "ci": true,
+  "term_bank": true,
+  "passed": true
+}
