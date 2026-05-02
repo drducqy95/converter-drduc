@@ -1,0 +1,37 @@
+registers:
+  xianxia:
+    male_subject: hắn
+    female_subject: nàng
+    neutral_subject: y
+    male_object: hắn
+    female_object: nàng
+    neutral_object: người ấy
+    first_subject: ta
+    second_subject: ngươi
+  modern:
+    male_subject: anh ấy
+    female_subject: cô ấy
+    neutral_subject: họ
+    male_object: anh ấy
+    female_object: cô ấy
+    neutral_object: người đó
+    first_subject: tôi
+    second_subject: cậu
+  formal:
+    male_subject: ông ấy
+    female_subject: bà ấy
+    neutral_subject: người ấy
+    male_object: ông ấy
+    female_object: bà ấy
+    neutral_object: người ấy
+    first_subject: tôi
+    second_subject: ngài
+  casual:
+    male_subject: anh ta
+    female_subject: cô ta
+    neutral_subject: người ta
+    male_object: anh ta
+    female_object: cô ta
+    neutral_object: người ta
+    first_subject: mình
+    second_subject: cậu

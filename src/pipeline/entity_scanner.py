@@ -17,6 +17,7 @@ from src.pipeline.name_reading import (
 )
 from src.pipeline.term_bank import PROPER_ENTITY_TYPES, TermBank, TermBankRecord
 from src.pipeline.universe import resolve_project_universe_id, slugify_universe_id
+from src.pipeline.universe_detector import UniverseContext, UniverseDetector
 
 
 DEFAULT_DB_PATH = Path(__file__).resolve().parents[2] / "data" / "dictionaries" / "_compiled" / "trie_cache.db"
@@ -305,6 +306,7 @@ class EntityScanner:
         self.trie = TrieEngine.from_shared_sqlite(self.db_path, enable_number_converter=False)
         self.accessor = RuntimeDictionaryAccessor(self.db_path)
         self.term_bank = TermBank(project_id=project_id, project_dir=project_dir)
+        self._universe_detector = UniverseDetector(term_bank=self.term_bank)
         self.name_resolver = HanVietNameResolver(self.accessor, self.term_bank)
         self.default_universe_id = slugify_universe_id(universe_id) or resolve_project_universe_id(
             project_id=project_id,
@@ -319,6 +321,7 @@ class EntityScanner:
         universe_id: str | None = None,
     ) -> None:
         self.term_bank.set_project_context(project_id=project_id, project_dir=project_dir)
+        self._universe_detector = UniverseDetector(term_bank=self.term_bank)
         self.name_resolver.set_term_bank(self.term_bank)
         self.default_universe_id = slugify_universe_id(universe_id) or resolve_project_universe_id(
             project_id=project_id,
@@ -330,11 +333,8 @@ class EntityScanner:
 
     def scan(self, text: str) -> list[EntitySuggestion]:
         found: dict[str, EntitySuggestion] = {}
-        active_universes = [
-            universe
-            for universe, confidence in self.term_bank.detect_universe(text)
-            if confidence >= 0.5
-        ]
+        universe_context = self._universe_detector.detect(text)
+        active_universes = list(universe_context.active_universes)
         if self.default_universe_id and self.default_universe_id not in active_universes:
             active_universes.append(self.default_universe_id)
         self._scan_term_bank(text, found, active_universes=active_universes)
@@ -477,7 +477,11 @@ class EntityScanner:
             )
 
     def detect_universe(self, text: str) -> list[tuple[str, float]]:
-        return self.term_bank.detect_universe(text)
+        context = self._universe_detector.detect(text)
+        return [(signal.universe_id, signal.confidence) for signal in context.signals]
+
+    def detect_universe_context(self, text: str) -> UniverseContext:
+        return self._universe_detector.detect(text)
 
     def _scan_term_bank(self, text: str, found: dict[str, EntitySuggestion], *, active_universes: list[str] | None = None) -> None:
         sources: dict[str, str] = {}
@@ -488,9 +492,10 @@ class EntityScanner:
                 continue
             if record.entity_type not in PROPER_ENTITY_TYPES and record.entity_type != "term":
                 continue
-            sources.setdefault(record.source, record.entity_type)
+            entity_type = DICTIONARY_ENTITY_TYPE_OVERRIDES.get(record.source, record.entity_type)
+            sources.setdefault(record.source, entity_type)
             for alias in record.aliases:
-                sources.setdefault(alias, record.entity_type)
+                sources.setdefault(alias, DICTIONARY_ENTITY_TYPE_OVERRIDES.get(alias, entity_type))
 
         for source_text, entity_type in sorted(sources.items(), key=lambda item: len(item[0]), reverse=True):
             positions = self._find_all_positions(text, source_text)

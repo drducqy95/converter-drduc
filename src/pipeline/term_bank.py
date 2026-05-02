@@ -78,6 +78,7 @@ class TermBank:
         self.project_dir = Path(project_dir) if project_dir else None
         self._records: list[TermBankRecord] | None = None
         self._by_source: dict[str, list[TermBankRecord]] | None = None
+        self._universe_detector = None
 
     def set_project_context(self, *, project_id: str | None = None, project_dir: str | Path | None = None) -> None:
         next_project_id = (project_id or "").strip()
@@ -88,6 +89,7 @@ class TermBank:
         self.project_dir = next_project_dir
         self._records = None
         self._by_source = None
+        self._universe_detector = None
 
     def lookup(
         self,
@@ -125,6 +127,12 @@ class TermBank:
         candidates = self.lookup(source, entity_type=entity_type, include_inactive=include_inactive)
         if not candidates:
             return []
+        if active_universes is None and context_window:
+            active_universes = [
+                universe
+                for universe, confidence in self.detect_universe(context_window, threshold=0.5)
+                if confidence >= 0.5
+            ]
         active = {slugify_universe_id(item) for item in (active_universes or []) if item}
         ranked = [
             (record, self._context_score(record, context_window=context_window, active_universes=active))
@@ -160,6 +168,25 @@ class TermBank:
 
     def detect_universe(self, text: str, *, threshold: float = 0.12) -> list[tuple[str, float]]:
         """Detect active universes from fingerprints and co-occurrence markers."""
+
+        from src.pipeline.universe_detector import UniverseDetector
+
+        if not text:
+            return []
+        if self._universe_detector is None:
+            self._universe_detector = UniverseDetector(term_bank=self)
+        context = self._universe_detector.detect(text)
+        detected = [
+            (signal.universe_id, signal.confidence)
+            for signal in context.signals
+            if signal.confidence >= threshold
+        ]
+        if detected or context.signals:
+            return detected
+        return self._detect_universe_from_records(text, threshold=threshold)
+
+    def _detect_universe_from_records(self, text: str, *, threshold: float = 0.12) -> list[tuple[str, float]]:
+        """Legacy record-scan fallback used when fingerprints are unavailable."""
 
         if not text:
             return []
@@ -231,6 +258,7 @@ class TermBank:
         _ = universe
         self._records = None
         self._by_source = None
+        self._universe_detector = None
 
     def iter_active(self) -> Iterable[TermBankRecord]:
         return (record for record in self.records if record.active)
@@ -351,7 +379,11 @@ class TermBank:
         if universe_key and universe_key in active_universes:
             contextual += 4.0
         if context_window:
-            contextual += sum(1.0 for marker in record.context_markers if marker and marker in context_window)
+            contextual += sum(
+                1.0
+                for marker in record.context_markers
+                if marker and marker != record.source and marker in context_window
+            )
             contextual += sum(2.0 for marker in record.co_occurring_entities if marker and marker in context_window)
             if record.work and record.work in context_window:
                 contextual += 1.5
